@@ -1,19 +1,51 @@
-<!doctype html>
-<title>Cocainoom</title>
-<link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-<div class=page>
-    <h1>Cocainoom</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cocainoom</title>
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
+</head>
+<body>
+<div class="navbar">
+    <div class="navbar-inner">
 
-    <div class=metanav>
+        <a class="brand" href="#">Cocainoom</a>
+        <ul class="nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="{{ url_for('admin') }}">Dashboard</a></li>
+        </ul>
+
+
         {% if not session.logged_in %}
-            <a href="{{ url_for('login') }}">log in</a>
-            <a href="{{ url_for('register') }}">register</a>
+            <form class="navbar-form pull-right" action="{{ url_for('login') }}" method="post">
+                <input class="span2" type="text" placeholder="Username" name="username">
+                <input class="span2" type="password" placeholder="Password" name="password">
+                <button type="submit" class="btn">Sign in</button>
+                <a class="btn" href="{{ url_for('register') }}">Register</a>
+            </form>
+
         {% else %}
-            <a href="{{ url_for('logout') }}">log out</a>
+            <p class="navbar-form pull-right">
+                <a class="btn" href="{{ url_for('logout') }}">Log out</a>
+            </p>
+
         {% endif %}
+
+
     </div>
+</div>
+<div class="container">
+
     {% for message in get_flashed_messages() %}
         <div class=flash>{{ message }}</div>
     {% endfor %}
+
     {% block body %}{% endblock %}
 </div>
+
+
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+
+</body>
+</html>
