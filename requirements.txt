@@ -1,2 +1,6 @@
 flask==0.9
 Flask-PyMongo==0.1.2
+PyYAML==3.10
+requests==0.14.0
+opster==3.7
+sh==1.02
