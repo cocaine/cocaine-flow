@@ -10,9 +10,16 @@ log = logging.getLogger()
 
 def logged_in(func):
     def wrapper(*args, **kwargs):
-        if not session.get('logged_in'):
+        username = session.get('logged_in')
+        if not username:
             return redirect(url_for('login'))
-        return func(*args, **kwargs)
+
+        user = current_app.mongo.db.users.find_one({'_id': session['logged_in']})
+        if user is None:
+            session.pop('logged_in', None)
+            return redirect(url_for('login'))
+
+        return func(user, *args, **kwargs)
 
     return wrapper
 
@@ -32,7 +39,7 @@ def token_required(func):
 
 def home():
     if 'logged_in' in session:
-        return render_template('dashboard.html')
+        return redirect(url_for('dashboard'))
     return render_template('home.html')
 
 
@@ -72,7 +79,7 @@ def login():
         if user['password'] != hashlib.sha1(password).hexdigest():
             return render_template('login.html', error='Invalid password')
 
-        session['logged_in'] = True
+        session['logged_in'] = user["_id"]
         flash('You were logged in')
         return redirect(url_for('dashboard'))
 
@@ -86,9 +93,14 @@ def logout():
 
 
 @logged_in
-def dashboard():
-    user = current_app.mongo.db.users.find_one({'_id': session['logged_in']})
-    return render_template('dashboard.html', user=user)
+def dashboard(user):
+    manifests = []
+    if user['admin']:
+        try:
+            manifests = msgpack.unpackb(current_app.elliptics.read('system\0list:manifests'))
+        except RuntimeError:
+            pass
+    return render_template('dashboard.html', user=user, manifests=manifests)
 
 
 @token_required

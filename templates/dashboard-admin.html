@@ -1,0 +1,8 @@
+<p>Total manifests number: {{ manifests|length }}.</p>
+
+<b>Manifests:</b>
+<ul class="unstyled">
+    {% for manifest in manifests %}
+        <li>{{ manifest }}</li>
+    {% endfor %}
+</ul>

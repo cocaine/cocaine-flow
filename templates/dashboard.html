@@ -1,7 +1,11 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-    Secret key: {{ user.token }}
+    {% if user.admin %}
+        {% include 'dashboard-admin.html' %}
+    {% else %}
+        Secret key: {{ user.token }}
+    {% endif %}
 {% endblock %}
 
 

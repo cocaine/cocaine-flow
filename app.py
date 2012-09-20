@@ -25,13 +25,17 @@ def create_app():
     app.add_url_rule('/profile/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/read', view_func=views.read)
     app.add_url_rule('/upload/<string:branch>/<string:revision>', view_func=views.upload, methods=['POST'])
+
     app.mongo = PyMongo(app)
     app.elliptics = init_elliptics()
+
     return app
 
 
 def install(username, password):
-    return views.create_user(username, password, admin=True)
+    app = create_app()
+    with app.test_request_context():
+        return views.create_user(username, password, admin=True)
 
 
 if __name__ == '__main__':
