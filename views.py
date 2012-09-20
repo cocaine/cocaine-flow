@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import logging
-from flask import request, render_template, session, flash, redirect, url_for, current_app, abort, json
+from uuid import uuid4
+import msgpack
+from flask import request, render_template, session, flash, redirect, url_for, current_app, json
 from pymongo.errors import DuplicateKeyError
 
 log = logging.getLogger()
@@ -17,9 +19,12 @@ def logged_in(func):
 
 def token_required(func):
     def wrapper(*args, **kwargs):
-        token = request.args.get('token')
+        token = request.values.get('token')
         if not token:
-            return abort(401)
+            return 'Token is required', 403
+        user = current_app.mongo.db.users.find_one({'token': token})
+        if user is None:
+            return 'Valid token is required', 403
         return func(*args, token=token, **kwargs)
 
     return wrapper
@@ -27,13 +32,13 @@ def token_required(func):
 
 def home():
     if 'logged_in' in session:
-        return render_template('admin.html')
+        return render_template('dashboard.html')
     return render_template('home.html')
 
 
 def create_user(username, password, admin=False):
     return current_app.mongo.db.users.insert(
-        {'_id': username, 'password': hashlib.sha1(password).hexdigest(), 'admin': admin},
+        {'_id': username, 'password': hashlib.sha1(password).hexdigest(), 'admin': admin, 'token': uuid4()},
         safe=True)
 
 
@@ -49,10 +54,10 @@ def register():
         except DuplicateKeyError as e:
             return render_template('register.html', error="Username is not available")
 
-        session['logged_in'] = True
+        session['logged_in'] = username
         flash('You are registered')
 
-        return redirect(url_for('admin'))
+        return redirect(url_for('dashboard'))
     return render_template('register.html')
 
 
@@ -69,7 +74,7 @@ def login():
 
         session['logged_in'] = True
         flash('You were logged in')
-        return redirect(url_for('admin'))
+        return redirect(url_for('dashboard'))
 
     return render_template('login.html')
 
@@ -81,8 +86,9 @@ def logout():
 
 
 @logged_in
-def admin():
-    return render_template('admin.html')
+def dashboard():
+    user = current_app.mongo.db.users.find_one({'_id': session['logged_in']})
+    return render_template('dashboard.html', user=user)
 
 
 @token_required
@@ -97,11 +103,12 @@ def create_profile(name, token=None):
 
 
 def read():
-    key = "system\0list:apps"
+    key = "system\0list:manifests"
     return current_app.elliptics.read_data(key)
 
 
-def upload():
+@token_required
+def upload(branch, revision, token):
     app = request.files.get('app')
     info = request.form.get('info')
 
@@ -118,6 +125,23 @@ def upload():
     if package_type not in ['python']:
         return '%s type is not supported' % package_type, 400
 
-    key = "system\0list:apps"
-    blob = current_app.elliptics.write_data(key, app.read())
-    return str(blob)
+    app_name = info.get('name')
+    if app_name is None:
+        return 'App name is required in info file', 400
+
+    e = current_app.elliptics
+
+    info['developer'] = token
+    info['uuid'] = "%s_%s_%s" % (app_name, branch, revision)
+    manifests_key = "system\0list:manifests"
+
+    try:
+        e.write("apps\0%s" % info['uuid'], app.read())
+        e.write("manifests\0%s" % info['uuid'], msgpack.packb(info))
+        manifests = set(msgpack.unpackb(e.read(manifests_key)))
+        manifests.add(info['uuid'])
+        e.write(manifests_key, msgpack.packb(list(manifests)))
+    except Exception:
+        return "App storage failure", 500
+
+    return 'ok'

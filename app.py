@@ -21,10 +21,10 @@ def create_app():
     app.add_url_rule('/register', view_func=views.register, methods=['GET', 'POST'])
     app.add_url_rule('/login', 'login', view_func=views.login, methods=['GET', 'POST'])
     app.add_url_rule('/logout', view_func=views.logout)
-    app.add_url_rule('/admin', 'admin', view_func=views.admin, methods=['GET', 'POST'])
+    app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
     app.add_url_rule('/profile/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/read', view_func=views.read)
-    app.add_url_rule('/upload', view_func=views.upload, methods=['POST'])
+    app.add_url_rule('/upload/<string:branch>/<string:revision>', view_func=views.upload, methods=['POST'])
     app.mongo = PyMongo(app)
     app.elliptics = init_elliptics()
     return app
