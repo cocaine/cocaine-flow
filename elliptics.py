@@ -302,7 +302,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              aflags - command attributes flags (default is 0)
              ioflags - IO flags (like cache)
-         """
+        """
         if isinstance(key, basestring):
             new_args = [str(key), aflags, type_]
         else:
@@ -330,7 +330,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              return value:
              string - result of the script execution
-         """
+        """
         return super(Node, self).execute(*args, **{})
 
 
@@ -355,7 +355,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              return value:
              string - result of the script execution
-         """
+        """
         return super(Node, self).exec_name(*args, **{})
 
 
@@ -364,7 +364,7 @@ class Node(libelliptics_python.elliptics_node_python):
              Update elliptics status and log mask
              signatures:
                  update_status(id, status, update)
-                 update_status(addr, port, family, status, update)
+                 update_status((addr, port, family), status, update)
 
              key - remote key name
              id - object of Id class
@@ -379,7 +379,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              return value:
              NodeStatus - current node status
-         """
+        """
         status = status or NodeStatus()
         if hasattr(key, '__iter__'):
             new_args = (key[0], key[1], key[2], status, update)
@@ -400,7 +400,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              return value:
              list - list of strings, each string consists of 64 byte key, 8 byte data length and data itself
-         """
+        """
         return super(Node, self).bulk_read(keys, group_id, aflags)
 
 
@@ -411,7 +411,7 @@ class Node(libelliptics_python.elliptics_node_python):
 
              return value:
              list - list of strings, each string consists of 64 byte key, 8 byte data length and data itself
-         """
+        """
         return super(Node, self).read_data_range(read_range)
 
 
