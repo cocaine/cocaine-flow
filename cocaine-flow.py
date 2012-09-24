@@ -11,10 +11,10 @@ import settings
 from opster import command, dispatch
 
 
-def upload_packed_app(packed_app_path, package_info, branch, rev):
+def upload_packed_app(packed_app_path, package_info, branch, rev, token):
     rv = requests.post(settings.API_SERVER + '/upload/%s/%s' % (branch, rev),
                        data={'info': json.dumps(package_info),
-                             'token': '123'},
+                             'token': token},
                        files={'app': open(packed_app_path, 'rb')})
     if rv.status_code != 200:
         raise command.Error('Error during app upload to server. Reason: %s' % rv.text)
@@ -53,11 +53,13 @@ def upload(branch=('b', None, 'branch to use'),
            dir=('d', '.', 'root directory of application')):
     '''Upload code to cocaine cloud'''
 
-    if not os.path.exists(os.path.expanduser("~/.cocaine")):
+    cocaine_path = os.path.expanduser("~/.cocaine")
+    if not os.path.exists(cocaine_path):
         raise command.Error('Secret key is not installed. Use `./cocaine-flow token` to do that.')
 
-    with open(os.path.expanduser("~/.cocaine"), 'r') as f:
-        if not f.readline():
+    with open(cocaine_path, 'r') as f:
+        secret_key = f.readline()
+        if not secret_key:
             raise command.Error('Secret key is not installed. Use `./cocaine-flow token` to do that.')
 
     curdir = os.path.abspath(dir)
@@ -77,7 +79,7 @@ def upload(branch=('b', None, 'branch to use'),
         raise command.Error('Cannot pack application. Command: %s' % cmd)
 
     real_branch, real_revision = get_commit_info(curdir, branch, rev)
-    upload_packed_app(packed_app_path, package_info, real_branch, real_revision)
+    upload_packed_app(packed_app_path, package_info, real_branch, real_revision, secret_key)
     subprocess.call("rm %s" % packed_app_path, shell=True)
     print package_info
 
@@ -87,7 +89,7 @@ def token(secret_key):
     """
     Set secret key
     """
-    with open(os.path.expanduser("~/.cocaine"), 'r+') as f:
+    with open(os.path.expanduser("~/.cocaine"), 'w+') as f:
         f.write(secret_key)
 
 

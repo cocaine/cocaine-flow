@@ -45,7 +45,7 @@ def home():
 
 def create_user(username, password, admin=False):
     return current_app.mongo.db.users.insert(
-        {'_id': username, 'password': hashlib.sha1(password).hexdigest(), 'admin': admin, 'token': uuid4()},
+        {'_id': username, 'password': hashlib.sha1(password).hexdigest(), 'admin': admin, 'token': str(uuid4())},
         safe=True)
 
 
