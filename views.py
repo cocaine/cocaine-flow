@@ -92,15 +92,23 @@ def logout():
     return redirect(url_for('login'))
 
 
+def read_and_unpack(key):
+    return msgpack.unpackb(current_app.elliptics.read(key))
+
+
 @logged_in
 def dashboard(user):
+    if not user['admin']:
+        return render_template('dashboard.html', user=user)
+
     manifests = []
-    if user['admin']:
-        try:
-            manifests = msgpack.unpackb(current_app.elliptics.read('system\0list:manifests'))
-        except RuntimeError:
-            pass
-    return render_template('dashboard.html', user=user, manifests=manifests)
+    runlists = []
+    try:
+        manifests = read_and_unpack('system\0list:manifests')
+        runlists = read_and_unpack('system\0list:runlists')
+    except RuntimeError:
+        pass
+    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists)
 
 
 @token_required
@@ -120,7 +128,19 @@ def read():
 
 
 @token_required
-def upload(branch, revision, token):
+def upload_repo(token):
+    url = request.form.get('url')
+    type_ = request.form.get('type')
+    if not url or not type_:
+        return 'Empty type or url', 400
+    if type_ not in ['git', 'cvs', 'hg']:
+        return 'Invalid cvs type', 400
+
+    return 'ok'
+
+
+@token_required
+def upload(ref, token):
     app = request.files.get('app')
     info = request.form.get('info')
 
@@ -144,7 +164,7 @@ def upload(branch, revision, token):
     e = current_app.elliptics
 
     info['developer'] = token
-    info['uuid'] = "%s_%s_%s" % (app_name, branch, revision)
+    info['uuid'] = "%s_%s" % (app_name, ref)
     manifests_key = "system\0list:manifests"
 
     try:

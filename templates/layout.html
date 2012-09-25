@@ -4,6 +4,9 @@
     <title>Cocainoom</title>
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='bootstrap/css/bootstrap.css') }}">
+    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+    <script src="http://code.jquery.com/jquery-latest.js"></script>
+
 </head>
 <body>
 <div class="navbar">
@@ -43,8 +46,8 @@
 </div>
 
 
-<script src="http://code.jquery.com/jquery-latest.js"></script>
 <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.js') }}"></script>
+{% block js %}{% endblock %}
 
 </body>
 </html>

@@ -4,8 +4,12 @@
     {% if user.admin %}
         {% include 'dashboard-admin.html' %}
     {% else %}
-        Secret key: {{ user.token }}
+        {% include 'dashboard-user.html' %}
     {% endif %}
 {% endblock %}
+
+{% block js %}
+{% endblock %}
+
 
 

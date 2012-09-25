@@ -24,7 +24,8 @@ def create_app():
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
     app.add_url_rule('/profile/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/read', view_func=views.read)
-    app.add_url_rule('/upload/<string:branch>/<string:revision>', view_func=views.upload, methods=['POST'])
+    app.add_url_rule('/upload', endpoint="uploadrepo", view_func=views.upload_repo, methods=['POST'])
+    app.add_url_rule('/upload/<string:ref>', endpoint="upload", view_func=views.upload, methods=['POST'])
 
     app.mongo = PyMongo(app)
     app.elliptics = init_elliptics()

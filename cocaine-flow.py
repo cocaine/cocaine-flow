@@ -3,16 +3,17 @@
 import subprocess
 from time import time
 import os
-import sys
 import yaml
 import json
 import requests
 import settings
 from opster import command, dispatch
+import sh
 
 
-def upload_packed_app(packed_app_path, package_info, branch, rev, token):
-    rv = requests.post(settings.API_SERVER + '/upload/%s/%s' % (branch, rev),
+
+def upload_packed_app(packed_app_path, package_info, ref, token):
+    rv = requests.post(settings.API_SERVER + '/upload/%s' % ref,
                        data={'info': json.dumps(package_info),
                              'token': token},
                        files={'app': open(packed_app_path, 'rb')})
@@ -25,34 +26,52 @@ def define_cvs(dir):
         return 'git'
     if os.path.exists(dir + '/.svn'):
         return 'svn'
+    if os.path.exists(dir + '/.hg'):
+        return 'hg'
     return 'fs'
 
 
-def get_real_branch(branch, cvs):
-    if cvs == 'fs':
-        return 'local'
-    if cvs == 'git':
-        return subprocess.call("git branch | grep \* | awk '{print $2}'")
-
-    sys.exit(1)
-
-
-def get_real_revision(rev, cvs):
+def get_real_ref(dir, ref, cvs):
     if cvs == 'fs':
         return int(time())
 
+    if not ref:
+        if cvs == 'git':
+            try:
+                return sh.git("rev-parse", "HEAD", _cwd=dir)
+            except sh.ErrorReturnCode as e:
+                raise command.Error(e.stderr)
+        else:
+            raise command.Error("Unsupported operation with cvs=`%s`" % cvs)
 
-def get_commit_info(dir, branch, rev):
+    if cvs == 'git':
+        try:
+            return sh.git("rev-parse", "--short", ref, _cwd=dir)
+        except sh.ErrorReturnCode as e:
+            raise command.Error(e.stderr)
+
+    return ref
+
+
+def get_commit_info(dir, ref):
     cvs = define_cvs(dir)
-    return get_real_branch(branch, cvs), get_real_revision(rev, cvs)
+    return get_real_ref(dir, ref, cvs)
+
+
+def pack_app(curdir, real_ref):
+    packed_app_path = "/tmp/app.tar.gz"
+    try:
+        sh.tar("-czf", packed_app_path, "-C", os.path.dirname(curdir), os.path.basename(curdir))
+    except sh.ErrorReturnCode as e:
+        raise command.Error('Cannot pack application. %s' % str(e))
+
+    return packed_app_path
 
 
 @command(shortlist=True)
-def upload(branch=('b', None, 'branch to use'),
-           rev=('r', None, 'revision to use'),
-           dir=('d', '.', 'root directory of application')):
+def upload(dir=('d', '.', 'root directory of application'),
+           ref=('r', '', 'branch/tag/revision to use'), *args):
     '''Upload code to cocaine cloud'''
-
     cocaine_path = os.path.expanduser("~/.cocaine")
     if not os.path.exists(cocaine_path):
         raise command.Error('Secret key is not installed. Use `./cocaine-flow token` to do that.')
@@ -71,17 +90,10 @@ def upload(branch=('b', None, 'branch to use'),
     if package_type is None:
         raise command.Error('type is not set in info.yaml')
 
-    packed_app_path = "%s/app.tar.gz" % curdir
-    cmd = 'tar czf %s * -C %s' % (packed_app_path, curdir)
-    try:
-        subprocess.call(cmd, shell=True)
-    except (subprocess.CalledProcessError, OSError):
-        raise command.Error('Cannot pack application. Command: %s' % cmd)
-
-    real_branch, real_revision = get_commit_info(curdir, branch, rev)
-    upload_packed_app(packed_app_path, package_info, real_branch, real_revision, secret_key)
-    subprocess.call("rm %s" % packed_app_path, shell=True)
-    print package_info
+    real_ref = get_commit_info(curdir, ref)
+    packed_app_path = pack_app(curdir, real_ref)
+    upload_packed_app(packed_app_path, package_info, real_ref, secret_key)
+    sh.rm("-f", packed_app_path)
 
 
 @command(shortlist=True)
