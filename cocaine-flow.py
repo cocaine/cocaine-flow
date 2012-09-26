@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import subprocess
 from time import time
 import os
 import yaml
@@ -9,7 +8,6 @@ import requests
 import settings
 from opster import command, dispatch
 import sh
-
 
 
 def upload_packed_app(packed_app_path, package_info, ref, token):
@@ -68,9 +66,10 @@ def pack_app(curdir, real_ref):
     return packed_app_path
 
 
-@command(shortlist=True)
+@command(shortlist=True, usage="[OPTIONS]")
 def upload(dir=('d', '.', 'root directory of application'),
-           ref=('r', '', 'branch/tag/revision to use'), *args):
+           ref=('r', '', 'branch/tag/revision to use'),
+           *args, **kwargs):
     '''Upload code to cocaine cloud'''
     cocaine_path = os.path.expanduser("~/.cocaine")
     if not os.path.exists(cocaine_path):
@@ -91,9 +90,19 @@ def upload(dir=('d', '.', 'root directory of application'),
         raise command.Error('type is not set in info.yaml')
 
     real_ref = get_commit_info(curdir, ref)
+
     packed_app_path = pack_app(curdir, real_ref)
+    if kwargs['verbose']:
+        print 'App is packed'
+
     upload_packed_app(packed_app_path, package_info, real_ref, secret_key)
+    if kwargs['verbose']:
+        print 'App is uploaded'
+
     sh.rm("-f", packed_app_path)
+
+    if kwargs['verbose']:
+        print 'Done'
 
 
 @command(shortlist=True)
@@ -105,5 +114,8 @@ def token(secret_key):
         f.write(secret_key)
 
 
+options = [('v', 'verbose', False, 'enable additional output'),
+           ('q', 'quiet', False, 'suppress output')]
+
 if __name__ == '__main__':
-    dispatch()
+    dispatch(globaloptions=options)
