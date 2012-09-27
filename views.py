@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import logging
+import os
 from uuid import uuid4
 import msgpack
 from flask import request, render_template, session, flash, redirect, url_for, current_app, json
 from pymongo.errors import DuplicateKeyError
+import sh
+import yaml
+
 
 log = logging.getLogger()
 
@@ -33,6 +37,26 @@ def token_required(func):
         if user is None:
             return 'Valid token is required', 403
         return func(*args, token=token, **kwargs)
+
+    return wrapper
+
+
+def uniform(func):
+    def wrapper(*args, **kwargs):
+        rv = func(*args, **kwargs)
+        if isinstance(rv, basestring):
+            code = 200
+        else:
+            rv, code = rv
+
+        if request.referrer:
+            if 200 <= code < 300:
+                flash(rv, 'alert-success')
+            elif 400 <= code < 600:
+                flash(rv, 'alert-error')
+            return redirect(request.referrer)
+
+        return rv, code
 
     return wrapper
 
@@ -96,19 +120,47 @@ def read_and_unpack(key):
     return msgpack.unpackb(current_app.elliptics.read(key))
 
 
+def key(prefix, postfix):
+    if type(postfix) in set([tuple, list, set]):
+        return type(postfix)(["%s\0%s" % (prefix, p) for p in postfix])
+
+    return "%s\0%s" % (prefix, postfix)
+
+
+def remove_prefix(prefix, key):
+    prefix = "%s\0" % prefix
+    if isinstance(key, dict):
+        return dict((k.replace(prefix, ''), v) for k, v in key.items())
+
+    return key.replace(prefix, '')
+
+
 @logged_in
 def dashboard(user):
     if not user['admin']:
         return render_template('dashboard.html', user=user)
 
-    manifests = []
+    manifests = {}
     runlists = []
+    tokens = set()
     try:
-        manifests = read_and_unpack('system\0list:manifests')
-        runlists = read_and_unpack('system\0list:runlists')
+        manifests = current_app.elliptics.bulk_read(key("manifests", read_and_unpack(key('system', 'list:manifests'))))
+        manifests = remove_prefix("manifests", manifests)
+        for k, manifest in manifests.items():
+            manifest_unpacked = msgpack.unpackb(manifest)
+            manifests[k] = manifest_unpacked
+            token = manifest_unpacked.get('developer')
+            if token:
+                tokens.add(token)
+        runlists = read_and_unpack(key('system', 'list:runlists'))
     except RuntimeError:
         pass
-    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists)
+
+    if tokens:
+        users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
+        tokens = dict((u['token'], u['_id']) for u in users)
+
+    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens)
 
 
 @token_required
@@ -123,22 +175,81 @@ def create_profile(name, token=None):
 
 
 def read():
-    key = "system\0list:manifests"
-    return current_app.elliptics.read_data(key)
+    return current_app.elliptics.read_data(key("system", "list:manifests"))
 
 
+def exists(prefix, postfix):
+    return current_app.elliptics.read_data(key(prefix, postfix))
+
+
+def upload_app(app, info, ref, token):
+    info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
+    info['developer'] = token
+
+    e = current_app.elliptics
+
+    app_key = key("apps", info['uuid'])
+    current_app.logger.info("Writing app to `%s`" % app_key)
+    e.write(app_key, app.read())
+
+    manifest_key = key("manifests", info['uuid'])
+    current_app.logger.info("Writing manifest to `%s`" % manifest_key)
+    e.write(manifest_key, msgpack.packb(info))
+
+    manifests_key = key("system", "list:manifests")
+    manifests = set(msgpack.unpackb(e.read(manifests_key)))
+    manifests.add(info['uuid'])
+    current_app.logger.info("Adding manifest to list of manifests `%s`" % manifest_key)
+    e.write(manifests_key, msgpack.packb(list(manifests)))
+
+
+@uniform
 @token_required
 def upload_repo(token):
     url = request.form.get('url')
     type_ = request.form.get('type')
+    ref = request.form.get('ref')
+
     if not url or not type_:
         return 'Empty type or url', 400
     if type_ not in ['git', 'cvs', 'hg']:
         return 'Invalid cvs type', 400
 
-    return 'ok'
+    clone_path = "/tmp/%s" % os.path.basename(url)
+    if os.path.exists(clone_path):
+        sh.rm("-rf", clone_path)
+
+    if type_ == 'git':
+        ref = ref or "HEAD"
+        sh.git("clone", url, clone_path)
+
+        try:
+            ref = sh.git("rev-parse", ref, _cwd=clone_path).strip()
+        except sh.ErrorReturnCode as e:
+            return 'Invalid reference. %s' % e, 400
+
+        if not os.path.exists(clone_path + "/info.yaml"):
+            return 'info.yaml is required', 400
+
+        package_info = yaml.load(file(clone_path + '/info.yaml'))
+
+        try:
+            sh.gzip(
+                sh.git("archive", ref, format="tar", prefix=os.path.basename(url) + "/", _cwd=clone_path),
+                "-f", _out=clone_path + "/app.tar.gz")
+        except sh.ErrorReturnCode as e:
+            return 'Unable to pack application. %s' % e, 503
+
+        try:
+            with open(clone_path + "/app.tar.gz") as app:
+                upload_app(app, package_info, ref, token)
+        except RuntimeError:
+            return "App storage failure", 500
+
+    return "Application was successfully uploaded"
 
 
+@uniform
 @token_required
 def upload(ref, token):
     app = request.files.get('app')
@@ -161,19 +272,9 @@ def upload(ref, token):
     if app_name is None:
         return 'App name is required in info file', 400
 
-    e = current_app.elliptics
-
-    info['developer'] = token
-    info['uuid'] = "%s_%s" % (app_name, ref)
-    manifests_key = "system\0list:manifests"
-
     try:
-        e.write("apps\0%s" % info['uuid'], app.read())
-        e.write("manifests\0%s" % info['uuid'], msgpack.packb(info))
-        manifests = set(msgpack.unpackb(e.read(manifests_key)))
-        manifests.add(info['uuid'])
-        e.write(manifests_key, msgpack.packb(list(manifests)))
-    except Exception:
+        upload_app(app, info, ref, token)
+    except RuntimeError:
         return "App storage failure", 500
 
     return 'ok'

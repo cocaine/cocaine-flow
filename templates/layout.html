@@ -38,8 +38,8 @@
 </div>
 <div class="container">
 
-    {% for message in get_flashed_messages() %}
-        <div class=flash>{{ message }}</div>
+    {% for category, message in get_flashed_messages(True) %}
+        <div class="alert {{ category }}">{{ message }}</div>
     {% endfor %}
 
     {% block body %}{% endblock %}

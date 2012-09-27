@@ -1,8 +1,21 @@
-<p>Total manifests number: {{ manifests|length }}.</p>
-
-<b>Manifests:</b>
-<ul class="unstyled">
-    {% for manifest in manifests %}
-        <li>{{ manifest }}</li>
-    {% endfor %}
-</ul>
+{% if manifests %}
+    <h3>Manifests <small>({{ manifests|length }})</small></h3>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>UUID</th>
+            <th>Type</th>
+            <th>Developer</th>
+        </tr>
+        </thead>
+        {% for key, manifest in manifests.items() %}
+            <tr>
+                <td>{{ key }}</td>
+                <td>{{ manifest.type }}</td>
+                <td>{{ tokens[manifest.developer] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <h3>No manifests</h3>
+{% endif %}
