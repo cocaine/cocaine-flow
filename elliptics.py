@@ -1,7 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import struct
 
 import sys
+import binascii
+import hashlib
 
 sys.path.insert(0, "/usr/lib/")
 sys.path.insert(0, "./.libs/")
@@ -391,17 +394,37 @@ class Node(libelliptics_python.elliptics_node_python):
         return ret
 
 
-    def bulk_read(self, keys, group_id, aflags=0):
+    def bulk_read(self, keys, aflags=0, raw=False):
         """
-             Bulk read keys from elliptics
-             keys - list of keys by name
-             group_id - group ID
-             aflags - command attributes flags (default is 0)
+         Bulk read keys from elliptics
+         keys - list of keys by name
+         aflags - command attributes flags (default is 0)
+         raw - raw answer from elliptics
 
-             return value:
-             list - list of strings, each string consists of 64 byte key, 8 byte data length and data itself
+         return value:
+         dict: key - original key, value - data itself
+         if raw is True: list - list of strings, each string consists of 64 byte key (sha-512 of original key), 8 byte data length and data itself
         """
-        return super(Node, self).bulk_read(keys, group_id, aflags)
+        if type(keys) in set([tuple, list, set, dict]):
+            keys = list(keys)
+
+        rv = super(Node, self).bulk_read(keys, aflags)
+
+        if raw:
+            return rv
+
+        if not rv:
+            return {}
+
+        keys = dict([(hashlib.sha512(key).hexdigest(), key) for key in keys])
+
+        rv_dict = {}
+        for r in rv:
+            key = binascii.hexlify(r[:64])
+            data_len = struct.unpack('Q', r[64:72])[0]
+            data = struct.unpack("%ss" % data_len, r[72:72 + data_len])[0]
+            rv_dict[keys[key]] = data
+        return rv_dict
 
 
     def read_data_range(self, read_range):
