@@ -77,6 +77,35 @@
     <h3>No runlists</h3>
 {% endif %}
 
+{% if profiles %}
+    <h3>Profiles
+        <small>({{ profiles|length }})</small>
+    </h3>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Config</th>
+        </tr>
+        </thead>
+
+        {% for profile_name, profile in profiles.items() %}
+            <tr>
+                <td>{{ profile_name }}</td>
+                <td>
+                    <ul class="unstyled">
+                        {% for option, value in profile.items() %}
+                            <li>{{ option }} - {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <h3>No profiles</h3>
+{% endif %}
+
 {% if hosts %}
     <h3>Hosts</h3>
     <ul class="unstyled">
@@ -87,6 +116,7 @@
 {% else %}
     <h3>No hosts</h3>
 {% endif %}
+
 
 
 

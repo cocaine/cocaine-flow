@@ -8,7 +8,7 @@ from flask import request, render_template, session, flash, redirect, url_for, c
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
-from common import read_hosts, write_hosts, key, remove_prefix
+from common import read_hosts, write_hosts, key, remove_prefix, read_and_unpack, read_entities, list_add
 
 
 logger = logging.getLogger()
@@ -117,10 +117,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-def read_and_unpack(key):
-    return msgpack.unpackb(current_app.elliptics.read(key))
-
-
 @logged_in
 def dashboard(user):
     if not user['admin']:
@@ -128,25 +124,24 @@ def dashboard(user):
 
     manifests = {}
     runlists = {}
+    profiles = {}
     tokens = set()
     try:
-        manifests = current_app.elliptics.bulk_read(key("manifests", read_and_unpack(key('system', 'list:manifests'))))
-        manifests = remove_prefix("manifests", manifests)
-        for k, manifest in manifests.items():
-            manifest_unpacked = msgpack.unpackb(manifest)
-            manifests[k] = manifest_unpacked
-            token = manifest_unpacked.get('developer')
+        manifests = read_entities("manifests", "system", "list:manifests")
+        for manifest in manifests.values():
+            token = manifest.get('developer')
             if token:
                 tokens.add(token)
     except RuntimeError as e:
         logger.warning(str(e))
 
     try:
-        runlists = current_app.elliptics.bulk_read(key("runlists", read_and_unpack(key('system', 'list:runlists'))))
-        runlists = remove_prefix("runlists", runlists)
-        for k, runlist in runlists.items():
-            runlist_unpacked = msgpack.unpackb(runlist)
-            runlists[k] = runlist_unpacked
+        runlists = read_entities("runlists", "system", "list:runlists")
+    except RuntimeError as e:
+        logger.warning(str(e))
+
+    try:
+        profiles = read_entities("profiles", "system", "list:profiles")
     except RuntimeError as e:
         logger.warning(str(e))
 
@@ -154,7 +149,8 @@ def dashboard(user):
         users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
         tokens = dict((u['token'], u['_id']) for u in users)
 
-    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens,
+    return render_template('dashboard.html', user=user,
+                           manifests=manifests, runlists=runlists, tokens=tokens, profiles=profiles,
                            hosts=read_hosts())
 
 
@@ -295,12 +291,12 @@ def deploy(runlist, uuid, profile):
     if post_body:
         profile_info = json.loads(post_body)
         e.write(key('profiles', profile), msgpack.packb(profile_info))
+        list_add("system", "list:profiles", profile)
     else:
         try:
             e.read(key('profiles', profile))
         except RuntimeError:
             return 'Profile name is not valid'
-
 
     # runlists
     runlist_key = key("runlists", runlist)
@@ -335,18 +331,20 @@ def delete_app(app_name):
         # removing manifest from manifest list
         e.write(manifests_key, msgpack.packb(list(manifests)))
 
+    # define runlist for app from manifest
+    runlist = msgpack.unpackb(e.read(key('manifests', app_name))).get('runlist')
+    logger.info("Runlist in manifest is %s", runlist)
+
     e.remove(key('manifests', app_name))
     e.remove(key('apps', app_name))
 
-    # define runlist for app from manifest
-    runlist = msgpack.unpackb(e.read(key('manifests', app_name))).get('runlist')
-
     # remove app from runlists
-    runlist_dict = msgpack.unpackb(e.read(key('runlists', runlist)))
-    runlist_dict.pop(app_name, None)
-    e.write(e.read(key('runlists', runlist)), msgpack.packb(runlist_dict))
+    if runlist is not None:
+        runlist_dict = msgpack.unpackb(e.read(key('runlists', runlist)))
+        runlist_dict.pop(app_name, None)
+        e.write(e.read(key('runlists', runlist)), msgpack.packb(runlist_dict))
 
-    e.remove(key('runlists', runlist))
+        e.remove(key('runlists', runlist))
 
     return 'ok'
 
