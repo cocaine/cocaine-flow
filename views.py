@@ -322,3 +322,69 @@ def upload(ref, token):
         return str(e), 400
 
     return 'ok'
+
+
+def delete_app(app_name):
+    e = current_app.elliptics
+
+    manifests_key = key("system", "list:manifests")
+    manifests = set(msgpack.unpackb(e.read(manifests_key)))
+
+    if app_name in manifests:
+        manifests.remove(app_name)
+
+        # removing manifest from manifest list
+        e.write(manifests_key, msgpack.packb(list(manifests)))
+
+    e.remove(key('manifests', app_name))
+    e.remove(key('apps', app_name))
+
+    # define runlist for app from manifest
+    runlist = msgpack.unpackb(e.read(key('manifests', app_name))).get('runlist')
+
+    # remove app from runlists
+    runlist_dict = msgpack.unpackb(e.read(key('runlists', runlist)))
+    runlist_dict.pop(app_name, None)
+    e.write(e.read(key('runlists', runlist)), msgpack.packb(runlist_dict))
+
+    e.remove(key('runlists', runlist))
+
+    return 'ok'
+
+
+def read_hosts():
+    hosts_key = key('system', "list:hosts")
+    try:
+        hosts = set(msgpack.unpackb(current_app.elliptics.read(hosts_key)))
+    except RuntimeError:
+        hosts = set()
+    return hosts
+
+
+def get_hosts():
+    return json.dumps(list(read_hosts()))
+
+
+def write_hosts(hosts):
+    current_app.elliptics.write(key('system', "list:hosts"), msgpack.packb(list(hosts)))
+
+
+@token_required
+def create_host(host):
+    hosts = read_hosts()
+    hosts.add(host)
+    write_hosts(hosts)
+    return 'ok'
+
+
+def delete_host(host):
+    hosts = read_hosts()
+    hosts.remove(host)
+    write_hosts(hosts)
+
+
+def error_handler(exc):
+    logger.error(exc)
+    if isinstance(exc, RuntimeError):
+        return 'Storage failure', 500
+    raise exc
