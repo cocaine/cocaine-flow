@@ -1,21 +1,99 @@
 {% if manifests %}
-    <h3>Manifests <small>({{ manifests|length }})</small></h3>
-    <table class="table">
+    <h3>Manifests
+        <small>({{ manifests|length }})</small>
+    </h3>
+    <table class="table table-bordered">
         <thead>
         <tr>
-            <th>UUID</th>
+            <th>Name - Description - UUID</th>
             <th>Type</th>
             <th>Developer</th>
+            <th>Actions</th>
         </tr>
         </thead>
-        {% for key, manifest in manifests.items() %}
+
+        {% for uuid, manifest in manifests.items() %}
             <tr>
-                <td>{{ key }}</td>
+                <td>{{ manifest.name }} - {{ manifest.description }} - {{ uuid }}
+                    <div id="{{ uuid }}" class="collapse">
+                        <dl>
+                            <dt>Dependencies</dt>
+                            {% for depends in manifest.depends %}
+                                <dd>{{ depends }}</dd>
+                            {% endfor %}
+                        </dl>
+
+                        <dl>
+                            <dt>Drivers</dt>
+                            {% for alias, settings in manifest.drivers.items() %}
+                                <dd>{{ alias }} - {{ settings }}</dd>
+                            {% endfor %}
+                        </dl>
+                    </div>
+                </td>
                 <td>{{ manifest.type }}</td>
                 <td>{{ tokens[manifest.developer] }}</td>
+                <td>
+                    <button type="button" class="btn btn-info btn-mini" data-toggle="collapse"
+                            data-target="#{{ uuid }}">
+                        Details
+                    </button>
+                    <button type="button" class="btn btn-danger btn-mini remove" data-id="{{ uuid }}">Remove
+                    </button>
+                </td>
             </tr>
         {% endfor %}
     </table>
 {% else %}
     <h3>No manifests</h3>
 {% endif %}
+
+{% if runlists %}
+    <h3>Runlists
+        <small>({{ runlists|length }})</small>
+    </h3>
+    <table class="table table-bordered">
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Apps-Profiles</th>
+    </tr>
+    </thead>
+
+    {% for runlist_name, runlist in runlists.items() %}
+        <tr>
+            <td>{{ runlist_name }}</td>
+            <td>
+                <ul class="unstyled">
+                    {% for app_name, profile_name in runlist.items() %}
+                        <li>{{ app_name }} - {{ profile_name }}</li>
+                    {% endfor %}
+                </ul>
+            </td>
+        </tr>
+    {% endfor %}
+
+{% endif %}
+
+
+
+{% block js %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.remove').click(function () {
+                var app_id = $(this).attr('data-id');
+                console.log(app_id);
+                var btn = $(this);
+                $.ajax({
+                           url:'/app/' + app_id,
+                           type:"DELETE",
+                           success:function (data, textStatus, jqXHR) {
+                               btn.parents('tr').remove();
+
+                           }
+                       })
+            });
+        });
+
+    </script>
+{% endblock %}

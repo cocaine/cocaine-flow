@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import logging
+from pprint import pprint
+from flask.views import MethodView
 import os
 from uuid import uuid4
 import msgpack
@@ -10,7 +12,7 @@ import sh
 import yaml
 
 
-log = logging.getLogger()
+logger = logging.getLogger()
 
 def logged_in(func):
     def wrapper(*args, **kwargs):
@@ -141,7 +143,7 @@ def dashboard(user):
         return render_template('dashboard.html', user=user)
 
     manifests = {}
-    runlists = []
+    runlists = {}
     tokens = set()
     try:
         manifests = current_app.elliptics.bulk_read(key("manifests", read_and_unpack(key('system', 'list:manifests'))))
@@ -152,9 +154,17 @@ def dashboard(user):
             token = manifest_unpacked.get('developer')
             if token:
                 tokens.add(token)
-        runlists = read_and_unpack(key('system', 'list:runlists'))
-    except RuntimeError:
-        pass
+    except RuntimeError as e:
+        logger.warning(str(e))
+
+    try:
+        runlists = current_app.elliptics.bulk_read(key("runlists", read_and_unpack(key('system', 'list:runlists'))))
+        runlists = remove_prefix("runlists", runlists)
+        for k, runlist in runlists.items():
+            runlist_unpacked = msgpack.unpackb(runlist)
+            runlists[k] = runlist_unpacked
+    except RuntimeError as e:
+        logger.warning(str(e))
 
     if tokens:
         users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
@@ -179,28 +189,68 @@ def read():
 
 
 def exists(prefix, postfix):
-    return current_app.elliptics.read_data(key(prefix, postfix))
+    return str(msgpack.unpackb(current_app.elliptics.read(key(prefix, postfix))))
 
 
-def upload_app(app, info, ref, token):
+def validate_info(info):
+    package_type = info.get('type')
+    if package_type not in ['python']:
+        raise ValueError('%s type is not supported' % package_type)
+
+    app_name = info.get('name')
+    if app_name is None:
+        raise KeyError('App name is required in info file')
+
+    if info.get('description') is None:
+        raise KeyError('App description is required in info file')
+
+
+def upload_app(app, info, ref, token, runlist='default'):
+    validate_info(info)
+
+    ref = ref.strip()
     info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
     info['developer'] = token
 
     e = current_app.elliptics
 
+    # app
     app_key = key("apps", info['uuid'])
-    current_app.logger.info("Writing app to `%s`" % app_key)
-    e.write(app_key, app.read())
+    logger.info("Writing app to `%s`" % app_key)
+    e.write(app_key, msgpack.packb(app.read()))
 
+    #manifests
     manifest_key = key("manifests", info['uuid'])
-    current_app.logger.info("Writing manifest to `%s`" % manifest_key)
+    info['runlist'] = runlist
+    info['ref'] = ref
+    info['engine'] = {}
+    logger.info("Writing manifest to `%s`" % manifest_key)
     e.write(manifest_key, msgpack.packb(info))
 
     manifests_key = key("system", "list:manifests")
     manifests = set(msgpack.unpackb(e.read(manifests_key)))
-    manifests.add(info['uuid'])
-    current_app.logger.info("Adding manifest to list of manifests `%s`" % manifest_key)
-    e.write(manifests_key, msgpack.packb(list(manifests)))
+    if info['uuid'] not in manifests:
+        manifests.add(info['uuid'])
+        logger.info("Adding manifest `%s` to list of manifests" % manifest_key)
+        e.write(manifests_key, msgpack.packb(list(manifests)))
+
+    # runlists
+    runlist_key = key("runlists", runlist)
+    logger.info('Reading %s', runlist_key)
+    try:
+        runlist_dict = msgpack.unpackb(e.read(runlist_key))
+    except RuntimeError:
+        runlist_dict = {}
+    runlist_dict[info['uuid']] = 'here is profile name'
+    logger.info('Writing runlist %s', runlist_key)
+    e.write(runlist_key, msgpack.packb(runlist_dict))
+
+    runlists_key = key("system", "list:runlists")
+    runlists = set(msgpack.unpackb(e.read(runlists_key)))
+    if runlist not in runlist:
+        runlists.add(runlist)
+        logger.info("Adding runlist `%s` to list of runlists" % runlist)
+        e.write(runlist_key, msgpack.packb(list(runlists)))
 
 
 @uniform
