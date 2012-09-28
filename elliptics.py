@@ -296,7 +296,7 @@ class Node(libelliptics_python.elliptics_node_python):
         """
              Remove key by name/ID
              signatures:
-                 remove(key, aflags, type)
+                 remove(key, aflags, ioflags, type)
                  remove(id, aflags, ioflags)
 
              key - remote key name
@@ -307,9 +307,9 @@ class Node(libelliptics_python.elliptics_node_python):
              ioflags - IO flags (like cache)
         """
         if isinstance(key, basestring):
-            new_args = [str(key), aflags, type_]
+            new_args = [str(key), aflags, ioflags, type_]
         else:
-            new_args = [key, aflags]
+            new_args = [key, aflags, ioflags]
 
         super(Node, self).remove(*new_args)
 
