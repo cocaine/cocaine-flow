@@ -311,20 +311,14 @@ def upload(ref, token):
     try:
         info = json.loads(info)
     except Exception as e:
-        log.exception('Bad encoded json in info parameter')
+        logger.exception('Bad encoded json in info parameter')
         return 'Bad encoded json', 400
-
-    package_type = info.get('type')
-    if package_type not in ['python']:
-        return '%s type is not supported' % package_type, 400
-
-    app_name = info.get('name')
-    if app_name is None:
-        return 'App name is required in info file', 400
 
     try:
         upload_app(app, info, ref, token)
     except RuntimeError:
         return "App storage failure", 500
+    except (KeyError, ValueError) as e:
+        return str(e), 400
 
     return 'ok'
