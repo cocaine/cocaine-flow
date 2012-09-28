@@ -53,26 +53,39 @@
         <small>({{ runlists|length }})</small>
     </h3>
     <table class="table table-bordered">
-    <thead>
-    <tr>
-        <th>Name</th>
-        <th>Apps-Profiles</th>
-    </tr>
-    </thead>
-
-    {% for runlist_name, runlist in runlists.items() %}
+        <thead>
         <tr>
-            <td>{{ runlist_name }}</td>
-            <td>
-                <ul class="unstyled">
-                    {% for app_name, profile_name in runlist.items() %}
-                        <li>{{ app_name }} - {{ profile_name }}</li>
-                    {% endfor %}
-                </ul>
-            </td>
+            <th>Name</th>
+            <th>Apps-Profiles</th>
         </tr>
-    {% endfor %}
+        </thead>
 
+        {% for runlist_name, runlist in runlists.items() %}
+            <tr>
+                <td>{{ runlist_name }}</td>
+                <td>
+                    <ul class="unstyled">
+                        {% for app_name, profile_name in runlist.items() %}
+                            <li>{{ app_name }} - {{ profile_name }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <h3>No runlists</h3>
+{% endif %}
+
+{% if hosts %}
+    <h3>Hosts</h3>
+    <ul class="unstyled">
+        {% for host in hosts %}
+            <li>{{ host }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <h3>No hosts</h3>
 {% endif %}
 
 
