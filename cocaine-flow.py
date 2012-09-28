@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from time import time
 import os
+import sys
 import yaml
 import json
 import requests
@@ -91,18 +92,30 @@ def upload(dir=('d', '.', 'root directory of application'),
 
     real_ref = get_commit_info(curdir, ref)
 
-    packed_app_path = pack_app(curdir, real_ref)
     if kwargs['verbose']:
-        print 'App is packed'
+        print "Packing application...",
+        sys.stdout.flush()
+
+    packed_app_path = pack_app(curdir, real_ref)
+
+    if kwargs['verbose']:
+        print 'Done'
+        print 'Uploading application to server...',
+        sys.stdout.flush()
 
     upload_packed_app(packed_app_path, package_info, real_ref, secret_key)
+
     if kwargs['verbose']:
-        print 'App is uploaded'
+        print 'Done'
+        print "Cleaning...",
+        sys.stdout.flush()
 
     sh.rm("-f", packed_app_path)
 
     if kwargs['verbose']:
         print 'Done'
+
+    print 'Application is successfully uploaded!'
 
 
 @command(shortlist=True)
