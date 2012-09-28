@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from _yaml import YAMLError
 from time import time
 import os
 import sys
@@ -7,17 +8,20 @@ import yaml
 import json
 import requests
 import settings
-from opster import command, dispatch
+from opster import command, dispatch, QuitError
 import sh
 
 
 def upload_packed_app(packed_app_path, package_info, ref, token):
-    rv = requests.post(settings.API_SERVER + '/upload/%s' % ref,
-                       data={'info': json.dumps(package_info),
-                             'token': token},
+    rv = requests.post(settings.API_SERVER + '/upload',
+                       data={
+                           'info': json.dumps(package_info),
+                           'ref': ref,
+                           'token': token
+                       },
                        files={'app': open(packed_app_path, 'rb')})
     if rv.status_code != 200:
-        raise command.Error('Error during app upload to server. Reason: %s' % rv.text)
+        raise QuitError('Error during app upload to server. Reason: %s' % rv.text)
 
 
 def define_cvs(dir):
@@ -39,15 +43,15 @@ def get_real_ref(dir, ref, cvs):
             try:
                 return sh.git("rev-parse", "HEAD", _cwd=dir)
             except sh.ErrorReturnCode as e:
-                raise command.Error(e.stderr)
+                raise QuitError(e.stderr)
         else:
-            raise command.Error("Unsupported operation with cvs=`%s`" % cvs)
+            raise QuitError("Unsupported operation with cvs=`%s`" % cvs)
 
     if cvs == 'git':
         try:
             return sh.git("rev-parse", "--short", ref, _cwd=dir)
         except sh.ErrorReturnCode as e:
-            raise command.Error(e.stderr)
+            raise QuitError(e.stderr)
 
     return ref
 
@@ -57,12 +61,12 @@ def get_commit_info(dir, ref):
     return get_real_ref(dir, ref, cvs)
 
 
-def pack_app(curdir, real_ref):
+def pack_app(curdir):
     packed_app_path = "/tmp/app.tar.gz"
     try:
         sh.tar("-czf", packed_app_path, "-C", os.path.dirname(curdir), os.path.basename(curdir))
     except sh.ErrorReturnCode as e:
-        raise command.Error('Cannot pack application. %s' % str(e))
+        raise QuitError('Cannot pack application. %s' % str(e))
 
     return packed_app_path
 
@@ -74,21 +78,21 @@ def upload(dir=('d', '.', 'root directory of application'),
     '''Upload code to cocaine cloud'''
     cocaine_path = os.path.expanduser("~/.cocaine")
     if not os.path.exists(cocaine_path):
-        raise command.Error('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+        raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
 
     with open(cocaine_path, 'r') as f:
         secret_key = f.readline()
         if not secret_key:
-            raise command.Error('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+            raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
 
     curdir = os.path.abspath(dir)
     if not os.path.exists(curdir + '/info.yaml'):
-        raise command.Error('info.yaml is required')
+        raise QuitError('info.yaml is required')
 
-    package_info = yaml.load(file(curdir + '/info.yaml'))
-    package_type = package_info.get('type')
-    if package_type is None:
-        raise command.Error('type is not set in info.yaml')
+    try:
+        package_info = yaml.load(file(curdir + '/info.yaml'))
+    except YAMLError as e:
+        raise QuitError('Bad format of info.yaml')
 
     real_ref = get_commit_info(curdir, ref)
 
@@ -96,7 +100,7 @@ def upload(dir=('d', '.', 'root directory of application'),
         print "Packing application...",
         sys.stdout.flush()
 
-    packed_app_path = pack_app(curdir, real_ref)
+    packed_app_path = pack_app(curdir)
 
     if kwargs['verbose']:
         print 'Done'

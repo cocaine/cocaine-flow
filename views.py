@@ -154,7 +154,8 @@ def dashboard(user):
         users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
         tokens = dict((u['token'], u['_id']) for u in users)
 
-    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens, hosts=read_hosts())
+    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens,
+                           hosts=read_hosts())
 
 
 @token_required
@@ -185,7 +186,7 @@ def validate_info(info):
         raise KeyError('App description is required in info file')
 
 
-def upload_app(app, info, ref, token, runlist='default'):
+def upload_app(app, info, ref, token):
     validate_info(info)
 
     ref = ref.strip()
@@ -201,7 +202,6 @@ def upload_app(app, info, ref, token, runlist='default'):
 
     #manifests
     manifest_key = key("manifests", info['uuid'])
-    info['runlist'] = runlist
     info['ref'] = ref
     info['engine'] = {}
     logger.info("Writing manifest to `%s`" % manifest_key)
@@ -214,27 +214,7 @@ def upload_app(app, info, ref, token, runlist='default'):
         logger.info("Adding manifest `%s` to list of manifests" % manifest_key)
         e.write(manifests_key, msgpack.packb(list(manifests)))
 
-    # runlists
-    runlist_key = key("runlists", runlist)
-    logger.info('Reading %s', runlist_key)
-    try:
-        runlist_dict = msgpack.unpackb(e.read(runlist_key))
-    except RuntimeError:
-        runlist_dict = {}
-    runlist_dict[info['uuid']] = 'here is profile name'
-    logger.info('Writing runlist %s', runlist_key)
-    e.write(runlist_key, msgpack.packb(runlist_dict))
 
-    runlists_key = key("system", "list:runlists")
-    runlists = set(msgpack.unpackb(e.read(runlists_key)))
-    if runlist not in runlist:
-        runlists.add(runlist)
-        logger.info("Adding runlist `%s` to list of runlists" % runlist)
-        e.write(runlist_key, msgpack.packb(list(runlists)))
-
-
-@uniform
-@token_required
 def upload_repo(token):
     url = request.form.get('url')
     type_ = request.form.get('type')
@@ -273,19 +253,25 @@ def upload_repo(token):
         try:
             with open(clone_path + "/app.tar.gz") as app:
                 upload_app(app, package_info, ref, token)
-        except RuntimeError:
-            return "App storage failure", 500
+        except (KeyError, ValueError) as e:
+            return str(e), 400
 
     return "Application was successfully uploaded"
 
 
 @uniform
 @token_required
-def upload(ref, token):
+def upload(token):
+    url = request.form.get('url')
+    if url:
+        return upload_repo(token)
+
+
     app = request.files.get('app')
     info = request.form.get('info')
+    ref = request.form.get('ref')
 
-    if app is None or info is None:
+    if app is None or info is None or ref is None:
         return 'Invalid params', 400
 
     try:
