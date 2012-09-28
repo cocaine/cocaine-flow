@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import hashlib
 import logging
-from pprint import pprint
-from flask.views import MethodView
 import os
 from uuid import uuid4
 import msgpack
@@ -10,6 +8,7 @@ from flask import request, render_template, session, flash, redirect, url_for, c
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
+from common import read_hosts, write_hosts, key, remove_prefix
 
 
 logger = logging.getLogger()
@@ -122,21 +121,6 @@ def read_and_unpack(key):
     return msgpack.unpackb(current_app.elliptics.read(key))
 
 
-def key(prefix, postfix):
-    if type(postfix) in set([tuple, list, set]):
-        return type(postfix)(["%s\0%s" % (prefix, p) for p in postfix])
-
-    return "%s\0%s" % (prefix, postfix)
-
-
-def remove_prefix(prefix, key):
-    prefix = "%s\0" % prefix
-    if isinstance(key, dict):
-        return dict((k.replace(prefix, ''), v) for k, v in key.items())
-
-    return key.replace(prefix, '')
-
-
 @logged_in
 def dashboard(user):
     if not user['admin']:
@@ -170,7 +154,7 @@ def dashboard(user):
         users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
         tokens = dict((u['token'], u['_id']) for u in users)
 
-    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens)
+    return render_template('dashboard.html', user=user, manifests=manifests, runlists=runlists, tokens=tokens, hosts=read_hosts())
 
 
 @token_required
@@ -182,10 +166,6 @@ def create_profile(name, token=None):
         current_app.mongo.db.profiles.update({'_id': id}, body, upsert=True)
 
     return ''
-
-
-def read():
-    return current_app.elliptics.read_data(key("system", "list:manifests"))
 
 
 def exists(prefix, postfix):
@@ -352,21 +332,8 @@ def delete_app(app_name):
     return 'ok'
 
 
-def read_hosts():
-    hosts_key = key('system', "list:hosts")
-    try:
-        hosts = set(msgpack.unpackb(current_app.elliptics.read(hosts_key)))
-    except RuntimeError:
-        hosts = set()
-    return hosts
-
-
 def get_hosts():
     return json.dumps(list(read_hosts()))
-
-
-def write_hosts(hosts):
-    current_app.elliptics.write(key('system', "list:hosts"), msgpack.packb(list(hosts)))
 
 
 @token_required

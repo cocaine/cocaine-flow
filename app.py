@@ -4,6 +4,7 @@ from flask import Flask
 from flask.ext.pymongo import PyMongo
 import msgpack
 from pymongo.errors import DuplicateKeyError
+from common import key
 import views
 import api_settings as settings
 
@@ -27,7 +28,6 @@ def create_app():
     app.add_url_rule('/logout', view_func=views.logout)
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
     app.add_url_rule('/profiles/<string:name>', view_func=views.create_profile, methods=['POST'])
-    app.add_url_rule('/read', view_func=views.read)
     app.add_url_rule('/exists/<string:prefix>/<string:postfix>', view_func=views.exists)
     app.add_url_rule('/upload', endpoint="uploadrepo", view_func=views.upload_repo, methods=['POST'])
     app.add_url_rule('/upload/<string:ref>', endpoint="upload", view_func=views.upload, methods=['POST'])
@@ -56,10 +56,10 @@ def install(username, password):
             return False
 
         try:
-            app.elliptics.read(views.key('system', 'list:runlists'))
+            app.elliptics.read(key('system', 'list:runlists'))
         except RuntimeError:
             try:
-                app.elliptics.write(views.key('system', 'list:runlists'), msgpack.packb(['default']))
+                app.elliptics.write(key('system', 'list:runlists'), msgpack.packb(['default']))
             except RuntimeError:
                 print 'Storage failure'
                 return False
