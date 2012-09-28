@@ -123,6 +123,31 @@ def upload(dir=('d', '.', 'root directory of application'),
 
 
 @command(shortlist=True)
+def deploy(runlist, app_uuid, profile_name,
+           profile_path=('f', '', 'path to profile file'),
+           *args, **kwargs):
+
+    if profile_path:
+        profile_path = os.path.abspath(profile_path)
+        if not os.path.exists(profile_path) or os.path.isdir(profile_path):
+            raise QuitError('Invalid path to profile')
+
+        try:
+            profile_info = yaml.load(file(profile_path))
+        except YAMLError as e:
+            raise QuitError('Bad format of profile yaml')
+
+    url = settings.API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+    if profile_path:
+        rv = requests.post(url, data=json.dumps(profile_info))
+    else:
+        rv = requests.post(url)
+
+    if rv.status_code != 200:
+        raise QuitError('Error during  deploying on server. Reason: %s' % rv.text)
+
+
+@command(shortlist=True)
 def token(secret_key):
     """
     Set secret key

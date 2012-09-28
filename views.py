@@ -282,10 +282,43 @@ def upload(token):
 
     try:
         upload_app(app, info, ref, token)
-    except RuntimeError:
-        return "App storage failure", 500
     except (KeyError, ValueError) as e:
         return str(e), 400
+
+    return 'Application was successfully uploaded'
+
+
+def deploy(runlist, uuid, profile):
+    post_body = request.stream.read()
+    print post_body
+    e = current_app.elliptics
+    if post_body:
+        profile_info = json.loads(post_body)
+        e.write(key('profiles', profile), msgpack.packb(profile_info))
+    else:
+        try:
+            e.read(key('profiles', profile))
+        except RuntimeError:
+            return 'Profile name is not valid'
+
+
+    # runlists
+    runlist_key = key("runlists", runlist)
+    logger.info('Reading %s', runlist_key)
+    try:
+        runlist_dict = msgpack.unpackb(e.read(runlist_key))
+    except RuntimeError:
+        runlist_dict = {}
+    runlist_dict[uuid] = profile
+    logger.info('Writing runlist %s', runlist_key)
+    e.write(runlist_key, msgpack.packb(runlist_dict))
+
+    runlists_key = key("system", "list:runlists")
+    runlists = set(msgpack.unpackb(e.read(runlists_key)))
+    if runlist not in runlist:
+        runlists.add(runlist)
+        logger.info("Adding runlist `%s` to list of runlists" % runlist)
+        e.write(runlist_key, msgpack.packb(list(runlists)))
 
     return 'ok'
 
