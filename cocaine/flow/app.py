@@ -2,21 +2,11 @@
 import logging
 from flask import Flask
 from flask.ext.pymongo import PyMongo
-import msgpack
 from pymongo.errors import DuplicateKeyError
 from common import key
 from storages import create_storage
 import views
 import api_settings as settings
-
-def init_elliptics():
-    from elliptics import Logger, Node
-
-    node = Node(Logger("/tmp/cocainoom-elliptics.log"))
-    for host, port in settings.ELLIPTICS_NODES.iteritems():
-        node.add_remote(host, port)
-    node.add_groups(settings.ELLIPTICS_GROUPS)
-    return node
 
 
 def create_app():
