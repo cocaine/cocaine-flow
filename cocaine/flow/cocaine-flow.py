@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from _yaml import YAMLError
 from time import time
+import traceback
 import os
 import sys
 import yaml
@@ -12,14 +13,22 @@ from opster import command, dispatch, QuitError
 import sh
 
 
-def upload_packed_app(packed_app_path, package_info, ref, token):
-    rv = requests.post(cli_settings.API_SERVER + '/upload',
-                       data={
-                           'info': json.dumps(package_info),
-                           'ref': ref,
-                           'token': token
-                       },
-                       files={'app': open(packed_app_path, 'rb')})
+def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
+    try:
+        url = cli_settings.API_SERVER + '/upload'
+        rv = requests.post(url,
+                           data={
+                               'info': json.dumps(package_info),
+                               'ref': ref.strip(),
+                               'token': token.strip()
+                           },
+                           files={'app': open(packed_app_path, 'rb')})
+    except Exception:
+        if kwargs['verbose']:
+            traceback.print_exc()
+
+        raise QuitError("Error during app upload to server.")
+
     if rv.status_code != 200:
         raise QuitError('Error during app upload to server. Reason: %s' % rv.text)
 
@@ -107,7 +116,7 @@ def upload(dir=('d', '.', 'root directory of application'),
         print 'Uploading application to server...',
         sys.stdout.flush()
 
-    upload_packed_app(packed_app_path, package_info, real_ref, secret_key)
+    upload_packed_app(packed_app_path, package_info, real_ref, secret_key, **kwargs)
 
     if kwargs['verbose']:
         print 'Done'
