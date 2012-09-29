@@ -5,6 +5,7 @@ from flask.ext.pymongo import PyMongo
 import msgpack
 from pymongo.errors import DuplicateKeyError
 from common import key
+from storages import create_storage
 import views
 import api_settings as settings
 
@@ -39,7 +40,7 @@ def create_app():
 
 
     app.mongo = PyMongo(app)
-    app.elliptics = init_elliptics()
+    app.storage = create_storage()
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -56,10 +57,10 @@ def install(username, password):
             return False
 
         try:
-            app.elliptics.read(key('system', 'list:runlists'))
+            app.storage.read(key('system', 'list:runlists'))
         except RuntimeError:
             try:
-                app.elliptics.write(key('system', 'list:runlists'), msgpack.packb(['default']))
+                app.storage.write(key('system', 'list:runlists'), ['default'])
             except RuntimeError:
                 print 'Storage failure'
                 return False

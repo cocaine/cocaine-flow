@@ -3,12 +3,11 @@ import hashlib
 import logging
 import os
 from uuid import uuid4
-import msgpack
 from flask import request, render_template, session, flash, redirect, url_for, current_app, json
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
-from common import read_hosts, write_hosts, key, remove_prefix, read_and_unpack, read_entities, list_add
+from common import read_hosts, write_hosts, key, read_entities, list_add, list_remove, dict_remove
 
 
 logger = logging.getLogger()
@@ -122,9 +121,6 @@ def dashboard(user):
     if not user['admin']:
         return render_template('dashboard.html', user=user)
 
-    manifests = {}
-    runlists = {}
-    profiles = {}
     tokens = set()
     try:
         manifests = read_entities("manifests", "system", "list:manifests")
@@ -134,16 +130,19 @@ def dashboard(user):
                 tokens.add(token)
     except RuntimeError as e:
         logger.warning(str(e))
+        manifests = {}
 
     try:
         runlists = read_entities("runlists", "system", "list:runlists")
     except RuntimeError as e:
         logger.warning(str(e))
+        runlists = {}
 
     try:
         profiles = read_entities("profiles", "system", "list:profiles")
     except RuntimeError as e:
         logger.warning(str(e))
+        profiles = {}
 
     if tokens:
         users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
@@ -166,7 +165,7 @@ def create_profile(name, token=None):
 
 
 def exists(prefix, postfix):
-    return str(msgpack.unpackb(current_app.elliptics.read(key(prefix, postfix))))
+    return str(current_app.storage.read(key(prefix, postfix)))
 
 
 def validate_info(info):
@@ -189,26 +188,26 @@ def upload_app(app, info, ref, token):
     info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
     info['developer'] = token
 
-    e = current_app.elliptics
+    s = current_app.storage
 
     # app
     app_key = key("apps", info['uuid'])
     logger.info("Writing app to `%s`" % app_key)
-    e.write(app_key, msgpack.packb(app.read()))
+    s.write(app_key, app.read())
 
     #manifests
     manifest_key = key("manifests", info['uuid'])
     info['ref'] = ref
     info['engine'] = {}
     logger.info("Writing manifest to `%s`" % manifest_key)
-    e.write(manifest_key, msgpack.packb(info))
+    s.write(manifest_key, info)
 
     manifests_key = key("system", "list:manifests")
-    manifests = set(msgpack.unpackb(e.read(manifests_key)))
+    manifests = set(s.read(manifests_key))
     if info['uuid'] not in manifests:
         manifests.add(info['uuid'])
         logger.info("Adding manifest `%s` to list of manifests" % manifest_key)
-        e.write(manifests_key, msgpack.packb(list(manifests)))
+        s.write(manifests_key, list(manifests))
 
 
 def upload_repo(token):
@@ -262,7 +261,6 @@ def upload(token):
     if url:
         return upload_repo(token)
 
-
     app = request.files.get('app')
     info = request.form.get('info')
     ref = request.form.get('ref')
@@ -286,15 +284,13 @@ def upload(token):
 
 def deploy(runlist, uuid, profile):
     post_body = request.stream.read()
-    print post_body
-    e = current_app.elliptics
+    s = current_app.storage
     if post_body:
-        profile_info = json.loads(post_body)
-        e.write(key('profiles', profile), msgpack.packb(profile_info))
+        s.write(key('profiles', profile), json.loads(post_body))
         list_add("system", "list:profiles", profile)
     else:
         try:
-            e.read(key('profiles', profile))
+            s.read(key('profiles', profile))
         except RuntimeError:
             return 'Profile name is not valid'
 
@@ -302,49 +298,34 @@ def deploy(runlist, uuid, profile):
     runlist_key = key("runlists", runlist)
     logger.info('Reading %s', runlist_key)
     try:
-        runlist_dict = msgpack.unpackb(e.read(runlist_key))
+        runlist_dict = s.read(runlist_key)
     except RuntimeError:
         runlist_dict = {}
     runlist_dict[uuid] = profile
     logger.info('Writing runlist %s', runlist_key)
-    e.write(runlist_key, msgpack.packb(runlist_dict))
+    s.write(runlist_key, runlist_dict)
 
-    runlists_key = key("system", "list:runlists")
-    runlists = set(msgpack.unpackb(e.read(runlists_key)))
-    if runlist not in runlist:
-        runlists.add(runlist)
-        logger.info("Adding runlist `%s` to list of runlists" % runlist)
-        e.write(runlist_key, msgpack.packb(list(runlists)))
+    list_add("system", "list:runlists", runlist)
 
     return 'ok'
 
 
 def delete_app(app_name):
-    e = current_app.elliptics
+    s = current_app.storage
 
-    manifests_key = key("system", "list:manifests")
-    manifests = set(msgpack.unpackb(e.read(manifests_key)))
-
-    if app_name in manifests:
-        manifests.remove(app_name)
-
-        # removing manifest from manifest list
-        e.write(manifests_key, msgpack.packb(list(manifests)))
+    list_remove("system", "list:manifests", app_name)
 
     # define runlist for app from manifest
-    runlist = msgpack.unpackb(e.read(key('manifests', app_name))).get('runlist')
+    runlist = s.read(key('manifests', app_name)).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
 
-    e.remove(key('manifests', app_name))
-    e.remove(key('apps', app_name))
+    s.remove(key('manifests', app_name))
+    s.remove(key('apps', app_name))
 
     # remove app from runlists
     if runlist is not None:
-        runlist_dict = msgpack.unpackb(e.read(key('runlists', runlist)))
-        runlist_dict.pop(app_name, None)
-        e.write(e.read(key('runlists', runlist)), msgpack.packb(runlist_dict))
-
-        e.remove(key('runlists', runlist))
+        dict_remove('runlists', runlist, app_name)
+        s.remove(key('runlists', runlist))
 
     return 'ok'
 

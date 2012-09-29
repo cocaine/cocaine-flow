@@ -1,13 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import struct
-
 import sys
 import binascii
 import hashlib
 
 sys.path.insert(0, "/usr/lib/")
-sys.path.insert(0, "./.libs/")
+sys.path.insert(0, "./bindings/python/")
 import libelliptics_python
 
 
@@ -436,5 +435,3 @@ class Node(libelliptics_python.elliptics_node_python):
              list - list of strings, each string consists of 64 byte key, 8 byte data length and data itself
         """
         return super(Node, self).read_data_range(read_range)
-
-
