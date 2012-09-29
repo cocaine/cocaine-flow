@@ -3,12 +3,11 @@ import hashlib
 import logging
 import os
 from uuid import uuid4
-import msgpack
 from flask import request, render_template, session, flash, redirect, url_for, current_app, json
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
-from common import read_hosts, write_hosts, key, read_entities, list_add
+from common import read_hosts, write_hosts, key, read_entities, list_add, list_remove, dict_remove
 
 
 logger = logging.getLogger()
@@ -285,13 +284,13 @@ def upload(token):
 
 def deploy(runlist, uuid, profile):
     post_body = request.stream.read()
-    e = current_app.storage
+    s = current_app.storage
     if post_body:
-        e.write(key('profiles', profile), json.loads(post_body))
+        s.write(key('profiles', profile), json.loads(post_body))
         list_add("system", "list:profiles", profile)
     else:
         try:
-            e.read(key('profiles', profile))
+            s.read(key('profiles', profile))
         except RuntimeError:
             return 'Profile name is not valid'
 
@@ -299,49 +298,34 @@ def deploy(runlist, uuid, profile):
     runlist_key = key("runlists", runlist)
     logger.info('Reading %s', runlist_key)
     try:
-        runlist_dict = e.read(runlist_key)
+        runlist_dict = s.read(runlist_key)
     except RuntimeError:
         runlist_dict = {}
     runlist_dict[uuid] = profile
     logger.info('Writing runlist %s', runlist_key)
-    e.write(runlist_key, runlist_dict)
+    s.write(runlist_key, runlist_dict)
 
-    runlists_key = key("system", "list:runlists")
-    runlists = set(e.read(runlists_key))
-    if runlist not in runlist:
-        runlists.add(runlist)
-        logger.info("Adding runlist `%s` to list of runlists" % runlist)
-        e.write(runlist_key, list(runlists))
+    list_add("system", "list:runlists", runlist)
 
     return 'ok'
 
 
 def delete_app(app_name):
-    e = current_app.storage
+    s = current_app.storage
 
-    manifests_key = key("system", "list:manifests")
-    manifests = set(e.read(manifests_key))
-
-    if app_name in manifests:
-        manifests.remove(app_name)
-
-        # removing manifest from manifest list
-        e.write(manifests_key, list(manifests))
+    list_remove("system", "list:manifests", app_name)
 
     # define runlist for app from manifest
-    runlist = e.read(key('manifests', app_name)).get('runlist')
+    runlist = s.read(key('manifests', app_name)).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
 
-    e.remove(key('manifests', app_name))
-    e.remove(key('apps', app_name))
+    s.remove(key('manifests', app_name))
+    s.remove(key('apps', app_name))
 
     # remove app from runlists
     if runlist is not None:
-        runlist_dict = e.read(key('runlists', runlist))
-        runlist_dict.pop(app_name, None)
-        e.write(e.read(key('runlists', runlist)), runlist_dict)
-
-        e.remove(key('runlists', runlist))
+        dict_remove('runlists', runlist, app_name)
+        s.remove(key('runlists', runlist))
 
     return 'ok'
 

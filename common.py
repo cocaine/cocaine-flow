@@ -50,6 +50,28 @@ def list_add(prefix, postfix, value, raise_on_missed_key=False):
         current_app.storage.write(storage_key, list(entities))
 
 
+def list_remove(prefix, postfix, value):
+    s = current_app.storage
+
+    list_key = key(prefix, postfix)
+    entities = set(s.read(list_key))
+
+    if value in entities:
+        entities.remove(value)
+
+        # removing manifest from manifest list
+        s.write(list_key, list(entities))
+
+
+def dict_remove(prefix, postfix, value):
+    s = current_app.storage
+
+    dict_key = key(prefix, postfix)
+    runlist_dict = s.read(dict_key)
+    runlist_dict.pop(value, None)
+    s.write(dict_key, runlist_dict)
+
+
 def read_entities(prefix, list_prefix, list_postfix):
     s = current_app.storage
     entities = s.bulk_read(s.key(prefix, s.read(s.key(list_prefix, list_postfix))))
