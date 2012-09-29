@@ -7,13 +7,13 @@ import sys
 import yaml
 import json
 import requests
-import settings
+import cli_settings
 from opster import command, dispatch, QuitError
 import sh
 
 
 def upload_packed_app(packed_app_path, package_info, ref, token):
-    rv = requests.post(settings.API_SERVER + '/upload',
+    rv = requests.post(cli_settings.API_SERVER + '/upload',
                        data={
                            'info': json.dumps(package_info),
                            'ref': ref,
@@ -137,7 +137,7 @@ def deploy(runlist, app_uuid, profile_name,
         except YAMLError as e:
             raise QuitError('Bad format of profile yaml')
 
-    url = settings.API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+    url = cli_settings.API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
     if profile_path:
         rv = requests.post(url, data=json.dumps(profile_info))
     else:

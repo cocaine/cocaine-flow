@@ -70,4 +70,4 @@ if __name__ == '__main__':
     import api_settings as settings
 
     app = create_app()
-    app.run(debug=True, host=settings.HOSTNAME)
+    app.run(debug=True, host=settings.HOSTNAME, port=settings.PORT)
