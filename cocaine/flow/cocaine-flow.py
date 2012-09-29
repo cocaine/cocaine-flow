@@ -146,14 +146,17 @@ def deploy(runlist, app_uuid, profile_name,
     if rv.status_code != 200:
         raise QuitError('Error during  deploying on server. Reason: %s' % rv.text)
 
+    print 'Done!'
+
 
 @command(shortlist=True)
-def token(secret_key):
+def token(secret_key, *args, **kwargs):
     """
     Set secret key
     """
     with open(os.path.expanduser("~/.cocaine"), 'w+') as f:
         f.write(secret_key)
+    print "Done!"
 
 
 options = [('v', 'verbose', False, 'enable additional output'),
