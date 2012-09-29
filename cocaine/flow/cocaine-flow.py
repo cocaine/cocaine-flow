@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from _yaml import YAMLError
+import subprocess
 from time import time
 import traceback
 import os
@@ -73,7 +74,10 @@ def get_commit_info(dir, ref):
 def pack_app(curdir):
     packed_app_path = "/tmp/app.tar.gz"
     try:
-        sh.tar("-czf", packed_app_path, "-C", os.path.dirname(curdir), os.path.basename(curdir))
+        # problem with "*" in sh
+#        sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
+        cmd = "tar -czf %s * -C %s" % (packed_app_path, os.path.dirname(curdir))
+        subprocess.call(cmd, shell=True)
     except sh.ErrorReturnCode as e:
         raise QuitError('Cannot pack application. %s' % str(e))
 
