@@ -11,7 +11,7 @@ UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = set(['.gz'])
 
 HOSTNAME="127.0.0.1"
-PORT = 500
+PORT = 5000
 
 STORAGE = 'elliptics'
 
