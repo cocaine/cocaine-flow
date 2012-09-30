@@ -202,12 +202,7 @@ def upload_app(app, info, ref, token):
     logger.info("Writing manifest to `%s`" % manifest_key)
     s.write(manifest_key, info)
 
-    manifests_key = key("system", "list:manifests")
-    manifests = set(s.read(manifests_key))
-    if info['uuid'] not in manifests:
-        manifests.add(info['uuid'])
-        logger.info("Adding manifest `%s` to list of manifests" % manifest_key)
-        s.write(manifests_key, list(manifests))
+    list_add("system", "list:manifests", info['uuid'])
 
 
 def upload_repo(token):
