@@ -1,3 +1,2 @@
 flask==0.9
-Flask-PyMongo==0.1.2
 msgpack-python==0.2.1
