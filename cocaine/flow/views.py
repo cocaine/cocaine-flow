@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from yaml import YAMLError
 import hashlib
 import logging
 import os
@@ -231,11 +232,18 @@ def upload_repo(token):
         if not os.path.exists(clone_path + "/info.yaml"):
             return 'info.yaml is required', 400
 
-        package_info = yaml.load(file(clone_path + '/info.yaml'))
+        try:
+            package_info = yaml.load(file(clone_path + '/info.yaml'))
+        except YAMLError:
+            return 'Bad encoded info.yaml', 400
+
+        # remove info.yaml from tar.gz
+        with open(clone_path + '/.gitattributes', 'w') as f:
+            f.write('info.yaml export-ignore')
 
         try:
             sh.gzip(
-                sh.git("archive", ref, format="tar", prefix=os.path.basename(url) + "/", _cwd=clone_path),
+                sh.git("archive", ref, "--worktree-attributes", format="tar", _cwd=clone_path),
                 "-f", _out=clone_path + "/app.tar.gz")
         except sh.ErrorReturnCode as e:
             return 'Unable to pack application. %s' % e, 503
