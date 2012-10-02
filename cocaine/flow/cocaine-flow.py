@@ -27,7 +27,6 @@ def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
     except Exception:
         if kwargs['verbose']:
             traceback.print_exc()
-
         raise QuitError("Error during app upload to server.")
 
     if rv.status_code != 200:
@@ -75,7 +74,7 @@ def pack_app(curdir):
     packed_app_path = "/tmp/app.tar.gz"
     try:
         # problem with "*" in sh
-#        sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
+        # sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
         cmd = "tar -czf %s * -C %s" % (packed_app_path, os.path.dirname(curdir))
         subprocess.call(cmd, shell=True)
     except sh.ErrorReturnCode as e:
@@ -84,19 +83,27 @@ def pack_app(curdir):
     return packed_app_path
 
 
+def get_token(kwargs):
+    token = kwargs.pop('token', False)
+    if token:
+        return token
+
+    cocaine_path = os.path.expanduser("~/.cocaine")
+    if not os.path.exists(cocaine_path):
+        raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+    with open(cocaine_path, 'r') as f:
+        secret_key = f.readline()
+        if not secret_key:
+            raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+    return secret_key
+
+
 @command(shortlist=True, usage="[OPTIONS]")
 def upload(dir=('d', '.', 'root directory of application'),
            ref=('r', '', 'branch/tag/revision to use'),
            *args, **kwargs):
     '''Upload code to cocaine cloud'''
-    cocaine_path = os.path.expanduser("~/.cocaine")
-    if not os.path.exists(cocaine_path):
-        raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
-
-    with open(cocaine_path, 'r') as f:
-        secret_key = f.readline()
-        if not secret_key:
-            raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+    token = get_token(kwargs)
 
     curdir = os.path.abspath(dir)
     if not os.path.exists(curdir + '/info.yaml'):
@@ -120,7 +127,7 @@ def upload(dir=('d', '.', 'root directory of application'),
         print 'Uploading application to server...',
         sys.stdout.flush()
 
-    upload_packed_app(packed_app_path, package_info, real_ref, secret_key, **kwargs)
+    upload_packed_app(packed_app_path, package_info, real_ref, token, **kwargs)
 
     if kwargs['verbose']:
         print 'Done'
@@ -139,6 +146,7 @@ def upload(dir=('d', '.', 'root directory of application'),
 def deploy(runlist, app_uuid, profile_name,
            profile_path=('f', '', 'path to profile file'),
            *args, **kwargs):
+    token = get_token(kwargs)
 
     if profile_path:
         profile_path = os.path.abspath(profile_path)
@@ -152,9 +160,14 @@ def deploy(runlist, app_uuid, profile_name,
 
     url = cli_settings.API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
     if profile_path:
-        rv = requests.post(url, data=json.dumps(profile_info))
+        rv = requests.post(url, data={
+            'info': json.dumps(profile_info),
+            'token': token
+        })
     else:
-        rv = requests.post(url)
+        rv = requests.post(url, data={
+            'token': token
+        })
 
     if rv.status_code != 200:
         raise QuitError('Error during  deploying on server. Reason: %s' % rv.text)
@@ -173,7 +186,8 @@ def token(secret_key, *args, **kwargs):
 
 
 options = [('v', 'verbose', False, 'enable additional output'),
-           ('q', 'quiet', False, 'suppress output')]
+           ('q', 'quiet', False, 'suppress output'),
+           ('t', 'token', '', 'token to use')]
 
 if __name__ == '__main__':
     dispatch(globaloptions=options)

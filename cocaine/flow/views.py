@@ -31,17 +31,28 @@ def logged_in(func):
     return wrapper
 
 
-def token_required(func):
-    def wrapper(*args, **kwargs):
-        token = request.values.get('token')
-        if not token:
-            return 'Token is required', 403
-        user = current_app.mongo.db.users.find_one({'token': token})
-        if user is None:
-            return 'Valid token is required', 403
-        return func(*args, token=token, **kwargs)
+def token_required(admin=False):
+    def wrapper(func):
+        def _wrapper(*args, **kwargs):
+            token = request.values.get('token')
+            if not token:
+                return 'Token is required', 403
 
-    return wrapper
+            user = current_app.mongo.db.users.find_one({'token': token})
+            if user is None:
+                return 'Valid token is required', 403
+
+            if isinstance(admin, bool)  and admin and not user.get('admin', False):
+                return 'Admin token is required for this operation', 403
+
+            return func(*args, token=token, **kwargs)
+        return _wrapper
+
+    if callable(admin):
+        return wrapper(admin)
+    else:
+        return wrapper
+
 
 
 def uniform(func):
@@ -214,8 +225,6 @@ def download_depends(depends, type_, path):
         #        pip install -b /tmp  --src=/tmp --install-option="--install-lib=/home/inkvi/test" -v msgpack-python
         output = sh.pip("install", "-v", "-I", "-b", path, "--src", path, "--install-option",
                         "--install-lib=%s" % install_path, *depends)
-        print output
-        print output.exit_code
         return os.listdir(install_path)
 
 
@@ -306,7 +315,8 @@ def upload(token):
     return 'Application was successfully uploaded'
 
 
-def deploy(runlist, uuid, profile):
+@token_required(admin=True)
+def deploy(runlist, uuid, profile, token):
     post_body = request.stream.read()
     s = current_app.storage
     if post_body:
