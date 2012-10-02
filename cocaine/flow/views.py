@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import traceback
 from yaml import YAMLError
 import hashlib
 import logging
@@ -8,6 +9,7 @@ from flask import request, render_template, session, flash, redirect, url_for, c
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
+
 from common import read_hosts, write_hosts, key, read_entities, list_add, list_remove, dict_remove
 
 
@@ -206,6 +208,17 @@ def upload_app(app, info, ref, token):
     list_add("system", "list:manifests", info['uuid'])
 
 
+def download_depends(depends, type_, path):
+    if type_ == 'python':
+        install_path = "%s/depends" % path
+        #        pip install -b /tmp  --src=/tmp --install-option="--install-lib=/home/inkvi/test" -v msgpack-python
+        output = sh.pip("install", "-v", "-I", "-b", path, "--src", path, "--install-option",
+                        "--install-lib=%s" % install_path, *depends)
+        print output
+        print output.exit_code
+        return os.listdir(install_path)
+
+
 def upload_repo(token):
     url = request.form.get('url')
     type_ = request.form.get('type')
@@ -234,17 +247,25 @@ def upload_repo(token):
 
         try:
             package_info = yaml.load(file(clone_path + '/info.yaml'))
+            validate_info(package_info)
         except YAMLError:
             return 'Bad encoded info.yaml', 400
+        except (ValueError, KeyError) as e:
+            return str(e), 400
+
+        try:
+            depends_path = download_depends(package_info['depends'], package_info['type'], clone_path)
+        except sh.ErrorReturnCode as e:
+            return 'Unable to install dependencies. %s' % e, 503
 
         # remove info.yaml from tar.gz
         with open(clone_path + '/.gitattributes', 'w') as f:
             f.write('info.yaml export-ignore')
 
         try:
-            sh.gzip(
-                sh.git("archive", ref, "--worktree-attributes", format="tar", _cwd=clone_path),
-                "-f", _out=clone_path + "/app.tar.gz")
+            sh.git("archive", ref, "--worktree-attributes", format="tar", o="app.tar", _cwd=clone_path),
+            sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
+            sh.gzip("app.tar", _cwd=clone_path)
         except sh.ErrorReturnCode as e:
             return 'Unable to pack application. %s' % e, 503
 

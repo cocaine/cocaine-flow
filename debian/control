@@ -18,7 +18,10 @@ Depends:
  ${misc:Depends},
  ${python:Depends},
  python-flask,
- python-msgpack
+ python-msgpack,
+ python-yaml,
+ python-pymongo,
+ python-sh
 Description: Cocaine - Flow
  Cocaine management tools.
 XB-Python-Version: >= 2.6
