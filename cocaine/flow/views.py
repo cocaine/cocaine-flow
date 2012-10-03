@@ -472,6 +472,22 @@ def maintenance(token):
     return 'ok'
 
 
+def get_token():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    user = current_app.mongo.db.users.find_one({'_id': username})
+    if user is None:
+        return 'Username is invalid', 400
+
+    if user['password'] != hashlib.sha1(password).hexdigest():
+        return 'Password is invalid', 400
+
+    token = user.get('token')
+    if token is None:
+        return 'Token is not set for user', 400
+    return str(token)
+
+
 def error_handler(exc):
     logger.error(exc)
     if isinstance(exc, RuntimeError):

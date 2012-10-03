@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from _yaml import YAMLError
+from getpass import getpass
 import subprocess
 from time import time
 import traceback
@@ -90,7 +91,20 @@ def get_token(kwargs):
 
     cocaine_path = os.path.expanduser("~/.cocaine")
     if not os.path.exists(cocaine_path):
-        raise QuitError('Secret key is not installed. Use `./cocaine-flow token` to do that.')
+        username = raw_input("Username: ")
+        if not username:
+            raise QuitError('Username cannot be empty')
+        password = getpass()
+        rv = requests.post(cli_settings.API_SERVER + '/token', data={
+            'username': username,
+            'password': password
+        })
+        if rv.status_code !=200:
+            raise QuitError(rv.text)
+
+        with open(cocaine_path, 'w') as f:
+            f.write(rv.text)
+
     with open(cocaine_path, 'r') as f:
         secret_key = f.readline()
         if not secret_key:
@@ -173,16 +187,6 @@ def deploy(runlist, app_uuid, profile_name,
         raise QuitError('Error during  deploying on server. Reason: %s' % rv.text)
 
     print 'Done!'
-
-
-@command(shortlist=True)
-def token(secret_key, *args, **kwargs):
-    """
-    Set secret key
-    """
-    with open(os.path.expanduser("~/.cocaine"), 'w+') as f:
-        f.write(secret_key)
-    print "Done!"
 
 
 options = [('v', 'verbose', False, 'enable additional output'),

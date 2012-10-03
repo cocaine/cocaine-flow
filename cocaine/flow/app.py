@@ -41,6 +41,7 @@ def create_app():
     app.add_url_rule('/app/start/<string:uuid>/<string:profile>', view_func=views.start_app, methods=['POST'])
     app.add_url_rule('/app/stop/<string:uuid>', view_func=views.stop_app, methods=['POST'])
     app.add_url_rule('/maintenance', view_func=views.maintenance, methods=['POST'])
+    app.add_url_rule('/token', view_func=views.get_token, methods=['POST'])
 
 
     app.error_handler_spec[None][500] = views.error_handler
