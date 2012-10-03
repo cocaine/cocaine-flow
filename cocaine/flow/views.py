@@ -173,6 +173,9 @@ def send_json_rpc(data, hosts, timeout=0.5):
     rv = {}
     context = zmq.Context()
 
+    if isinstance(hosts, basestring):
+        hosts = [hosts]
+
     for host in hosts:
         rv[host] = None
         request = context.socket(zmq.REQ)
@@ -204,12 +207,28 @@ def stats(user):
     if not hosts:
         return render_template('stats.html', user=user, hosts={})
 
-    hosts = send_json_rpc({
-                              'version': 2,
-                              'action': 'info'
-                          }, hosts)
-
+    hosts = send_json_rpc({'version': 2, 'action': 'info'}, hosts)
     return render_template('stats.html', user=user, hosts=hosts)
+
+
+def process_json_rpc_response(res, uuid):
+    for host, rv in res.items():
+        answer = rv[uuid]
+        error = answer.get('error')
+        if error:
+            return error, 500
+    else:
+        return 'ok'
+
+
+def start_app(uuid, profile):
+    res =  send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, read_hosts())
+    return process_json_rpc_response(res, uuid)
+
+
+def stop_app(uuid):
+    res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, read_hosts())
+    return process_json_rpc_response(res, uuid)
 
 
 @token_required
