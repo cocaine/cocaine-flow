@@ -32,11 +32,14 @@ def create_app():
     app.add_url_rule('/profiles/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/exists/<string:prefix>/<string:postfix>', view_func=views.exists)
     app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['POST'])
-    app.add_url_rule('/deploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="deploy", view_func=views.deploy, methods=['POST'])
+    app.add_url_rule('/deploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="deploy",
+                     view_func=views.deploy, methods=['POST'])
     app.add_url_rule('/hosts/', view_func=views.get_hosts, methods=['GET'])
     app.add_url_rule('/hosts/<string:host>', view_func=views.create_host, methods=['POST', 'PUT'])
     app.add_url_rule('/hosts/<string:host>', view_func=views.delete_host, methods=['DELETE'])
     app.add_url_rule('/app/<string:app_name>', view_func=views.delete_app, methods=['DELETE'])
+    app.add_url_rule('/maintenance', view_func=views.maintenance, methods=['POST'])
+
 
     app.error_handler_spec[None][500] = views.error_handler
 

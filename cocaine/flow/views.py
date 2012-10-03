@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from copy import copy
 from time import time, sleep
 from yaml import YAMLError
 import hashlib
@@ -425,6 +426,30 @@ def delete_host(host, token):
     hosts = read_hosts()
     hosts.remove(host)
     write_hosts(hosts)
+    return 'ok'
+
+
+def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
+    s = current_app.storage
+    original_keys = set(s.read(s.key(list_prefix, list_postfix)))
+    cleaned_keys = copy(original_keys)
+    for key in original_keys:
+        try:
+            s.read(s.key(prefix, key))
+        except RuntimeError:
+            if key != except_:
+                cleaned_keys.remove(key)
+    keys_for_remove = original_keys - cleaned_keys
+    if keys_for_remove:
+        s.write(s.key(list_prefix, list_postfix), list(cleaned_keys))
+        logger.info('Removed %s during maintenance %s', prefix, keys_for_remove)
+
+
+@token_required(admin=True)
+def maintenance(token):
+    clean_entities("manifests", "system", "list:manifests")
+    clean_entities("runlists", "system", "list:runlists")
+    clean_entities("profiles", "system", "list:profiles")
     return 'ok'
 
 

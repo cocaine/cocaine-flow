@@ -15,7 +15,7 @@
             <a class="brand" href="#">Cocainoom</a>
             <ul class="nav">
                 <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                {% if user.admin %}
+                {% if user and user.admin %}
                     <li><a href="{{ url_for('stats') }}">Statistics</a></li>
                 {% endif %}
 
