@@ -3,3 +3,4 @@ PyYAML==3.10
 requests==0.14.0
 opster==3.7
 sh==1.02
+pyzmq==2.1.9

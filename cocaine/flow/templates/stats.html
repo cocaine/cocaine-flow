@@ -1,0 +1,32 @@
+{% extends 'layout.html' %}
+
+{% block body %}
+    {% for host, info in hosts|dictsort(false, 'value') %}
+            <h2>{{ host }}</h2>
+            {% if not info %}
+                <span class="badge badge-important">Not Available</span>
+            {% else %}
+                {% for k, v in info.items() %}
+                    <div>
+
+                        {% if v is mapping %}
+                            {% if k == "apps" %}
+                                {% include "stats-apps.html" %}
+                            {% else %}
+                                <dl>
+                                    <dt>{{ k }}</dt>
+                                    {% for k1, v1 in v.items() %}
+                                        <dd>{{ k1 }} - {{ v1|pprint }}</dd>
+                                    {% endfor %}
+                                </dl>
+
+                            {% endif %}
+
+                        {% else %}
+                            <strong>{{ k }}: </strong>{{ v }}
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endif %}
+    {% endfor %}
+{% endblock %}

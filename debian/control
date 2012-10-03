@@ -21,7 +21,8 @@ Depends:
  python-msgpack,
  python-yaml,
  python-pymongo,
- python-sh
+ python-sh,
+ python-zmq
 Description: Cocaine - Flow
  Cocaine management tools.
 XB-Python-Version: >= 2.6

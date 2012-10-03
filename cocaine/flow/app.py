@@ -8,6 +8,16 @@ from storages import create_storage
 import views
 import api_settings as settings
 
+try:
+    from collections import Mapping as MappingType
+except ImportError:
+    import UserDict
+    MappingType = (UserDict.UserDict, UserDict.DictMixin, dict)
+
+
+def test_mapping(value):
+    return isinstance(value, MappingType)
+
 
 def create_app():
     app = Flask(__name__)
@@ -18,6 +28,7 @@ def create_app():
     app.add_url_rule('/login', 'login', view_func=views.login, methods=['GET', 'POST'])
     app.add_url_rule('/logout', view_func=views.logout)
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
+    app.add_url_rule('/stats', 'stats', view_func=views.stats, methods=['GET'])
     app.add_url_rule('/profiles/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/exists/<string:prefix>/<string:postfix>', view_func=views.exists)
     app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['POST'])
@@ -33,6 +44,9 @@ def create_app():
     app.storage = create_storage()
 
     logging.basicConfig(level=logging.DEBUG)
+
+    if 'mapping' not in app.jinja_env.tests:
+        app.jinja_env.tests['mapping'] = test_mapping
 
     return app
 

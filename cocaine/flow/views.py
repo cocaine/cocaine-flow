@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import traceback
+from time import time, sleep
 from yaml import YAMLError
 import hashlib
 import logging
@@ -9,6 +9,7 @@ from flask import request, render_template, session, flash, redirect, url_for, c
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
+import zmq
 
 from common import read_hosts, write_hosts, key, read_entities, list_add, list_remove, dict_remove
 
@@ -46,13 +47,13 @@ def token_required(admin=False):
                 return 'Admin token is required for this operation', 403
 
             return func(*args, token=token, **kwargs)
+
         return _wrapper
 
     if callable(admin):
         return wrapper(admin)
     else:
         return wrapper
-
 
 
 def uniform(func):
@@ -165,6 +166,49 @@ def dashboard(user):
     return render_template('dashboard.html', user=user,
                            manifests=manifests, runlists=runlists, tokens=tokens, profiles=profiles,
                            hosts=read_hosts())
+
+
+def send_json_rpc(data, hosts, timeout=0.5):
+    rv = {}
+    context = zmq.Context()
+
+    for host in hosts:
+        rv[host] = None
+        request = context.socket(zmq.REQ)
+        request.connect('tcp://%s:5000' % host)
+        request.setsockopt(zmq.LINGER, 0)
+
+        # Statistics
+        request.send_json(data)
+
+        poller = zmq.Poller()
+        poller.register(request, zmq.POLLIN)
+        start = time()
+        while True:
+            socks = dict(poller.poll(timeout=timeout / 10.))
+            if request in socks and socks[request] == zmq.POLLIN:
+                rv[host] = request.recv_json(zmq.POLLERR)
+                break
+
+            if (time() - start) > timeout:
+                break
+            sleep(timeout / 10.)
+
+    return rv
+
+
+@logged_in
+def stats(user):
+    hosts = read_hosts()
+    if not hosts:
+        return render_template('stats.html', user=user, hosts={})
+
+    hosts = send_json_rpc({
+                              'version': 2,
+                              'action': 'info'
+                          }, hosts)
+
+    return render_template('stats.html', user=user, hosts=hosts)
 
 
 @token_required

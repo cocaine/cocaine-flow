@@ -1,0 +1,10 @@
+<dl>
+    <dt>{{ k }}</dt>
+
+    {% for app_name, app_config in v.items() %}
+            <p>
+                <dd><strong>{{ app_name }}</strong></dd>
+                <dd><pre>{{ app_config|pprint }}</pre></dd>
+            </p>
+    {% endfor %}
+</dl>

@@ -11,28 +11,32 @@
 <body>
 <div class="navbar">
     <div class="navbar-inner">
+        <div class="container">
+            <a class="brand" href="#">Cocainoom</a>
+            <ul class="nav">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                {% if user.admin %}
+                    <li><a href="{{ url_for('stats') }}">Statistics</a></li>
+                {% endif %}
 
-        <a class="brand" href="#">Cocainoom</a>
-        <ul class="nav">
-            <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-        </ul>
+            </ul>
 
 
-        {% if not session.logged_in %}
-            <form class="navbar-form pull-right" action="{{ url_for('login') }}" method="post">
-                <input class="span2" type="text" placeholder="Username" name="username">
-                <input class="span2" type="password" placeholder="Password" name="password">
-                <button type="submit" class="btn">Sign in</button>
-                <a class="btn" href="{{ url_for('register') }}">Register</a>
-            </form>
+            {% if not session.logged_in %}
+                <form class="navbar-form pull-right" action="{{ url_for('login') }}" method="post">
+                    <input class="span2" type="text" placeholder="Username" name="username">
+                    <input class="span2" type="password" placeholder="Password" name="password">
+                    <button type="submit" class="btn">Sign in</button>
+                    <a class="btn" href="{{ url_for('register') }}">Register</a>
+                </form>
 
-        {% else %}
-            <p class="navbar-form pull-right">
-                <a class="btn" href="{{ url_for('logout') }}">Log out</a>
-            </p>
+            {% else %}
+                <p class="navbar-form pull-right">
+                    <a class="btn" href="{{ url_for('logout') }}">Log out</a>
+                </p>
 
-        {% endif %}
-
+            {% endif %}
+        </div>
 
     </div>
 </div>
