@@ -368,18 +368,20 @@ def get_hosts():
     return json.dumps(list(read_hosts()))
 
 
-@token_required
-def create_host(host):
+@token_required(admin=True)
+def create_host(host, token):
     hosts = read_hosts()
     hosts.add(host)
     write_hosts(hosts)
     return 'ok'
 
 
-def delete_host(host):
+@token_required(admin=True)
+def delete_host(host, token):
     hosts = read_hosts()
     hosts.remove(host)
     write_hosts(hosts)
+    return 'ok'
 
 
 def error_handler(exc):
