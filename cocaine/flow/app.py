@@ -35,12 +35,12 @@ def create_app():
     app.add_url_rule('/deploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="deploy",
                      view_func=views.deploy, methods=['POST'])
     app.add_url_rule('/hosts/', view_func=views.get_hosts, methods=['GET'])
-    app.add_url_rule('/hosts/<string:host>', view_func=views.create_host, methods=['POST', 'PUT'])
+    app.add_url_rule('/hosts/<string:alias>/<string:host>', endpoint="create_host", view_func=views.create_host, methods=['POST', 'PUT'])
     app.add_url_rule('/hosts/<string:host>', view_func=views.delete_host, methods=['DELETE'])
     app.add_url_rule('/app/<string:app_name>', view_func=views.delete_app, methods=['DELETE'])
     app.add_url_rule('/app/start/<string:uuid>/<string:profile>', view_func=views.start_app, methods=['POST'])
     app.add_url_rule('/app/stop/<string:uuid>', view_func=views.stop_app, methods=['POST'])
-    app.add_url_rule('/maintenance', view_func=views.maintenance, methods=['POST'])
+    app.add_url_rule('/maintenance', endpoint='maintenance', view_func=views.maintenance, methods=['POST'])
     app.add_url_rule('/token', view_func=views.get_token, methods=['POST'])
 
 

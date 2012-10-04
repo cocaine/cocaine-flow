@@ -110,11 +110,16 @@
 
 {% if hosts %}
     <h3>Hosts</h3>
-    <ul class="unstyled">
-        {% for host in hosts %}
-            <li>{{ host }}</li>
-        {% endfor %}
-    </ul>
+    {% for alias, hosts in hosts.items() %}
+        <dl>
+            <dt>{{ alias }}</dt>
+            <dd>
+                {% for host in hosts %}
+                    {{ host }}
+                {% endfor %}
+            </dd>
+        </dl>
+    {% endfor %}
 {% else %}
     <h3>No hosts</h3>
 {% endif %}

@@ -10,14 +10,14 @@ logger = logging.getLogger()
 def read_hosts():
     hosts_key = key('system', "list:hosts")
     try:
-        hosts = set(current_app.storage.read(hosts_key))
+        hosts = dict(current_app.storage.read(hosts_key))
     except RuntimeError:
-        hosts = set()
+        hosts = {}
     return hosts
 
 
 def write_hosts(hosts):
-    current_app.storage.write(key('system', "list:hosts"), list(hosts))
+    current_app.storage.write(key('system', "list:hosts"), hosts)
 
 
 def key(prefix, postfix):
