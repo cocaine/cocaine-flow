@@ -18,5 +18,6 @@ setup(
     packages=["cocaine.flow", 'cocaine.flow.storages', 'flask_pymongo'],
     package_data={'cocaine.flow': ['templates/*', 'static/style.css', 'static/bootstrap/css/*', 'static/bootstrap/js/*',
                                    'static/bootstrap/img/*']},
+    scripts=['cocaine/flow/cocaine-flow'],
     requires=["msgpack"]
 )
