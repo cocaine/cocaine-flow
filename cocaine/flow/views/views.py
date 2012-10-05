@@ -350,7 +350,6 @@ def delete_app(app_name):
     # remove app from runlists
     if runlist is not None:
         dict_remove('runlists', runlist, app_name)
-        s.remove(key('runlists', runlist))
 
     return 'ok'
 
@@ -361,11 +360,12 @@ def get_hosts():
 
 def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
     s = current_app.storage
+    rv = {}
     original_keys = set(s.read(s.key(list_prefix, list_postfix)))
     cleaned_keys = copy(original_keys)
     for key in original_keys:
         try:
-            s.read(s.key(prefix, key))
+            rv[key] = s.read(s.key(prefix, key))
         except RuntimeError:
             if key != except_:
                 cleaned_keys.remove(key)
