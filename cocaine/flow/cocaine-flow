@@ -10,14 +10,16 @@ import sys
 import yaml
 import json
 import requests
-import cli_settings
 from opster import command, dispatch, QuitError
 import sh
 
 
+API_SERVER = os.environ.get('COCAINE_API_SERVER', 'localhost:5000')
+
+
 def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
     try:
-        url = cli_settings.API_SERVER + '/upload'
+        url = API_SERVER + '/upload'
         rv = requests.post(url,
                            data={
                                'info': json.dumps(package_info),
@@ -33,6 +35,8 @@ def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
     if rv.status_code != 200:
         raise QuitError('Error during app upload to server. Reason: %s' % rv.text)
 
+    return rv.text
+
 
 def define_cvs(dir):
     if os.path.exists(dir + '/.git'):
@@ -41,12 +45,16 @@ def define_cvs(dir):
         return 'svn'
     if os.path.exists(dir + '/.hg'):
         return 'hg'
+
+    out = sh.git('rev-parse')
+    if str(out.exit_code) == '0':
+        return 'git'
     return 'fs'
 
 
 def get_real_ref(dir, ref, cvs):
     if cvs == 'fs':
-        return int(time())
+        return str(int(time()))
 
     if not ref:
         if cvs == 'git':
@@ -72,11 +80,12 @@ def get_commit_info(dir, ref):
 
 
 def pack_app(curdir):
+
     packed_app_path = "/tmp/app.tar.gz"
     try:
         # problem with "*" in sh
         # sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
-        cmd = "tar -czf %s * -C %s" % (packed_app_path, os.path.dirname(curdir))
+        cmd = "tar -czf %s -C %s ." % (packed_app_path, curdir)
         subprocess.call(cmd, shell=True)
     except sh.ErrorReturnCode as e:
         raise QuitError('Cannot pack application. %s' % str(e))
@@ -95,7 +104,7 @@ def get_token(kwargs):
         if not username:
             raise QuitError('Username cannot be empty')
         password = getpass()
-        rv = requests.post(cli_settings.API_SERVER + '/token', data={
+        rv = requests.post(API_SERVER + '/token', data={
             'username': username,
             'password': password
         })
@@ -113,35 +122,37 @@ def get_token(kwargs):
 
 
 @command(shortlist=True, usage="[OPTIONS]")
-def upload(dir=('d', '.', 'root directory of application'),
+def upload(src_dir=('d', '.', 'source directory of application'),
+           info_dir=('i', '.', 'directory of info file'),
            ref=('r', '', 'branch/tag/revision to use'),
            *args, **kwargs):
     '''Upload code to cocaine cloud'''
     token = get_token(kwargs)
 
-    curdir = os.path.abspath(dir)
-    if not os.path.exists(curdir + '/info.yaml'):
+    info_yaml_path = os.path.abspath(info_dir) + '/info.yaml'
+    if not os.path.exists(info_yaml_path):
         raise QuitError('info.yaml is required')
 
     try:
-        package_info = yaml.load(file(curdir + '/info.yaml'))
+        package_info = yaml.load(file(info_yaml_path))
     except YAMLError as e:
         raise QuitError('Bad format of info.yaml')
 
-    real_ref = get_commit_info(curdir, ref)
+    src_dir = os.path.abspath(src_dir)
+    real_ref = get_commit_info(src_dir, ref)
 
     if kwargs['verbose']:
-        print "Packing application...",
+        print "Packing application from %s..." % src_dir,
         sys.stdout.flush()
 
-    packed_app_path = pack_app(curdir)
+    packed_app_path = pack_app(src_dir)
 
     if kwargs['verbose']:
         print 'Done'
         print 'Uploading application to server...',
         sys.stdout.flush()
 
-    upload_packed_app(packed_app_path, package_info, real_ref, token, **kwargs)
+    server_response = upload_packed_app(packed_app_path, package_info, real_ref, token, **kwargs)
 
     if kwargs['verbose']:
         print 'Done'
@@ -153,7 +164,7 @@ def upload(dir=('d', '.', 'root directory of application'),
     if kwargs['verbose']:
         print 'Done'
 
-    print 'Application is successfully uploaded!'
+    print server_response
 
 
 @command(shortlist=True)
@@ -172,7 +183,7 @@ def deploy(runlist, app_uuid, profile_name,
         except YAMLError as e:
             raise QuitError('Bad format of profile yaml')
 
-    url = cli_settings.API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+    url = API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
     if profile_path:
         rv = requests.post(url, data={
             'info': json.dumps(profile_info),
