@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 from flask import render_template, current_app
+from cocaine.flow.storages import storage
 from views import token_required, clean_entities, logged_in
 from cocaine.flow.common import read_hosts, write_hosts
 
+
 @token_required(admin=True)
 def maintenance(token):
-    s = current_app.storage
+    s = storage
     clean_entities("manifests", "system", "list:manifests")
     clean_entities("profiles", "system", "list:profiles")
     runlists = clean_entities("runlists", "system", "list:runlists")

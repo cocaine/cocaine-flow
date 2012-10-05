@@ -1,30 +1,23 @@
 # -*- coding: utf-8 -*-
 import logging
 import msgpack
-from flask import current_app
+from cocaine.flow.storages import storage
 
 
 logger = logging.getLogger()
 
 
 def read_hosts():
-    hosts_key = key('system', "list:hosts")
+    hosts_key = storage.key('system', "list:hosts")
     try:
-        hosts = dict(current_app.storage.read(hosts_key))
+        hosts = dict(storage.read(hosts_key))
     except RuntimeError:
         hosts = {}
     return hosts
 
 
 def write_hosts(hosts):
-    current_app.storage.write(key('system', "list:hosts"), hosts)
-
-
-def key(prefix, postfix):
-    if type(postfix) in set([tuple, list, set]):
-        return type(postfix)(["%s\0%s" % (prefix, p) for p in postfix])
-
-    return "%s\0%s" % (prefix, postfix)
+    storage.write(storage.key('system', "list:hosts"), hosts)
 
 
 def remove_prefix(prefix, key):
@@ -36,10 +29,10 @@ def remove_prefix(prefix, key):
 
 
 def list_add(prefix, postfix, value, raise_on_missed_key=False):
-    storage_key = key(prefix, postfix)
+    storage_key = storage.key(prefix, postfix)
     try:
         logger.info("Reading from elliptics %s", storage_key)
-        entities = set(current_app.storage.read(storage_key))
+        entities = set(storage.read(storage_key))
     except RuntimeError:
         if raise_on_missed_key: raise
         entities = set()
@@ -47,13 +40,13 @@ def list_add(prefix, postfix, value, raise_on_missed_key=False):
     if value not in entities:
         entities.add(value)
         logger.info("Adding `%s` to list of entities by key %s" % (value, prefix + postfix))
-        current_app.storage.write(storage_key, list(entities))
+        storage.write(storage_key, list(entities))
 
 
 def list_remove(prefix, postfix, value):
-    s = current_app.storage
+    s = storage
 
-    list_key = key(prefix, postfix)
+    list_key = storage.key(prefix, postfix)
     entities = set(s.read(list_key))
 
     if value in entities:
@@ -64,16 +57,14 @@ def list_remove(prefix, postfix, value):
 
 
 def dict_remove(prefix, postfix, value):
-    s = current_app.storage
-
-    dict_key = key(prefix, postfix)
-    runlist_dict = s.read(dict_key)
+    dict_key = storage.key(prefix, postfix)
+    runlist_dict = storage.read(dict_key)
     runlist_dict.pop(value, None)
-    s.write(dict_key, runlist_dict)
+    storage.write(dict_key, runlist_dict)
 
 
 def read_entities(prefix, list_prefix, list_postfix):
-    s = current_app.storage
+    s = storage
     entities = s.bulk_read(s.key(prefix, s.read(s.key(list_prefix, list_postfix))))
     entities = remove_prefix(prefix, entities)
     for k, entity in entities.items():

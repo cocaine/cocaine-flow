@@ -3,8 +3,7 @@ import logging
 from flask import Flask
 from flask.ext.pymongo import PyMongo
 from pymongo.errors import DuplicateKeyError
-from common import key
-from storages import create_storage
+from storages import init_storage, storage
 import views
 import api_settings as settings
 
@@ -48,7 +47,7 @@ def create_app():
     app.error_handler_spec[None][500] = views.error_handler
 
     app.mongo = PyMongo(app)
-    app.storage = create_storage()
+    init_storage(app)
 
     logging.basicConfig(level=logging.DEBUG)
 
@@ -68,10 +67,10 @@ def install(username, password):
             return False
 
         try:
-            app.storage.read(key('system', 'list:runlists'))
+            storage.read(storage.key('system', 'list:runlists'))
         except RuntimeError:
             try:
-                app.storage.write(key('system', 'list:runlists'), ['default'])
+                storage.write(storage.key('system', 'list:runlists'), ['default'])
             except RuntimeError:
                 print 'Storage failure'
                 return False

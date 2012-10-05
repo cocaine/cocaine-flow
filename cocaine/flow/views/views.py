@@ -9,8 +9,9 @@ from flask import request, render_template, session, flash, redirect, url_for, c
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
+from cocaine.flow.storages import storage
 from common import send_json_rpc, token_required, uniform, logged_in
-from cocaine.flow.common import read_hosts, key, read_entities, list_add, list_remove, dict_remove
+from cocaine.flow.common import read_hosts, read_entities, list_add, list_remove, dict_remove
 
 
 logger = logging.getLogger()
@@ -37,7 +38,7 @@ def register():
 
         try:
             create_user(username, password)
-        except DuplicateKeyError as e:
+        except DuplicateKeyError:
             return render_template('register.html', error="Username is not available")
 
         session['logged_in'] = username
@@ -151,8 +152,7 @@ def create_profile(name, token=None):
 
 def exists(prefix, postfix):
     try:
-        s = current_app.storage
-        return str(s.read(s.key(prefix, postfix)))
+        return str(storage.read(storage.key(prefix, postfix)))
     except:
         return 'Not exists', 404
 
@@ -177,15 +177,15 @@ def upload_app(app, info, ref, token):
     info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
     info['developer'] = token
 
-    s = current_app.storage
+    s = storage
 
     # app
-    app_key = key("apps", info['uuid'])
+    app_key = storage.key("apps", info['uuid'])
     logger.info("Writing app to `%s`" % app_key)
     s.write(app_key, app.read())
 
     #manifests
-    manifest_key = key("manifests", info['uuid'])
+    manifest_key = storage.key("manifests", info['uuid'])
     info['ref'] = ref
     logger.info("Writing manifest to `%s`" % manifest_key)
     s.write(manifest_key, info)
@@ -257,10 +257,11 @@ def upload_repo(token):
         try:
             with open(clone_path + "/app.tar.gz") as app:
                 uuid = upload_app(app, package_info, ref, token)
+            return "Application %s was successfully uploaded" % uuid
         except (KeyError, ValueError) as e:
             return str(e), 400
 
-    return "Application %s was successfully uploaded" % uuid
+    return "Application was failed to upload", 400
 
 
 @uniform
@@ -293,10 +294,10 @@ def upload(token):
 
 @token_required(admin=True)
 def deploy(runlist, uuid, profile, token):
-    s = current_app.storage
+    s = storage
 
     #read manifest
-    manifest_key = key('manifests', uuid)
+    manifest_key = s.key('manifests', uuid)
     try:
         manifest = s.read(manifest_key)
     except RuntimeError:
@@ -304,7 +305,7 @@ def deploy(runlist, uuid, profile, token):
 
 
     # read runlists
-    runlist_key = key("runlists", runlist)
+    runlist_key = s.key("runlists", runlist)
     logger.info('Reading %s', runlist_key)
     try:
         runlist_dict = s.read(runlist_key)
@@ -313,11 +314,11 @@ def deploy(runlist, uuid, profile, token):
 
     post_body = request.stream.read()
     if post_body:
-        s.write(key('profiles', profile), json.loads(post_body))
+        s.write(s.key('profiles', profile), json.loads(post_body))
         list_add("system", "list:profiles", profile)
     else:
         try:
-            s.read(key('profiles', profile))
+            s.read(s.key('profiles', profile))
         except RuntimeError:
             return 'Profile name is not valid'
 
@@ -336,16 +337,16 @@ def deploy(runlist, uuid, profile, token):
 
 
 def delete_app(app_name):
-    s = current_app.storage
+    s = storage
 
     list_remove("system", "list:manifests", app_name)
 
     # define runlist for app from manifest
-    runlist = s.read(key('manifests', app_name)).get('runlist')
+    runlist = storage.read(s.key('manifests', app_name)).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
 
-    s.remove(key('manifests', app_name))
-    s.remove(key('apps', app_name))
+    s.remove(s.key('manifests', app_name))
+    s.remove(s.key('apps', app_name))
 
     # remove app from runlists
     if runlist is not None:
@@ -359,7 +360,7 @@ def get_hosts():
 
 
 def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
-    s = current_app.storage
+    s = storage
     rv = {}
     original_keys = set(s.read(s.key(list_prefix, list_postfix)))
     cleaned_keys = copy(original_keys)

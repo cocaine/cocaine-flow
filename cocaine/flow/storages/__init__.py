@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
-from storages.elliptics import Elliptics
-import api_settings as settings
+from werkzeug.local import LocalProxy
+from .elliptics import Elliptics
+from flask import current_app
 
 
-def create_storage():
-    if settings.STORAGE == 'elliptics':
+def connect_to_database(storage):
+    if storage == 'elliptics':
         return Elliptics()
+    raise ValueError('Unsupported type of storage')
+
+
+def get_storage():
+    return current_app.storage
+
+
+def init_storage(app):
+    app.storage = connect_to_database(app.config['STORAGE'])
+
+
+storage = LocalProxy(get_storage)
