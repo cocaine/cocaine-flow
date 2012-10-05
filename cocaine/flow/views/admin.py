@@ -24,3 +24,8 @@ def delete_host(host, token):
     hosts.remove(host)
     write_hosts(hosts)
     return 'ok'
+
+
+@logged_in
+def dealer(user):
+    return render_template("dealer.html", user=user)

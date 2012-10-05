@@ -17,6 +17,7 @@
                 <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                 {% if user and user.admin %}
                     <li><a href="{{ url_for('stats') }}">Statistics</a></li>
+                    <li><a href="{{ url_for('dealer') }}">Dealer</a></li>
                 {% endif %}
 
             </ul>

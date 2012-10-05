@@ -29,6 +29,7 @@ def create_app():
     app.add_url_rule('/logout', view_func=views.logout)
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
     app.add_url_rule('/stats', 'stats', view_func=views.stats, methods=['GET'])
+    app.add_url_rule('/dealer', 'dealer', view_func=views.dealer, methods=['GET'])
     app.add_url_rule('/profiles/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/exists/<string:prefix>/<string:postfix>', view_func=views.exists)
     app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['POST'])
