@@ -31,6 +31,12 @@
                                 <dd>{{ alias }} - {{ settings }}</dd>
                             {% endfor %}
                         </dl>
+
+                        <dl>
+                            <dt>Args</dt>
+                            <dd>{{ manifest.args|pprint }}</dd>
+                        </dl>
+
                     </div>
                 </td>
                 <td>{{ manifest.type }}</td>

@@ -278,23 +278,40 @@ def upload(token):
         return 'Invalid params', 400
 
     try:
-        info = json.loads(info)
+        package_info = json.loads(info)
     except Exception as e:
         logger.exception('Bad encoded json in info parameter')
         return 'Bad encoded json', 400
 
     try:
-        upload_app(app, info, ref, token)
+        uuid = upload_app(app, package_info, ref, token)
     except (KeyError, ValueError) as e:
         return str(e), 400
 
-    return 'Application was successfully uploaded'
+    return 'Application %s was successfully uploaded' % uuid
 
 
 @token_required(admin=True)
 def deploy(runlist, uuid, profile, token):
-    post_body = request.stream.read()
     s = current_app.storage
+
+    #read manifest
+    manifest_key = key('manifests', uuid)
+    try:
+        manifest = s.read(manifest_key)
+    except RuntimeError:
+        return 'Manifest for app doesn\'t exists', 400
+
+
+    # read runlists
+    runlist_key = key("runlists", runlist)
+    logger.info('Reading %s', runlist_key)
+    try:
+        runlist_dict = s.read(runlist_key)
+    except RuntimeError:
+        runlist_dict = {}
+
+    post_body = request.stream.read()
     if post_body:
         s.write(key('profiles', profile), json.loads(post_body))
         list_add("system", "list:profiles", profile)
@@ -304,19 +321,17 @@ def deploy(runlist, uuid, profile, token):
         except RuntimeError:
             return 'Profile name is not valid'
 
-    # runlists
-    runlist_key = key("runlists", runlist)
-    logger.info('Reading %s', runlist_key)
-    try:
-        runlist_dict = s.read(runlist_key)
-    except RuntimeError:
-        runlist_dict = {}
+    # update runlists
     runlist_dict[uuid] = profile
     logger.info('Writing runlist %s', runlist_key)
     s.write(runlist_key, runlist_dict)
 
-    list_add("system", "list:runlists", runlist)
+    #manifest update
+    manifest['runlist'] = runlist
+    s.write(manifest_key, manifest)
 
+    list_add("system", "list:runlists", runlist)
+    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *read_hosts().values())
     return 'ok'
 
 
