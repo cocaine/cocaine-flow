@@ -20,6 +20,17 @@ def write_hosts(hosts):
     storage.write(storage.key('system', "list:hosts"), hosts)
 
 
+def add_prefix(prefix, key):
+    prefix = "%s\0" % prefix
+    if isinstance(key, dict):
+        return dict((prefix + k, v) for k, v in key.items())
+
+    if type(key) in set([list, tuple]):
+        return ["%s%s" % (str(prefix), str(v)) for v in key]
+
+    return "%s%s" % (str(prefix), str(key))
+
+
 def remove_prefix(prefix, key):
     prefix = "%s\0" % prefix
     if isinstance(key, dict):

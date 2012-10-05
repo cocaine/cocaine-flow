@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+{% block body %}
+    {% if balances %}
+        {% for group, group_config in balances.items() %}
+            <dl>
+                <dt>{{ group }}</dt>
+                <dd>{{ group_config|pprint }}</dd>
+            </dl>
+
+        {% endfor %}
+    {% else %}
+        <h2>No balance lists are available</h2>
+    {% endif %}
+{% endblock %}
