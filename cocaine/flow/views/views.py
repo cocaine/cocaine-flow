@@ -129,7 +129,7 @@ def process_json_rpc_response(res, uuid):
 
 
 def start_app(uuid, profile):
-    res =  send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, read_hosts())
+    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, read_hosts())
     return process_json_rpc_response(res, uuid)
 
 
@@ -150,7 +150,11 @@ def create_profile(name, token=None):
 
 
 def exists(prefix, postfix):
-    return str(current_app.storage.read(key(prefix, postfix)))
+    try:
+        s = current_app.storage
+        return str(s.read(s.key(prefix, postfix)))
+    except:
+        return 'Not exists', 404
 
 
 def validate_info(info):
@@ -183,11 +187,12 @@ def upload_app(app, info, ref, token):
     #manifests
     manifest_key = key("manifests", info['uuid'])
     info['ref'] = ref
-    info['engine'] = {}
     logger.info("Writing manifest to `%s`" % manifest_key)
     s.write(manifest_key, info)
 
     list_add("system", "list:manifests", info['uuid'])
+
+    return info['uuid']
 
 
 def download_depends(depends, type_, path):
@@ -251,11 +256,11 @@ def upload_repo(token):
 
         try:
             with open(clone_path + "/app.tar.gz") as app:
-                upload_app(app, package_info, ref, token)
+                uuid = upload_app(app, package_info, ref, token)
         except (KeyError, ValueError) as e:
             return str(e), 400
 
-    return "Application was successfully uploaded"
+    return "Application %s was successfully uploaded" % uuid
 
 
 @uniform
@@ -353,6 +358,8 @@ def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
     if keys_for_remove:
         s.write(s.key(list_prefix, list_postfix), list(cleaned_keys))
         logger.info('Removed %s during maintenance %s', prefix, keys_for_remove)
+
+    return rv
 
 
 def get_token():
