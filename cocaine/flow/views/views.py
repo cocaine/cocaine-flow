@@ -77,13 +77,15 @@ def dashboard(user):
     if not user['admin']:
         return render_template('dashboard.html', user=user)
 
-    tokens = set()
     try:
         manifests = read_entities("manifests", "system", "list:manifests")
-        for manifest in manifests.values():
-            token = manifest.get('developer')
-            if token:
-                tokens.add(token)
+        grouped_manifests = {}
+        for uuid, manifest in manifests.items():
+            common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
+            common_manifest_part.setdefault('description', manifest['description'])
+            common_manifest_part.setdefault('type', manifest['type'])
+            common_manifest_part.setdefault('manifests', []).append(manifest)
+
     except RuntimeError as e:
         logger.warning(str(e))
         manifests = {}
@@ -100,14 +102,30 @@ def dashboard(user):
         logger.warning(str(e))
         profiles = {}
 
-    if tokens:
-        users = current_app.mongo.db.users.find({'token': {'$in': list(tokens)}})
-        tokens = dict((u['token'], u['_id']) for u in users)
+    return render_template('dashboard.html', hosts=read_hosts(), **locals())
 
-    return render_template('dashboard.html', user=user,
-                           manifests=manifests, runlists=runlists, tokens=tokens, profiles=profiles,
-                           hosts=read_hosts())
 
+@logged_in
+def dashboard_edit(user):
+    value = request.form.get('value')
+    id = request.form.get('id')
+    if not id:
+        return value
+
+    split_id = id.split(':')
+    entity_type = split_id[0]
+    if entity_type == 'profile':
+        profile_name = split_id[1]
+        option = split_id[2]
+        profile_key = storage.key("profiles", profile_name)
+        profile = storage.read(profile_key)
+        if option in profile:
+            profile[option] = value
+            storage.write(profile_key, profile)
+        else:
+            return split_id[3] # old value
+
+    return value
 
 @logged_in
 def stats(user):
@@ -140,10 +158,10 @@ def stop_app(uuid):
 
 
 @token_required
-def create_profile(name, token=None):
+def create_profile(name, user=None):
     body = request.json
     if body:
-        id = '%s_%s' % (token, name)
+        id = '%s_%s' % (user.token, name)
         body['_id'] = id
         current_app.mongo.db.profiles.update({'_id': id}, body, upsert=True)
 
@@ -266,10 +284,10 @@ def upload_repo(token):
 
 @uniform
 @token_required
-def upload(token):
+def upload(user):
     url = request.form.get('url')
     if url:
-        return upload_repo(token)
+        return upload_repo(user.token)
 
     app = request.files.get('app')
     info = request.form.get('info')
@@ -285,7 +303,7 @@ def upload(token):
         return 'Bad encoded json', 400
 
     try:
-        uuid = upload_app(app, package_info, ref, token)
+        uuid = upload_app(app, package_info, ref, user.token)
     except (KeyError, ValueError) as e:
         return str(e), 400
 
@@ -293,7 +311,7 @@ def upload(token):
 
 
 @token_required(admin=True)
-def deploy(runlist, uuid, profile, token):
+def deploy(runlist, uuid, profile, user):
     s = storage
 
     #read manifest
@@ -339,18 +357,17 @@ def deploy(runlist, uuid, profile, token):
 def delete_app(app_name):
     s = storage
 
-    list_remove("system", "list:manifests", app_name)
-
     # define runlist for app from manifest
     runlist = storage.read(s.key('manifests', app_name)).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
+    if runlist is not None:
+        logger.warning('Trying to delete deployed app')
+        return 'error', 400
+
+    list_remove("system", "list:manifests", app_name)
 
     s.remove(s.key('manifests', app_name))
     s.remove(s.key('apps', app_name))
-
-    # remove app from runlists
-    if runlist is not None:
-        dict_remove('runlists', runlist, app_name)
 
     return 'ok'
 

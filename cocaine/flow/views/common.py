@@ -18,7 +18,7 @@ def token_required(admin=False):
             if isinstance(admin, bool)  and admin and not user.get('admin', False):
                 return 'Admin token is required for this operation', 403
 
-            return func(*args, token=token, **kwargs)
+            return func(*args, user=user, **kwargs)
 
         return _wrapper
 

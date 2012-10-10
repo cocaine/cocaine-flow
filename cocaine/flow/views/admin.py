@@ -7,7 +7,7 @@ from cocaine.flow.common import read_hosts, write_hosts, add_prefix
 
 
 @token_required(admin=True)
-def maintenance(token):
+def maintenance(user):
     s = storage
     clean_entities("manifests", "system", "list:manifests")
     clean_entities("profiles", "system", "list:profiles")
@@ -32,7 +32,7 @@ def maintenance(token):
 
 
 @token_required(admin=True)
-def create_host(alias, host, token):
+def create_host(alias, host, user):
     hosts = read_hosts()
     hosts.setdefault(alias, []).append(host)
     write_hosts(hosts)
@@ -40,7 +40,7 @@ def create_host(alias, host, token):
 
 
 @token_required(admin=True)
-def delete_host(host, token):
+def delete_host(host, user):
     hosts = read_hosts()
     hosts.remove(host)
     write_hosts(hosts)
@@ -63,7 +63,7 @@ def balances(user):
 
 
 @token_required(admin=True)
-def add_balance_list(group, app_name, token):
+def add_balance_list(group, app_name, user):
     s = storage
     balances = read_balances()
     try:

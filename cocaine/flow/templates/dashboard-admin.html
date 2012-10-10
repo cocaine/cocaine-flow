@@ -1,53 +1,67 @@
-<p><b>Secret key</b>: {{ user.token }}</p>
-
 {% if manifests %}
     <h3>Manifests
         <small>({{ manifests|length }})</small>
     </h3>
     <table class="table table-bordered">
-        <thead>
-        <tr>
-            <th>Name - Description - UUID</th>
-            <th>Type</th>
-            <th>Developer</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-
-        {% for uuid, manifest in manifests.items() %}
+        {% for app_name, common_manifest_dict in grouped_manifests.items() %}
             <tr>
-                <td>{{ manifest.name }} - {{ manifest.description }} - {{ uuid }}
-                    <div id="{{ uuid }}" class="collapse">
-                        <dl>
-                            <dt>Dependencies</dt>
-                            {% for depends in manifest.depends %}
-                                <dd>{{ depends }}</dd>
-                            {% endfor %}
-                        </dl>
+                <td>
+                    <div>
+                        <a data-target="#versions_{{ app_name }}" data-toggle='collapse'>{{ app_name }}</a>
+                        <small>({{ common_manifest_dict['manifests']|length }})</small>
+                        - {{ common_manifest_dict['description'] }} -
+                        <em>{{ common_manifest_dict['type'] }}</em>
+                    </div>
+                    <div id="versions_{{ app_name }}" class="collapse in">
+                        {% for manifest in common_manifest_dict['manifests'] %}
 
-                        <dl>
-                            <dt>Drivers</dt>
-                            {% for alias, settings in manifest.drivers.items() %}
-                                <dd>{{ alias }} - {{ settings }}</dd>
-                            {% endfor %}
-                        </dl>
+                            <dl>
+                                <hr>
 
-                        <dl>
-                            <dt>Args</dt>
-                            <dd>{{ manifest.args|pprint }}</dd>
-                        </dl>
+                                <dt>
+                                    {{ manifest.uuid }}
+                                    <span class="pull-right">
+                                        <button type="button" class="btn btn-danger btn-mini remove"
+                                                data-id="{{ uuid }}">Remove
+                                        </button>
+                                    </span>
+                                </dt>
+                                <dd>
+                                    <dl>
+                                        <dt>Developer</dt>
+                                        <dd>{{ manifest.developer }}</dd>
+                                    </dl>
+
+                                    {% if manifest.depends %}
+                                        <dl>
+                                            <dt>Dependencies</dt>
+                                            {% for depends in manifest.depends %}
+                                                <dd>{{ depends }}</dd>
+                                            {% endfor %}
+                                        </dl>
+                                    {% endif %}
+
+                                    {% if manifest.drivers %}
+                                        <dl>
+                                            <dt>Drivers</dt>
+                                            {% for alias, settings in manifest.drivers.items() %}
+                                                <dd>{{ alias }} - {{ settings }}</dd>
+                                            {% endfor %}
+                                        </dl>
+                                    {% endif %}
+
+
+                                    {% if manifest.args %}
+                                        <dl>
+                                            <dt>Args</dt>
+                                            <dd>{{ manifest.args|pprint }}</dd>
+                                        </dl>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        {% endfor %}
 
                     </div>
-                </td>
-                <td>{{ manifest.type }}</td>
-                <td>{{ tokens[manifest.developer] }}</td>
-                <td>
-                    <button type="button" class="btn btn-info btn-mini" data-toggle="collapse"
-                            data-target="#{{ uuid }}">
-                        Details
-                    </button>
-                    <button type="button" class="btn btn-danger btn-mini remove" data-id="{{ uuid }}">Remove
-                    </button>
                 </td>
             </tr>
         {% endfor %}
@@ -103,7 +117,10 @@
                 <td>
                     <ul class="unstyled">
                         {% for option, value in profile.items() %}
-                            <li>{{ option }} - {{ value }}</li>
+                            <li>
+                                {{ option }} - <span class="edit"
+                                                     id="profile:{{ profile_name }}:{{ option }}:{{ value }}">{{ value }}</span>
+                            </li>
                         {% endfor %}
                     </ul>
                 </td>
@@ -131,25 +148,54 @@
 {% endif %}
 
 
+<div class="modal hide" id="removeApp" tabindex="-1" role="dialog" aria-labelledby="removeAppLabel">
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="removeAppLabel">Remove application</h3>
+    </div>
+    <div class="modal-body">
+        <p>Are you sure?</p>
+    </div>
+    <div class="modal-footer">
+        <button class="btn" data-dismiss="modal" aria-hidden="true">No</button>
+        <button class="btn btn-primary btn-danger">Yes</button>
+    </div>
+</div>
+
+
 
 
 {% block js %}
+    <script type="text/javascript" src="https://raw.github.com/makeusabrew/bootbox/v2.4.2/bootbox.min.js"></script>
+
     <script type="text/javascript">
         $(document).ready(function () {
             $('.remove').click(function () {
                 var app_id = $(this).attr('data-id');
-                console.log(app_id);
                 var btn = $(this);
-                $.ajax({
-                           url:'/app/' + app_id,
-                           type:"DELETE",
-                           success:function (data, textStatus, jqXHR) {
-                               btn.parents('tr').remove();
+                bootbox.confirm("Are you sure?", "No", "Yes", function (result) {
+                    if (result) {
+                        $.ajax({
+                                   url:'/app/' + app_id,
+                                   type:"DELETE",
+                                   success:function (data, textStatus, jqXHR) {
+                                       btn.parents('dl').remove();
+                                   }
+                               });
 
-                           }
-                       })
+                    }
+                });
             });
+
+
+            $('.edit').editable('/dashboard/edit', {
+                style:'display: inline',
+                tooltip:'Click to edit...'
+            });
+
+
         });
+
 
     </script>
 {% endblock %}

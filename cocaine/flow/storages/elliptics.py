@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from storages.storage import Storage
-from elliptics_wrapper import Logger, Node
+from __future__ import absolute_import
+from .storage import Storage
+from elliptics import Logger, Node
 import api_settings as settings
 import traceback
 

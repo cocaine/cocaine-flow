@@ -27,6 +27,7 @@ def create_app():
     app.add_url_rule('/login', 'login', view_func=views.login, methods=['GET', 'POST'])
     app.add_url_rule('/logout', view_func=views.logout)
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
+    app.add_url_rule('/dashboard/edit', view_func=views.dashboard_edit, methods=['POST'])
     app.add_url_rule('/stats', 'stats', view_func=views.stats, methods=['GET'])
     app.add_url_rule('/balances', 'balances', view_func=views.balances, methods=['GET'])
     app.add_url_rule('/balances/<string:group>/<string:app_name>', 'add_balances', view_func=views.add_balance_list, methods=['POST'])
