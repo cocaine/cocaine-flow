@@ -33,7 +33,7 @@ def create_app():
     app.add_url_rule('/balances/<string:group>/<string:app_name>', 'add_balances', view_func=views.add_balance_list, methods=['POST'])
     app.add_url_rule('/profiles/<string:name>', view_func=views.create_profile, methods=['POST'])
     app.add_url_rule('/exists/<string:prefix>/<string:postfix>', view_func=views.exists)
-    app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['POST'])
+    app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['GET', 'POST'])
     app.add_url_rule('/deploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="deploy",
                      view_func=views.deploy, methods=['POST'])
     app.add_url_rule('/hosts/', view_func=views.get_hosts, methods=['GET'])

@@ -20,11 +20,15 @@
 
                                 <dt>
                                     {{ manifest.uuid }}
-                                    <span class="pull-right">
+
+                                    {% if user.admin%}
+                                        <span class="pull-right">
                                         <button type="button" class="btn btn-danger btn-mini remove"
                                                 data-id="{{ uuid }}">Remove
                                         </button>
                                     </span>
+                                    {% endif %}
+
                                 </dt>
                                 <dd>
                                     <dl>
@@ -165,37 +169,39 @@
 
 
 
-{% block js %}
-    <script type="text/javascript" src="https://raw.github.com/makeusabrew/bootbox/v2.4.2/bootbox.min.js"></script>
+{% if user.admin %}
+    {% block js %}
+        <script type="text/javascript" src="https://raw.github.com/makeusabrew/bootbox/v2.4.2/bootbox.min.js"></script>
 
-    <script type="text/javascript">
-        $(document).ready(function () {
-            $('.remove').click(function () {
-                var app_id = $(this).attr('data-id');
-                var btn = $(this);
-                bootbox.confirm("Are you sure?", "No", "Yes", function (result) {
-                    if (result) {
-                        $.ajax({
-                                   url:'/app/' + app_id,
-                                   type:"DELETE",
-                                   success:function (data, textStatus, jqXHR) {
-                                       btn.parents('dl').remove();
-                                   }
-                               });
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $('.remove').click(function () {
+                    var app_id = $(this).attr('data-id');
+                    var btn = $(this);
+                    bootbox.confirm("Are you sure?", "No", "Yes", function (result) {
+                        if (result) {
+                            $.ajax({
+                                       url:'/app/' + app_id,
+                                       type:"DELETE",
+                                       success:function (data, textStatus, jqXHR) {
+                                           btn.parents('dl').remove();
+                                       }
+                                   });
 
-                    }
+                        }
+                    });
                 });
+
+
+                $('.edit').editable('/dashboard/edit', {
+                    style:'display: inline',
+                    tooltip:'Click to edit...'
+                });
+
+
             });
 
 
-            $('.edit').editable('/dashboard/edit', {
-                style:'display: inline',
-                tooltip:'Click to edit...'
-            });
-
-
-        });
-
-
-    </script>
-{% endblock %}
+        </script>
+    {% endblock %}
+{% endif %}

@@ -7,7 +7,8 @@ import zmq
 def token_required(admin=False):
     def wrapper(func):
         def _wrapper(*args, **kwargs):
-            token = request.values.get('token')
+            token = request.values.get('token') or session.get('logged_in')
+
             if not token:
                 return 'Token is required', 403
 
@@ -50,11 +51,11 @@ def uniform(func):
 
 def logged_in(func):
     def wrapper(*args, **kwargs):
-        username = session.get('logged_in')
-        if not username:
+        token = session.get('logged_in')
+        if not token:
             return redirect(url_for('login'))
 
-        user = current_app.mongo.db.users.find_one({'_id': session['logged_in']})
+        user = current_app.mongo.db.users.find_one({'token': session['logged_in']})
         if user is None:
             session.pop('logged_in', None)
             return redirect(url_for('login'))

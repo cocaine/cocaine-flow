@@ -59,7 +59,11 @@ def login():
         if user['password'] != hashlib.sha1(password).hexdigest():
             return render_template('login.html', error='Invalid password')
 
-        session['logged_in'] = user["_id"]
+        token = user.get('token')
+        if not token:
+            return render_template('login.html', error='User doesn\'t have token')
+
+        session['logged_in'] = token
         flash('You were logged in')
         return redirect(url_for('dashboard'))
 
@@ -74,13 +78,13 @@ def logout():
 
 @logged_in
 def dashboard(user):
-    if not user['admin']:
-        return render_template('dashboard.html', user=user)
-
     try:
         manifests = read_entities("manifests", "system", "list:manifests")
         grouped_manifests = {}
         for uuid, manifest in manifests.items():
+            if not user['admin'] and user['token'] != manifest['developer']:
+                continue
+
             common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
             common_manifest_part.setdefault('description', manifest['description'])
             common_manifest_part.setdefault('type', manifest['type'])
@@ -282,9 +286,11 @@ def upload_repo(token):
     return "Application was failed to upload", 400
 
 
-@uniform
 @token_required
 def upload(user):
+    if request.method == 'GET':
+        return render_template('upload.html', user=user)
+
     url = request.form.get('url')
     if url:
         return upload_repo(user['token'])
@@ -329,6 +335,10 @@ def deploy(runlist, uuid, profile, user):
         runlist_dict = s.read(runlist_key)
     except RuntimeError:
         runlist_dict = {}
+
+    hosts = read_hosts()
+    if not hosts:
+        return 'No hosts are available', 400
 
     post_body = request.stream.read()
     if post_body:

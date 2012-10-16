@@ -11,14 +11,16 @@
     <div class="navbar-inner">
         <div class="container">
             <a class="brand" href="#">Cocainoom</a>
-            <ul class="nav">
-                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                {% if user and user.admin %}
-                    <li><a href="{{ url_for('stats') }}">Statistics</a></li>
-                    <li><a href="{{ url_for('balances') }}">Balances</a></li>
-                {% endif %}
-
-            </ul>
+            {% if session.logged_in %}
+                <ul class="nav">
+                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('upload') }}">Upload</a></li>
+                    {% if user and user.admin %}
+                        <li><a href="{{ url_for('stats') }}">Statistics</a></li>
+                        <li><a href="{{ url_for('balances') }}">Balances</a></li>
+                    {% endif %}
+                </ul>
+            {% endif %}
 
 
             {% if not session.logged_in %}

@@ -1,11 +1,7 @@
 {% extends 'layout.html' %}
 
 {% block body %}
-    {% if user.admin %}
-        {% include 'dashboard-admin.html' %}
-    {% else %}
-        {% include 'dashboard-user.html' %}
-    {% endif %}
+    {% include 'dashboard-admin.html' %}
 {% endblock %}
 
 {% block js %}
