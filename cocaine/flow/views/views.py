@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import Iterable
 from copy import copy
 from yaml import YAMLError
 import hashlib
@@ -395,7 +396,12 @@ def get_hosts():
 def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
     s = storage
     rv = {}
-    original_keys = set(s.read(s.key(list_prefix, list_postfix)))
+    entities_keys = s.read(s.key(list_prefix, list_postfix))
+    if not isinstance(entities_keys, Iterable):
+        s.write(s.key(list_prefix, list_postfix), list())
+        return
+
+    original_keys = set(entities_keys)
     cleaned_keys = copy(original_keys)
     for key in original_keys:
         try:
