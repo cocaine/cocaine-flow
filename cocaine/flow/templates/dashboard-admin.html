@@ -21,7 +21,7 @@
                                 <dt>
                                     {{ manifest.uuid }}
 
-                                    {% if user.admin%}
+                                    {% if user.admin %}
                                         <span class="pull-right">
                                         <button type="button" class="btn btn-danger btn-mini remove"
                                                 data-id="{{ uuid }}">Remove
@@ -31,6 +31,15 @@
 
                                 </dt>
                                 <dd>
+                                    {% if manifest.url %}
+
+                                        <dl>
+                                            <dt>Cloned from</dt>
+                                            <dd>{{ manifest.url }}</dd>
+                                        </dl>
+                                    {% endif %}
+
+
                                     <dl>
                                         <dt>Developer</dt>
                                         <dd>{{ manifest.developer }}</dd>

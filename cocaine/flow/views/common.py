@@ -37,7 +37,7 @@ def uniform(func):
         else:
             rv, code = rv
 
-        if request.referrer:
+        if request.referrer and request.method == "POST":
             if 200 <= code < 300:
                 flash(rv, 'alert-success')
             elif 400 <= code < 600:

@@ -279,6 +279,7 @@ def upload_repo(token):
 
         try:
             with open(clone_path + "/app.tar.gz") as app:
+                package_info['url'] = url
                 uuid = upload_app(app, package_info, ref, token)
             return "Application %s was successfully uploaded" % uuid
         except (KeyError, ValueError) as e:
@@ -286,7 +287,7 @@ def upload_repo(token):
 
     return "Application was failed to upload", 400
 
-
+@uniform
 @token_required
 def upload(user):
     if request.method == 'GET':
