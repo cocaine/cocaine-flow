@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+{% block body %}
+    <form action="upload" class="form-horizontal" method="post">
+        <legend>Upload app</legend>
+        <label class="control-label" for="url">Repository URL</label>
+
+        <div class="control-group">
+            <div class="controls">
+                <input type="text" name="url" id="url" class="input-xxlarge">
+            </div>
+        </div>
+
+        <label class="control-label" for="type">Repository type</label>
+
+        <div class="control-group">
+            <div class="controls">
+                <select name="type" id="type" class="span1">
+                    <option value="git">git</option>
+                    <option value="svn">svn</option>
+                </select>
+            </div>
+        </div>
+
+        <label class="control-label" for="ref">Reference </label>
+
+        <div class="control-group">
+            <div class="controls">
+                <input type="text" placeholder="branch/tag/hash" id="ref" name="ref">
+            </div>
+        </div>
+
+
+        <div class="control-group">
+            <div class="controls">
+                <button type="submit" class="btn">Upload</button>
+            </div>
+        </div>
+        <input type="hidden" value="{{ user.token }}" name="token">
+    </form>{% endblock %}
+
