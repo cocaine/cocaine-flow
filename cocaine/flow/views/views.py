@@ -360,7 +360,13 @@ def deploy(runlist, uuid, profile, user):
     s.write(manifest_key, manifest)
 
     list_add("system", "list:runlists", runlist)
-    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *read_hosts().values())
+    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *hosts.values())
+    for host, host_res in res.items():
+        for app_uuid, res in host_res.items():
+            if 'error' in res:
+                return "%s - %s" % (app_uuid, res['error']), 500
+            logger.debug("Deploy: %s. %s", app_uuid, res)
+
     return 'ok'
 
 
