@@ -6,12 +6,20 @@ from views import token_required, clean_entities, logged_in
 from cocaine.flow.common import read_hosts, write_hosts, add_prefix
 
 
+def clean_hosts():
+    hosts = storage.read(storage.key('system', "list:hosts"))
+    if not isinstance(hosts, dict):
+        storage.write(storage.key('system', "list:hosts"), {})
+
+
 @token_required(admin=True)
 def maintenance(user):
     s = storage
     clean_entities("manifests", "system", "list:manifests")
     clean_entities("profiles", "system", "list:profiles")
     runlists = clean_entities("runlists", "system", "list:runlists")
+
+    #clean invalid apps from runlists
     for runlist_name, runlist in runlists.items():
         for app_uuid, profile_name in runlist.items():
             try:
@@ -28,6 +36,9 @@ def maintenance(user):
         s.write(s.key("runlists", runlist_name), runlist)
 
     s.write(s.key("system", "list:runlists"), runlists.keys())
+
+    clean_hosts()
+
     return 'ok'
 
 
