@@ -287,7 +287,7 @@ def upload_repo(token):
 def upload(user):
     url = request.form.get('url')
     if url:
-        return upload_repo(user.token)
+        return upload_repo(user['token'])
 
     app = request.files.get('app')
     info = request.form.get('info')
@@ -303,7 +303,7 @@ def upload(user):
         return 'Bad encoded json', 400
 
     try:
-        uuid = upload_app(app, package_info, ref, user.token)
+        uuid = upload_app(app, package_info, ref, user['token'])
     except (KeyError, ValueError) as e:
         return str(e), 400
 
