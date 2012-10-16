@@ -14,7 +14,9 @@ from opster import command, dispatch, QuitError
 import sh
 
 
-API_SERVER = os.environ.get('COCAINE_API_SERVER', 'localhost:5000')
+API_SERVER = os.environ.get('COCAINE_API_SERVER', 'http://localhost:5000')
+if not API_SERVER.startswith('http://'):
+    API_SERVER = 'http://' + API_SERVER
 
 
 def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
@@ -27,13 +29,13 @@ def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
                                'token': token.strip()
                            },
                            files={'app': open(packed_app_path, 'rb')})
-    except Exception:
+    except Exception as e:
         if kwargs['verbose']:
             traceback.print_exc()
-        raise QuitError("Error during app upload to server.")
+        raise QuitError("Error during app upload to server %s. Reason: %s" % (API_SERVER, e))
 
     if rv.status_code != 200:
-        raise QuitError('Error during app upload to server. Reason: %s' % rv.text)
+        raise QuitError('Error during app upload to server %s. Reason: %s' % (API_SERVER, rv.text))
 
     return rv.text
 
@@ -80,7 +82,6 @@ def get_commit_info(dir, ref):
 
 
 def pack_app(curdir):
-
     packed_app_path = "/tmp/app.tar.gz"
     try:
         # problem with "*" in sh
@@ -108,7 +109,7 @@ def get_token(kwargs):
             'username': username,
             'password': password
         })
-        if rv.status_code !=200:
+        if rv.status_code != 200:
             raise QuitError(rv.text)
 
         with open(cocaine_path, 'w') as f:
