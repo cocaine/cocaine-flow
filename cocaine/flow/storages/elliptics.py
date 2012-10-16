@@ -8,13 +8,20 @@ import traceback
 
 class Elliptics(Storage):
     def __init__(self):
-        self.storage = Node(Logger("/tmp/cocainoom-elliptics.log"))
+        self.node = Node(Logger("/tmp/cocainoom-elliptics.log"))
         for host, port in settings.ELLIPTICS_NODES.iteritems():
             try:
-                self.storage.add_remote(host, port)
+                self.node.add_remote(host, port)
             except RuntimeError:
                 # already connected to the host
                 traceback.print_exc()
+
+        try:
+            from elliptics import Session
+            self.storage = Session(self.node)
+        except ImportError:
+            self.storage = self.node
+
         self.storage.add_groups(settings.ELLIPTICS_GROUPS)
 
     def key(self, key, *args):
