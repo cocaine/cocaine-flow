@@ -232,8 +232,16 @@ def upload_repo(token):
     type_ = request.form.get('type')
     ref = request.form.get('ref')
 
-    if not url or not type_:
-        return 'Empty type or url', 400
+    if not url:
+        return 'Empty url', 400
+
+    if not type_:
+        print url
+        if url.startswith('git://') or url.endswith('.git'):
+            type_ = 'git'
+        else:
+            return 'Cannot define type of repository by url. Please, specify type.', 400
+
     if type_ not in ['git', 'cvs', 'hg']:
         return 'Invalid cvs type', 400
 
