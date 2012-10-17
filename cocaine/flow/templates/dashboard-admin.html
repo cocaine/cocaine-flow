@@ -31,14 +31,13 @@
 
                                 </dt>
                                 <dd>
-                                    {% if manifest.url %}
 
+                                    {% if manifest.url %}
                                         <dl>
                                             <dt>Cloned from</dt>
                                             <dd>{{ manifest.url }}</dd>
                                         </dl>
                                     {% endif %}
-
 
                                     <dl>
                                         <dt>Developer</dt>
@@ -70,6 +69,27 @@
                                             <dd>{{ manifest.args|pprint }}</dd>
                                         </dl>
                                     {% endif %}
+
+                                    {% if manifest.changelog %}
+
+                                        <dl>
+                                            <dt>Changelog</dt>
+                                            {% for change in manifest.changelog %}
+                                                <dd>{{ change }}</dd>
+                                            {% endfor %}
+                                        </dl>
+                                    {% endif %}
+
+                                    {% if manifest.structure %}
+                                        <dl>
+                                            <dt>Structure</dt>
+                                            {% for record in manifest.structure %}
+                                                <dd>{{ record }}</dd>
+                                            {% endfor %}
+                                        </dl>
+                                    {% endif %}
+
+
                                 </dd>
                             </dl>
                         {% endfor %}

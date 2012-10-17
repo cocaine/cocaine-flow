@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import Iterable
 from copy import copy
+import re
 from yaml import YAMLError
 import hashlib
 import logging
@@ -65,7 +66,6 @@ def login():
             return render_template('login.html', error='User doesn\'t have token')
 
         session['logged_in'] = token
-        flash('You were logged in')
         return redirect(url_for('dashboard'))
 
     return render_template('login.html')
@@ -181,6 +181,7 @@ def exists(prefix, postfix):
 
 
 def validate_info(info):
+    logger.debug('Validating package info')
     package_type = info.get('type')
     if package_type not in ['python']:
         raise ValueError('%s type is not supported' % package_type)
@@ -194,6 +195,8 @@ def validate_info(info):
 
 
 def upload_app(app, info, ref, token):
+    logger.debug('Uploading application')
+
     validate_info(info)
 
     ref = ref.strip()
@@ -219,6 +222,7 @@ def upload_app(app, info, ref, token):
 
 
 def download_depends(depends, type_, path):
+    logger.debug('Downloading dependencies for %s', path)
     if type_ == 'python':
         install_path = "%s/depends" % path
         #        pip install -b /tmp  --src=/tmp --install-option="--install-lib=/home/inkvi/test" -v msgpack-python
@@ -236,7 +240,6 @@ def upload_repo(token):
         return 'Empty url', 400
 
     if not type_:
-        print url
         if url.startswith('git://') or url.endswith('.git'):
             type_ = 'git'
         else:
@@ -279,11 +282,30 @@ def upload_repo(token):
             f.write('info.yaml export-ignore')
 
         try:
+            logger.debug("Packing application to tar.gz")
             sh.git("archive", ref, "--worktree-attributes", format="tar", o="app.tar", _cwd=clone_path),
             sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
             sh.gzip("app.tar", _cwd=clone_path)
+            package_files = sh.tar('-tf', 'app.tar.gz', _cwd=clone_path)
+            package_info['structure'] = [f.strip() for f in package_files]
         except sh.ErrorReturnCode as e:
             return 'Unable to pack application. %s' % e, 503
+
+        try:
+            for line in sh.git("log", "-5", date="short", format="%h %ad %s [%an]", _cwd=clone_path):
+                line = line.strip()
+
+                # git log output is using ansi terminal codes which is messy for our purposes
+                ansisequence = re.compile(r'\x1B\[[^A-Za-z]*[A-Za-z]')
+                line = ansisequence.sub('', line)
+                line = line.strip("\x1b=\r")
+                line = line.strip("\x1b>")
+                if not line:
+                    continue
+                package_info.setdefault('changelog', []).append(line)
+        except sh.ErrorReturnCode as e:
+            return 'Unable to pack application. %s' % e, 503
+
 
         try:
             with open(clone_path + "/app.tar.gz") as app:
