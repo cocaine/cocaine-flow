@@ -7,6 +7,7 @@ from time import time
 import traceback
 import os
 import sys
+import re
 import yaml
 import json
 import requests
@@ -21,6 +22,7 @@ if not API_SERVER.startswith('http://'):
 
 def process_upload_exc(e, **kwargs):
     if kwargs['verbose']:
+        print 'Fail'
         traceback.print_exc()
     raise QuitError("Error during app upload to server %s. Reason: %s" % (API_SERVER, e))
 
@@ -45,76 +47,139 @@ def upload_url(repo_url, token, **kwargs):
 
     return rv.text
 
-def upload_packed_app(packed_app_path, package_info, ref, token, **kwargs):
-    try:
-        url = API_SERVER + '/upload'
-        rv = requests.post(url,
-                           data={
-                               'info': json.dumps(package_info),
-                               'ref': ref.strip(),
-                               'token': token.strip()
-                           },
-                           files={'app': open(packed_app_path, 'rb')})
-    except Exception as e:
-        process_upload_exc(e, **kwargs)
 
-    process_upload_res(rv)
+class CVS(object):
+    def __init__(self, src_dir, package_info, token, ref, **kwargs):
+        self.src_dir = src_dir
+        self.kwargs = kwargs
+        self.package_info = package_info
+        self.token = token.strip()
+        self.ref = ref.strip()
 
-    return rv.text
+    @classmethod
+    def create(cls, src_dir, package_info, token, ref, **kwargs):
+        src_dir = os.path.abspath(src_dir)
+        cvs = CVS.define_cvs(src_dir)
 
-
-def define_cvs(dir):
-    if os.path.exists(dir + '/.git'):
-        return 'git'
-    if os.path.exists(dir + '/.svn'):
-        return 'svn'
-    if os.path.exists(dir + '/.hg'):
-        return 'hg'
-
-    out = sh.git('rev-parse')
-    if str(out.exit_code) == '0':
-        return 'git'
-    return 'fs'
-
-
-def get_real_ref(dir, ref, cvs):
-    if cvs == 'fs':
-        return str(int(time()))
-
-    if not ref:
         if cvs == 'git':
+            cls = GIT
+        elif cvs == 'svn':
+            cls = SVN
+        else:
+            cls = FS
+
+        return cls(os.path.abspath(src_dir), package_info, token, ref, **kwargs)
+
+    def commit_info(self):
+        raise NotImplementedError
+
+    def verbose(self, msg, with_newline=True):
+        if self.kwargs['verbose']:
+            if with_newline:
+                print msg
+            else:
+                print msg,
+            sys.stdout.flush()
+
+    def pack_app(self):
+        self.verbose("Packing application from %s..." % self.src_dir, False)
+
+        packed_app_path = "/tmp/app.tar.gz"
+        try:
+            # problem with "*" in sh
+            # sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
+            cmd = "tar -czf %s -C %s ." % (packed_app_path, self.src_dir)
+            subprocess.call(cmd, shell=True)
+        except sh.ErrorReturnCode as e:
+            raise QuitError('Cannot pack application. %s' % str(e))
+
+        self.verbose("Done")
+        return packed_app_path
+
+
+    def upload_app(self):
+        packed_app_path = self.pack_app()
+
+        try:
+            url = API_SERVER + '/upload'
+            self.verbose('Uploading application to server %s ...' % url, False)
+            rv = requests.post(url,
+                               data={
+                                   'info': json.dumps(self.package_info),
+                                   'ref': self.commit_info().strip(),
+                                   'token': self.token
+                               },
+                               files={'app': open(packed_app_path, 'rb')})
+        except Exception as e:
+            process_upload_exc(e, **self.kwargs)
+
+        process_upload_res(rv)
+
+        self.verbose('Done')
+
+        self.clean(packed_app_path)
+
+        print rv.text
+
+
+    @staticmethod
+    def define_cvs(dir):
+        if os.path.exists(dir + '/.git'):
+            return 'git'
+        if os.path.exists(dir + '/.svn'):
+            return 'svn'
+        if os.path.exists(dir + '/.hg'):
+            return 'hg'
+
+        out = sh.git('rev-parse')
+        if out.exit_code == 0:
+            return 'git'
+        return 'fs'
+
+    def clean(self, path):
+        self.verbose('Cleaning...', False)
+        sh.rm("-f", path)
+        self.verbose('Done')
+
+
+class SVN(CVS):
+    def commit_info(self):
+        if not self.ref:
             try:
-                return sh.git("rev-parse", "HEAD", _cwd=dir)
+                svn_info = sh.svn("info", _cwd=self.src_dir)
+                return re.findall(r'Revision: (\d+)', str(svn_info))[0]
             except sh.ErrorReturnCode as e:
                 raise QuitError(e.stderr)
-        else:
-            raise QuitError("Unsupported operation with cvs=`%s`" % cvs)
+            except IndexError:
+                raise QuitError('Unable to determine revision')
 
-    if cvs == 'git':
         try:
-            return sh.git("rev-parse", "--short", ref, _cwd=dir)
+            svn_log = sh.svn("log", r=self.ref, _cwd=self.src_dir)
+            if svn_log.exit_code == 1:
+                raise QuitError('Unknown revision %s', self.ref)
         except sh.ErrorReturnCode as e:
             raise QuitError(e.stderr)
 
-    return ref
+        return self.ref
 
 
-def get_commit_info(dir, ref):
-    cvs = define_cvs(dir)
-    return get_real_ref(dir, ref, cvs)
+class GIT(CVS):
+    def commit_info(self):
+        if not self.ref:
+            try:
+                return sh.git("rev-parse", "HEAD", _cwd=self.src_dir)
+            except sh.ErrorReturnCode as e:
+                raise QuitError(e.stderr)
+
+        try:
+            return sh.git("rev-parse", "--short", self.ref, _cwd=self.src_dir)
+        except sh.ErrorReturnCode as e:
+            raise QuitError(e.stderr)
 
 
-def pack_app(curdir):
-    packed_app_path = "/tmp/app.tar.gz"
-    try:
-        # problem with "*" in sh
-        # sh.tar("-czf", packed_app_path, "*", "-C", os.path.dirname(curdir))
-        cmd = "tar -czf %s -C %s ." % (packed_app_path, curdir)
-        subprocess.call(cmd, shell=True)
-    except sh.ErrorReturnCode as e:
-        raise QuitError('Cannot pack application. %s' % str(e))
-
-    return packed_app_path
+class FS(CVS):
+    def commit_info(self):
+        return str(int(time()))
 
 
 def get_token(kwargs):
@@ -165,33 +230,8 @@ def upload(src_dir=('d', '.', 'source directory of application'),
     except YAMLError as e:
         raise QuitError('Bad format of info.yaml')
 
-    src_dir = os.path.abspath(src_dir)
-    real_ref = get_commit_info(src_dir, ref)
-
-    if kwargs['verbose']:
-        print "Packing application from %s..." % src_dir,
-        sys.stdout.flush()
-
-    packed_app_path = pack_app(src_dir)
-
-    if kwargs['verbose']:
-        print 'Done'
-        print 'Uploading application to server...',
-        sys.stdout.flush()
-
-    server_response = upload_packed_app(packed_app_path, package_info, real_ref, token, **kwargs)
-
-    if kwargs['verbose']:
-        print 'Done'
-        print "Cleaning...",
-        sys.stdout.flush()
-
-    sh.rm("-f", packed_app_path)
-
-    if kwargs['verbose']:
-        print 'Done'
-
-    print server_response
+    cvs = CVS.create(src_dir, package_info, token, ref, **kwargs)
+    cvs.upload_app()
 
 
 @command(shortlist=True)
