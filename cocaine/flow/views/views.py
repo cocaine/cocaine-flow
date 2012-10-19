@@ -336,7 +336,7 @@ def upload(user):
 
     try:
         package_info = json.loads(info)
-    except Exception as e:
+    except Exception:
         logger.exception('Bad encoded json in info parameter')
         return 'Bad encoded json', 400
 

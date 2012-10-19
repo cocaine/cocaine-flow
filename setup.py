@@ -15,7 +15,7 @@ setup(
     author_email="alex@inkvi.com",
     license="BSD 2-Clause",
     platforms=["Linux", "BSD", "MacOS"],
-    packages=["cocaine.flow", 'cocaine.flow.storages', 'flask_pymongo'],
+    packages=["cocaine","cocaine.flow", 'cocaine.flow.storages', 'cocaine.flow.views', 'flask_pymongo'],
     package_data={'cocaine.flow': ['templates/*', 'static/style.css', 'static/bootstrap/css/*', 'static/bootstrap/js/*',
                                    'static/bootstrap/img/*']},
     scripts=['cocaine/flow/cocaine-flow'],
