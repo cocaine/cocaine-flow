@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
-import settings
 from werkzeug.local import LocalProxy
 from .elliptics import Elliptics
 from flask import current_app

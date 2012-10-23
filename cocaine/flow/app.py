@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import logging
+import socket
 from flask import Flask
 from flask.ext.pymongo import PyMongo
 from pymongo.errors import DuplicateKeyError
@@ -83,4 +84,4 @@ if __name__ == '__main__':
     import api_settings as settings
 
     app = create_app()
-    app.run(debug=True, host=settings.HOSTNAME, port=settings.PORT)
+    app.run(debug=True, host=getattr(settings, 'HOSTNAME', socket.gethostname()), port=settings.PORT)
