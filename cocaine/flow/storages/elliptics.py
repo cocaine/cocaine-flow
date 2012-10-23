@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from flask import current_app
 from .storage import Storage
 from elliptics import Logger, Node
-import api_settings as settings
 import traceback
 
 
 class Elliptics(Storage):
-    def __init__(self):
+    def __init__(self, nodes, groups):
         self.node = Node(Logger("/tmp/cocainoom-elliptics.log"))
-        for host, port in settings.ELLIPTICS_NODES.iteritems():
+        for host, port in nodes.iteritems():
             try:
                 self.node.add_remote(host, port)
             except RuntimeError:
@@ -22,7 +22,7 @@ class Elliptics(Storage):
         except ImportError:
             self.storage = self.node
 
-        self.storage.add_groups(settings.ELLIPTICS_GROUPS)
+        self.storage.add_groups(groups)
 
     def key(self, key, *args):
         prefix = key

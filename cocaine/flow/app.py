@@ -2,11 +2,10 @@
 import logging
 import socket
 from flask import Flask
+import yaml
 from flask.ext.pymongo import PyMongo
-from pymongo.errors import DuplicateKeyError
-from storages import init_storage, storage
+from storages import init_storage
 import views
-import api_settings as settings
 
 try:
     from collections import Mapping as MappingType
@@ -21,7 +20,8 @@ def test_mapping(value):
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_pyfile('api_settings.py')
+    with open('/etc/cocaine-flow/settings.yml') as f:
+        app.config.update(**yaml.load(f))
 
     app.add_url_rule('/', view_func=views.home)
     app.add_url_rule('/register', view_func=views.register, methods=['GET', 'POST'])
@@ -60,28 +60,6 @@ def create_app():
     return app
 
 
-def install(username, password):
-    app = create_app()
-    with app.test_request_context():
-        try:
-            views.create_user(username, password, admin=True)
-        except DuplicateKeyError:
-            print 'Username is busy'
-            return False
-
-        try:
-            storage.read(storage.key('system', 'list:runlists'))
-        except RuntimeError:
-            try:
-                storage.write(storage.key('system', 'list:runlists'), ['default'])
-            except RuntimeError:
-                print 'Storage failure'
-                return False
-    return True
-
-
 if __name__ == '__main__':
-    import api_settings as settings
-
     app = create_app()
-    app.run(debug=True, host=getattr(settings, 'HOSTNAME', socket.gethostname()), port=settings.PORT)
+    app.run(debug=True, host=app.config.get('HOSTNAME', socket.gethostname()), port=app.config['PORT'])

@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import hashlib
+import os
 import sys
 import getpass
 from uuid import uuid4
 
 import pymongo
+import yaml
 from elliptics import Logger, Node
 
 
@@ -54,13 +56,31 @@ def key(prefix, postfix):
 
 
 def main():
+    etc_dir = '/etc/cocaine-flow'
+    if not os.path.exists(etc_dir):
+        try:
+            os.mkdir(etc_dir)
+        except OSError as e:
+            print 'Unable to create dir %s. %s' % (etc_dir, e)
+            sys.exit(1)
+
+    settings_path = etc_dir + '/settings.yml'
+
+    if not os.path.exists(settings_path) and not os.access(etc_dir, os.W_OK):
+        print 'Write access to %s is required' % etc_dir
+        sys.exit(1)
+
+    if os.path.exists(settings_path) and not os.access(settings_path, os.W_OK):
+        print 'Write access to %s is required' % settings_path
+        sys.exit(1)
+
     username = ask('Username', default="admin")
     password = ask('Password', hidden=True, default='password')
 
     while True:
         mongo_hostname = ask('Mongo hostname', default='localhost')
         mongo_port = ask('Mongo port', default=27017)
-        mongo_dbname = ask('Mongo db name', default='app')
+        mongo_dbname = ask('Mongo db name', default='cocaine-flow')
         mongo_replica_set = ask('Mongo replica set', empty=True)
 
         kw = {}
@@ -92,20 +112,20 @@ def main():
 
         if len(node_split) == 1:
             host = node_split[0]
-            port = 1025
+            elliptics_port = 1025
         elif len(node_split) == 2:
             host = node_split[0]
-            port = node_split[1]
+            elliptics_port = node_split[1]
         elif len(node_split) == 3:
             host = node_split[0]
-            port = node_split[1]
+            elliptics_port = node_split[1]
         else:
             print 'Unable to recognize elliptics node!'
             continue
 
         try:
             node = Node(Logger("/tmp/cocainoom-elliptics.log"))
-            node.add_remote(host, int(port))
+            node.add_remote(host, int(elliptics_port))
         except RuntimeError:
             print "Wrong elliptics connection settings!"
             continue
@@ -117,7 +137,8 @@ def main():
         except ImportError:
             storage = node
 
-        storage.add_groups(map(int, groups.split(',')))
+        groups = map(int, groups.split(','))
+        storage.add_groups(groups)
 
         try:
             storage.read(key('system', 'list:runlists'))
@@ -130,6 +151,32 @@ def main():
 
         break
 
+    port = ask("Port", default=5000)
+
+    if os.path.exists(settings_path):
+        with open(settings_path, 'r') as f:
+            settings = yaml.load(f)
+    else:
+        settings = {}
+
+    settings['PORT'] = port
+    settings['SECRET_KEY'] = str(uuid4())
+    settings['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    settings['UPLOAD_FOLDER'] = '/tmp'
+    settings['ALLOWED_EXTENSIONS'] = ['.gz']
+    settings['MONGO_HOST'] = mongo_hostname
+    settings['MONGO_PORT'] = mongo_port
+    settings['MONGO_DBNAME'] = mongo_dbname
+    if mongo_replica_set:
+        settings['MONGO_REPLICA_SET'] = mongo_replica_set
+    settings['STORAGE'] = 'elliptics'
+    settings['ELLIPTICS_NODES'] = {
+        host: elliptics_port
+    }
+    settings['ELLIPTICS_GROUPS'] = groups
+
+    with open(settings_path, 'w') as f:
+        yaml.dump(settings, f)
     sys.exit(0)
 
 

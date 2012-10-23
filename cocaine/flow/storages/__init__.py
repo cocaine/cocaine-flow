@@ -5,9 +5,9 @@ from .elliptics import Elliptics
 from flask import current_app
 
 
-def connect_to_database(storage):
-    if storage == 'elliptics':
-        return Elliptics()
+def connect_to_database(app):
+    if app.config['STORAGE'] == 'elliptics':
+        return Elliptics(app.config['ELLIPTICS_NODES'], app.config['ELLIPTICS_GROUPS'])
     raise ValueError('Unsupported type of storage')
 
 
@@ -16,7 +16,7 @@ def get_storage():
 
 
 def init_storage(app):
-    app.storage = connect_to_database(app.config['STORAGE'])
+    app.storage = connect_to_database(app)
 
 
 storage = LocalProxy(get_storage)
