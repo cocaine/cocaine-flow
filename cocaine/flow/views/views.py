@@ -7,7 +7,7 @@ import hashlib
 import logging
 import os
 from uuid import uuid4
-from flask import request, render_template, session, flash, redirect, url_for, current_app, json
+from flask import request, render_template, session, flash, redirect, url_for, current_app, json, jsonify
 from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
@@ -160,6 +160,14 @@ def start_app(uuid, profile):
 def stop_app(uuid):
     res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, read_hosts())
     return process_json_rpc_response(res, uuid)
+
+
+def get_profiles():
+    profiles = storage.read(storage.key('system', 'list:profiles'))
+    view = request.values.get('view')
+    if view == 'dict':
+        return jsonify(dict([(profile, profile) for profile in profiles]))
+    return json.dumps(profiles)
 
 
 @token_required

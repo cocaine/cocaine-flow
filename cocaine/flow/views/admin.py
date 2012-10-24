@@ -15,8 +15,8 @@ def clean_hosts():
 @token_required(admin=True)
 def maintenance(user):
     s = storage
-    clean_entities("manifests", "system", "list:manifests")
-    clean_entities("profiles", "system", "list:profiles")
+    manifests =  clean_entities("manifests", "system", "list:manifests")
+    profiles = clean_entities("profiles", "system", "list:profiles")
     runlists = clean_entities("runlists", "system", "list:runlists")
 
     #clean invalid apps from runlists
