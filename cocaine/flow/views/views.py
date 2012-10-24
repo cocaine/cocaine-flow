@@ -360,6 +360,8 @@ def upload(user):
 def deploy(runlist, uuid, profile, user):
     s = storage
 
+    is_undeploy = (request.endpoint == 'undeploy')
+
     #read manifest
     manifest_key = s.key('manifests', uuid)
     try:
@@ -381,7 +383,7 @@ def deploy(runlist, uuid, profile, user):
         return 'No hosts are available', 400
 
     post_body = request.stream.read()
-    if post_body:
+    if post_body and not is_undeploy:
         s.write(s.key('profiles', profile), json.loads(post_body))
         list_add("system", "list:profiles", profile)
     else:
@@ -391,16 +393,28 @@ def deploy(runlist, uuid, profile, user):
             return 'Profile name is not valid'
 
     # update runlists
-    runlist_dict[uuid] = profile
+    if is_undeploy:
+        del runlist_dict[uuid]
+    else:
+        runlist_dict[uuid] = profile
+
     logger.info('Writing runlist %s', runlist_key)
     s.write(runlist_key, runlist_dict)
 
     #manifest update
-    manifest['runlist'] = runlist
+    if is_undeploy:
+        del manifest['runlist']
+    else:
+        manifest['runlist'] = runlist
+
     s.write(manifest_key, manifest)
 
     list_add("system", "list:runlists", runlist)
-    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *hosts.values())
+    if is_undeploy:
+        res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': {uuid: profile}}, *hosts.values())
+    else:
+        res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *hosts.values())
+
     for host, host_res in res.items():
         for app_uuid, res in host_res.items():
             if 'error' in res:
@@ -417,7 +431,7 @@ def delete_app(app_name):
     runlist = storage.read(s.key('manifests', app_name)).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
     if runlist is not None:
-        logger.warning('Trying to delete deployed app')
+        logger.warning('Trying to delete deployed app - rejected')
         return 'error', 400
 
     list_remove("system", "list:manifests", app_name)

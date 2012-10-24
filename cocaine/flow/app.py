@@ -38,6 +38,8 @@ def create_app():
     app.add_url_rule('/upload', endpoint="upload", view_func=views.upload, methods=['GET', 'POST'])
     app.add_url_rule('/deploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="deploy",
                      view_func=views.deploy, methods=['POST'])
+    app.add_url_rule('/undeploy/<string:runlist>/<string:uuid>/<string:profile>', endpoint="undeploy",
+                     view_func=views.deploy, methods=['POST'])
     app.add_url_rule('/hosts/', view_func=views.get_hosts, methods=['GET'])
     app.add_url_rule('/hosts/<string:alias>/<string:host>', endpoint="create_host", view_func=views.create_host, methods=['POST', 'PUT'])
     app.add_url_rule('/hosts/<string:host>', view_func=views.delete_host, methods=['DELETE'])

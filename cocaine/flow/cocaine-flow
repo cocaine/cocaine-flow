@@ -237,6 +237,7 @@ def upload(src_dir=('d', '.', 'source directory of application'),
 @command(shortlist=True)
 def deploy(runlist, app_uuid, profile_name,
            profile_path=('f', '', 'path to profile file'),
+           undeploy=('u', False, 'undeploy'),
            *args, **kwargs):
     token = get_token(kwargs)
 
@@ -250,7 +251,12 @@ def deploy(runlist, app_uuid, profile_name,
         except YAMLError as e:
             raise QuitError('Bad format of profile yaml')
 
-    url = API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+
+    if undeploy:
+        url = API_SERVER + '/undeploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+    else:
+        url = API_SERVER + '/deploy/%s/%s/%s' % (runlist, app_uuid, profile_name)
+
     if profile_path:
         rv = requests.post(url, data={
             'info': json.dumps(profile_info),
