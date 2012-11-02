@@ -275,6 +275,37 @@ def deploy(runlist, app_uuid, profile_name,
     print 'Done!'
 
 
+@command(shortlist=True)
+def convert(info_path=('i','info.yaml', 'path to info.yaml'),
+            manifest_path=('m', 'manifest.json', 'path to manifest.json'),
+            source=('s', 'manifest', 'source to convert: manifest or info'),
+            *args, **kwargs):
+    if source not in ('manifest', 'info'):
+        raise QuitError('Unrecognized source "{0}"'.format(source))
+
+    manifest_path = os.path.abspath(manifest_path)
+    info_path = os.path.abspath(info_path)
+
+    if source == 'manifest' and not os.path.exists(manifest_path):
+        raise QuitError("Invalid path to manifest file")
+    elif source == 'info' and not os.path.exists(info_path):
+        raise QuitError("Invalid path to info file")
+
+    if source == 'manifest':
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+            manifest.pop('engine', None)
+            with open(info_path, 'w') as f2:
+                yaml.dump(manifest, f2)
+    else:
+        with open(info_path, 'r') as f:
+            info = yaml.load(f)
+            with open(manifest_path, 'w') as f2:
+                json.dump(info, f2)
+
+    print 'Done!'
+
+
 options = [('v', 'verbose', False, 'enable additional output'),
            ('q', 'quiet', False, 'suppress output'),
            ('t', 'token', '', 'token to use')]
