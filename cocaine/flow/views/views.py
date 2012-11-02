@@ -207,8 +207,13 @@ def upload_app(app, info, ref, token):
 
     validate_info(info)
 
-    ref = ref.strip()
-    info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
+    app_name = request.values.get('name')
+    if app_name:
+        info['uuid'] = app_name.strip()
+    else:
+        ref = ref.strip()
+        info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
+
     info['developer'] = token
 
     s = storage
@@ -367,7 +372,7 @@ def deploy(runlist, uuid, profile, user):
     try:
         manifest = s.read(manifest_key)
     except RuntimeError:
-        return 'Manifest for app doesn\'t exists', 400
+        return 'Manifest for app %s doesn\'t exists' % uuid, 400
 
 
     # read runlists
@@ -394,6 +399,8 @@ def deploy(runlist, uuid, profile, user):
 
     # update runlists
     if is_undeploy:
+        if uuid not in runlist_dict:
+            return '%s app is not deployed' % uuid, 400
         del runlist_dict[uuid]
     else:
         runlist_dict[uuid] = profile
@@ -411,11 +418,15 @@ def deploy(runlist, uuid, profile, user):
 
     list_add("system", "list:runlists", runlist)
     if is_undeploy:
-        res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': {uuid: profile}}, *hosts.values())
+        res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, *hosts.values())
     else:
         res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *hosts.values())
 
+
+    logger.debug("JSON RPC Response: %s" % res)
     for host, host_res in res.items():
+        if not host_res:
+            return 'Cocaine RPC on %s didn\'t process call' % host, 500
         for app_uuid, res in host_res.items():
             if 'error' in res:
                 return "%s - %s" % (app_uuid, res['error']), 500

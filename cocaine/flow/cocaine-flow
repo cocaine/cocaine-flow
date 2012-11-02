@@ -97,7 +97,7 @@ class CVS(object):
         return packed_app_path
 
 
-    def upload_app(self):
+    def upload_app(self, app_name):
         packed_app_path = self.pack_app()
 
         try:
@@ -107,7 +107,8 @@ class CVS(object):
                                data={
                                    'info': json.dumps(self.package_info),
                                    'ref': self.commit_info().strip(),
-                                   'token': self.token
+                                   'token': self.token,
+                                   'name': app_name
                                },
                                files={'app': open(packed_app_path, 'rb')})
         except Exception as e:
@@ -215,6 +216,7 @@ def upload(src_dir=('d', '.', 'source directory of application'),
            info_dir=('i', '.', 'directory of info file'),
            repo_url=('u', '', 'repository url'),
            ref=('r', '', 'branch/tag/revision to use'),
+           app_name=('n', '', 'app name to use'),
            *args, **kwargs):
     '''Upload code to cocaine cloud'''
     token = get_token(kwargs)
@@ -231,7 +233,7 @@ def upload(src_dir=('d', '.', 'source directory of application'),
         raise QuitError('Bad format of info.yaml')
 
     cvs = CVS.create(src_dir, package_info, token, ref, **kwargs)
-    cvs.upload_app()
+    cvs.upload_app(app_name)
 
 
 @command(shortlist=True)
