@@ -23,6 +23,11 @@
 
                                     {% if user.admin %}
                                         <span class="pull-right">
+                                            <button type="button" class="btn btn-mini deploy"
+                                                    data-uuid="{{ manifest.uuid }}">
+                                                Deploy
+                                            </button>
+
                                         <button type="button" class="btn btn-danger btn-mini remove"
                                                 data-id="{{ manifest.uuid }}">Remove
                                         </button>
@@ -107,7 +112,7 @@
     <h3>Runlists
         <small>({{ runlists|length }})</small>
     </h3>
-    <table class="table table-bordered">
+    <table class="table table-bordered runlists">
         <thead>
         <tr>
             <th>Name</th>
@@ -119,13 +124,15 @@
             <tr>
                 <td>{{ runlist_name }}</td>
                 <td>
-                    <ul class="unstyled">
-                        {% for app_name, profile_name in runlist.items() %}
-                            <li>{{ app_name }} -
-                                <span class="edit select">{{ profile_name }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
+                    {% for app_name, profile_name in runlist.items() %}
+                        <div class="clearfix runlist">
+                                <span class="pull-left">
+                                    {{ app_name }} - <span class="edit select">{{ profile_name }}</span>
+                                </span>
+                            <a class="pull-right undeploy"
+                               data-url="{{ runlist_name }}/{{ app_name }}/{{ profile_name }}">Undeploy</a>
+                        </div>
+                    {% endfor %}
                 </td>
             </tr>
         {% endfor %}
@@ -183,67 +190,140 @@
 {% endif %}
 
 
-<div class="modal hide" id="removeApp" tabindex="-1" role="dialog" aria-labelledby="removeAppLabel">
-    <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-        <h3 id="removeAppLabel">Remove application</h3>
-    </div>
-    <div class="modal-body">
-        <p>Are you sure?</p>
-    </div>
-    <div class="modal-footer">
-        <button class="btn" data-dismiss="modal" aria-hidden="true">No</button>
-        <button class="btn btn-primary btn-danger">Yes</button>
-    </div>
-</div>
-
-
-
-
 {% if user.admin %}
     {% block js %}
         <script type="text/javascript" src="https://raw.github.com/makeusabrew/bootbox/v2.4.2/bootbox.min.js"></script>
 
         <script type="text/javascript">
-            $(document).ready(function () {
-                $('.remove').click(function () {
-                    var app_id = $(this).attr('data-id');
-                    var btn = $(this);
-                    bootbox.confirm("Are you sure?", "No", "Yes", function (result) {
-                        if (result) {
-                            $.ajax({
-                                       url:'/app/' + app_id,
-                                       type:"DELETE",
-                                       success:function (data, textStatus, jqXHR) {
-                                           btn.parents('dl').remove();
-                                       }
-                                   });
+            $(document).ready(function ()
+                              {
+                                  $('.remove').click(
+                                          function ()
+                                          {
+                                              var app_id = $(this).attr('data-id');
+                                              var btn = $(this);
+                                              bootbox.confirm("Are you sure?", "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                                      $.ajax({
+                                                                 url:'/app/' + app_id,
+                                                                 type:"DELETE",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                     btn.parents('dl').remove();
+                                                                 }
+                                                             });
 
-                        }
-                    });
-                });
+                                                  }
+                                              });
+                                          });
+
+                                  function create_select(entities, title)
+                                  {
+                                      var s = "<select name='" + title + "'><option disabled selected>" + title + "</options>";
+                                      for (var index in entities)
+                                      {
+                                          s += "<option value='" + entities[index] + "'>" + entities[index] + "</option>";
+                                      }
+                                      s += "</select>";
+                                      console.log(s);
+                                      return s;
+                                  }
+
+                                  $('.deploy').click(
+                                          function ()
+                                          {
+                                              var uuid = $(this).attr('data-uuid');
+                                              var btn = $(this);
+                                              var str = $("<span>Loading...</span>");
+                                              $.getJSON('/runlists', function (runlists)
+                                              {
+                                                  $.getJSON('/profiles', function (profiles)
+                                                  {
+                                                      str.html(create_select(runlists, "Runlist") + create_select(profiles, "Profile"));
+                                                  });
+                                              });
+
+                                              bootbox.confirm(str, "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                                      var runlist = $("select[name=Runlist]", str).val();
+                                                      var profile = $("select[name=Profile]", str).val();
+                                                      console.log(runlist);
+                                                      console.log(profile);
+                                                      $.ajax({
+                                                                 url:'/deploy/' + runlist + '/' + uuid + '/' + profile,
+                                                                 type:"POST",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                     bootbox.alert("Application is deployed");
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                     bootbox.alert(jqXHR.responseText, function(){
+                                                                         location.reload(true);
+                                                                     });
+                                                                 }
+                                                             });
+
+                                                  }
+                                              });
+                                          });
 
 
-                $('.edit.text').editable('/dashboard/edit', {
-                    style:'display: inline',
-                    tooltip:'Click to edit...'
-                });
+                                  $('.undeploy').click(
+                                          function ()
+                                          {
+                                              var url = $(this).attr('data-url');
+                                              var btn = $(this);
+                                              bootbox.confirm("Are you sure?", "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                                      $.ajax({
+                                                                 url:'/undeploy/' + url,
+                                                                 type:"POST",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                     btn.parents('div.runlist').remove();
+                                                                     bootbox.alert("Application is undeployed");
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                     bootbox.alert(jqXHR.responseText, function(){
+                                                                         location.reload(true);
+                                                                     });
+                                                                 }
+                                                             });
 
-                $('.edit.select').editable('/dashboard/edit', {
-                    style:'display: inline',
-                    loadurl:'/profiles',
-                    type:'select',
-                    cssclass:'form-horizontal',
-                    loaddata:{view:'dict'},
-                    callback:function (value, settings) {
-                        console.log(this);
-                        console.log(value);
-                        console.log(settings);
-                    }
-                });
+                                                  }
+                                              });
+                                          });
 
 
-            });
+                                  $('.edit.text').editable('/dashboard/edit', {
+                                      style:'display: inline',
+                                      tooltip:'Click to edit...'
+                                  });
+
+                                  $('.edit.select').editable('/dashboard/edit', {
+                                      style:'display: inline',
+                                      loadurl:'/profiles',
+                                      type:'select',
+                                      cssclass:'form-horizontal',
+                                      loaddata:{view:'dict'},
+                                      callback:function (value, settings)
+                                      {
+                                          console.log(this);
+                                          console.log(value);
+                                          console.log(settings);
+                                      }
+                                  });
+
+
+                              });
 
 
         </script>

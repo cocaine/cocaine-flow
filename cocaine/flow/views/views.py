@@ -395,7 +395,7 @@ def deploy(runlist, uuid, profile, user):
         try:
             s.read(s.key('profiles', profile))
         except RuntimeError:
-            return 'Profile name is not valid'
+            return 'Profile name is not valid', 400
 
     # update runlists
     if is_undeploy:
@@ -495,6 +495,13 @@ def get_token():
     if token is None:
         return 'Token is not set for user', 400
     return str(token)
+
+
+def get_runlists():
+    try:
+        return json.dumps(storage.read(storage.key("system", "list:runlists")))
+    except RuntimeError:
+        return json.dumps([])
 
 
 def error_handler(exc):
