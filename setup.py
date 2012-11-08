@@ -7,7 +7,7 @@ except ImportError:
 
 setup(
     name="cocaine-flow",
-    version="0.10.0",
+    version="0.10.1",
     description="Cocaine Flow",
     long_description="Cocaine Management Tools",
     url="https://github.com/cocaine/cocaine-flow",

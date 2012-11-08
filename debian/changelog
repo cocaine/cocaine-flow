@@ -1,3 +1,9 @@
+cocaine-flow (0.10.1) lucid; urgency=low
+
+  * Bump version for new features,
+
+ -- Alexander Eliseev <inkvi@yandex-team.ru>  Thu, 08 Nov 2012 14:04:32 +0400
+
 cocaine-flow (0.10.0) lucid; urgency=low
 
   * Initial release.
