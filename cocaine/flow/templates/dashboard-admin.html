@@ -129,8 +129,8 @@
                                 <span class="pull-left">
                                     {{ app_name }} - <span class="edit select">{{ profile_name }}</span>
                                 </span>
-                            <a class="pull-right undeploy"
-                               data-url="{{ runlist_name }}/{{ app_name }}/{{ profile_name }}">Undeploy</a>
+                            <button type="button" class="pull-right undeploy btn btn-danger btn-mini"
+                               data-url="{{ runlist_name }}/{{ app_name }}/{{ profile_name }}">Undeploy</button>
                         </div>
                     {% endfor %}
                 </td>
@@ -158,9 +158,9 @@
                 <td>{{ profile_name }}</td>
                 <td>
                     <ul class="unstyled">
-                        {% for option, value in profile.items() %}
+                        {% for option, value in profile|dictsort %}
                             <li>
-                                {{ option }} - <span class="edit text"
+                                {{ option }} - <span class="edit text-info"
                                                      id="profile:{{ profile_name }}:{{ option }}:{{ value }}">{{ value }}</span>
                             </li>
                         {% endfor %}
@@ -221,7 +221,13 @@
 
                                   function create_select(entities, title)
                                   {
-                                      var s = "<select name='" + title + "'><option disabled selected>" + title + "</options>";
+                                      var s = "<div class='control-group'>" +
+                                                "<label class='control-label'>" + title +
+                                                ":</label>" +
+                                                "<div class='controls'>" +
+                                                    "<select class='span2' name='" + title + "'>" +
+                                                "</div>" +
+                                              "</div>";
                                       for (var index in entities)
                                       {
                                           s += "<option value='" + entities[index] + "'>" + entities[index] + "</option>";
@@ -303,7 +309,7 @@
                                           });
 
 
-                                  $('.edit.text').editable('/dashboard/edit', {
+                                  $('.edit.text-info').editable('/dashboard/edit', {
                                       style:'display: inline',
                                       tooltip:'Click to edit...'
                                   });
