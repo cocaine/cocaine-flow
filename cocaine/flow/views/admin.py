@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import render_template, current_app, request
+from flask import render_template, request
 from flask.helpers import json
 from cocaine.flow.storages import storage
 from views import token_required, clean_entities, logged_in
