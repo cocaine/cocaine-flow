@@ -2,6 +2,7 @@
 from time import time, sleep
 from flask import request, current_app, flash, redirect, session, url_for
 import zmq
+from storages import storage
 
 
 def token_required(admin=False):
@@ -12,7 +13,7 @@ def token_required(admin=False):
             if not token:
                 return 'Token is required', 403
 
-            user = current_app.mongo.db.users.find_one({'token': token})
+            user = storage.find_user_by_token(token)
             if user is None:
                 return 'Valid token is required', 403
 
@@ -55,7 +56,7 @@ def logged_in(func):
         if not token:
             return redirect(url_for('login'))
 
-        user = current_app.mongo.db.users.find_one({'token': session['logged_in']})
+        user = storage.find_user_by_token(session['logged_in'])
         if user is None:
             session.pop('logged_in', None)
             return redirect(url_for('login'))

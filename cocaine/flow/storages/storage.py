@@ -31,3 +31,49 @@ class Storage(object):
 
     def key(self, prefix, postfix):
         raise NotImplemented
+
+    def create_user(self, username, hashed_password, admin, token):
+        raise NotImplementedError
+
+    def find_user_by_token(self, token):
+        raise NotImplementedError
+
+    def find_user_by_username(self, username):
+        raise NotImplementedError
+
+    def read_manifest(self, uuid):
+        raise NotImplementedError
+
+    def read_manifests(self):
+        raise NotImplementedError
+
+    def read_runlists(self):
+        raise NotImplementedError
+
+    def read_runlist(self, runlist_name, default=None):
+        raise NotImplementedError
+
+    def read_profile(self, profile_name, default=None):
+        raise NotImplementedError
+
+    def read_profiles(self):
+        raise NotImplementedError
+
+    def read_hosts(self):
+        raise NotImplementedError
+
+    def write_profile(self, profile_name, profile):
+        raise NotImplementedError
+
+    def clean_manifests(self):
+        pass
+
+    def clean_runlists(self):
+        pass
+
+    def clean_profiles(self):
+        pass
+
+    def clean_hosts(self):
+        pass
+

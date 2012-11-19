@@ -1,6 +1,6 @@
-{% if manifests %}
+{% if grouped_manifests %}
     <h3>Manifests
-        <small>({{ manifests|length }})</small>
+        <small>({{ grouped_manifests|length }})</small>
     </h3>
     <table class="table table-bordered">
         {% for app_name, common_manifest_dict in grouped_manifests.items() %}
