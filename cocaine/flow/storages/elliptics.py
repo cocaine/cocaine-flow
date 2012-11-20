@@ -18,7 +18,7 @@ class Elliptics(Storage):
         self.node = Node(Logger("/tmp/cocainoom-elliptics.log"))
         for host, port in nodes.iteritems():
             try:
-                self.node.add_remote(host, port)
+                self.node.add_remote(host, int(port))
             except RuntimeError:
                 # already connected to the host
                 traceback.print_exc()

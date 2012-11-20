@@ -68,4 +68,4 @@ if __name__ == '__main__':
     else:
         app = create_app()
 
-    app.run(debug=True, host=app.config.get('HOSTNAME', socket.gethostname()), port=app.config['PORT'])
+    app.run(debug=True, host=app.config.get('HOSTNAME', socket.gethostname()), port=int(app.config['PORT']))

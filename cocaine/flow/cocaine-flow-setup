@@ -194,12 +194,14 @@ def main():
         try:
             session.read(key('system', 'list:runlists'))
             session.read(key('system', 'list:manifests'))
+            session.read(key('system', 'list:profiles'))
             session.read(key('runlists', 'default'))
         except RuntimeError:
             try:
                 session.write(key('system', 'list:runlists'), msgpack.packb(['default']))
                 session.write(key('runlists', 'default'), msgpack.packb({}))
                 session.write(key('system', 'list:manifests'), msgpack.packb([]))
+                session.write(key('system', 'list:profiles'), msgpack.packb([]))
             except RuntimeError:
                 print "Wrong elliptics connection settings!"
                 continue
