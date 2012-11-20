@@ -2,6 +2,7 @@
 import logging
 import socket
 from flask import Flask
+import sys
 import yaml
 from storages import init_storage
 import views
@@ -17,9 +18,9 @@ def test_mapping(value):
     return isinstance(value, MappingType)
 
 
-def create_app():
+def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app = Flask(__name__)
-    with open('/etc/cocaine-flow/settings.yml') as f:
+    with open(settings_path) as f:
         app.config.update(**yaml.load(f))
 
     app.add_url_rule('/', view_func=views.home)
@@ -62,5 +63,9 @@ def create_app():
 
 
 if __name__ == '__main__':
-    app = create_app()
+    if len(sys.argv) == 2:
+        app = create_app(sys.argv[1])
+    else:
+        app = create_app()
+
     app.run(debug=True, host=app.config.get('HOSTNAME', socket.gethostname()), port=app.config['PORT'])
