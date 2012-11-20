@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from werkzeug.local import LocalProxy
-from .elliptics import Elliptics
 from flask import current_app
-from storages.mongo import Mongo
 
 
 def connect_to_database(app):
     if app.config['STORAGE'] == 'elliptics':
+        from .elliptics import Elliptics
         return Elliptics(app.config['ELLIPTICS_NODES'], app.config['ELLIPTICS_GROUPS'])
     elif app.config['STORAGE'] == 'mongo':
+        from .mongo import Mongo
         return Mongo(app)
     raise ValueError('Unsupported type of storage')
 

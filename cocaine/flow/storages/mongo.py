@@ -8,7 +8,6 @@ class Mongo(Storage):
     def __init__(self, app):
         self.app = app
         self.mongo = PyMongo(self.app)
-#        self.mongo.db.hosts.ensure_index('alias')
 
     def create_user(self, username, hashed_password, admin, token):
         try:
