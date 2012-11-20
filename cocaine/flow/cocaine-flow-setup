@@ -1,0 +1,245 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import hashlib
+import os
+import sys
+import getpass
+from uuid import uuid4
+
+
+SUPPORTED_STORAGES = ['elliptics', 'mongo']
+
+def ask(what, hidden=False, empty=False, default=None):
+    rv = None
+    while not rv:
+        if empty:
+            msg = '%s (or empty): ' % what
+        elif default is not None:
+            msg = '%s (default: %s): ' % (what, default)
+        else:
+            msg = '%s: ' % what
+
+        if hidden:
+            rv = getpass.getpass(msg)
+        else:
+            rv = raw_input(msg)
+
+        if not rv and empty:
+            break
+
+        if not rv and default is not None:
+            rv = default
+            break
+
+        if not rv:
+            print '%s cannot be empty' % what
+
+    return rv
+
+
+def key(prefix, postfix):
+    return "%s\0%s" % (prefix, postfix)
+
+
+def install_admin_user(storage, conn, username, password):
+    token = str(uuid4())
+    password = hashlib.sha1(password).hexdigest()
+
+    if storage == 'mongo':
+        import pymongo
+
+        try:
+            conn['users'].insert(
+                {'_id': username, 'password': password, 'admin': True, 'token': token},
+                safe=True)
+        except pymongo.errors.DuplicateKeyError:
+            print 'Username is busy!'
+            return False
+
+    elif storage == 'elliptics':
+        import msgpack
+
+        try:
+            conn.read(key('users', username))
+            print 'Username is busy!'
+            return False
+        except RuntimeError:
+            conn.write(key('users', username), msgpack.packb(
+                {'username': username, 'password': password, 'admin': True,
+                 'token': token}))
+            conn.write(key('tokens', token), msgpack.packb(username))
+    return True
+
+
+def main():
+    try:
+        import yaml
+    except ImportError:
+        print '`python-yaml` package is required'
+        sys.exit(1)
+
+    while True:
+        etc_dir = ask('Installation path', default='/etc/cocaine-flow')
+        if not os.path.exists(etc_dir):
+            try:
+                os.mkdir(etc_dir)
+            except OSError as e:
+                print 'Unable to create dir %s. %s' % (etc_dir, e)
+                continue
+
+        settings_path = etc_dir + '/settings.yml'
+
+        if not os.path.exists(settings_path) and not os.access(etc_dir, os.W_OK):
+            print 'Write access to %s is required' % etc_dir
+            continue
+
+        if os.path.exists(settings_path) and not os.access(settings_path, os.W_OK):
+            print 'Write access to %s is required' % settings_path
+            continue
+
+        break
+
+    username = ask('Username', default="admin")
+    password = ask('Password', hidden=True, default='password')
+
+    while True:
+        storage = ask('Storage', default="elliptics")
+        if storage not in SUPPORTED_STORAGES:
+            print '`%s` storage is not supported' % storage
+            continue
+
+        if storage == 'mongo':
+            try:
+                import pymongo
+            except ImportError:
+                print '`pymongo` package is required for mongo storage'
+                continue
+
+        if storage == 'elliptics':
+            try:
+                from elliptics import Logger, Node
+            except ImportError:
+                print '`elliptics-client` package (version >=2.19) is required for elliptics storage'
+                continue
+
+            try:
+                import msgpack
+            except ImportError:
+                print '`python-msgpack` package is required for elliptics storage'
+                continue
+
+        break
+
+    while True and storage == 'mongo':
+        mongo_hostname = ask('Mongo hostname', default='localhost')
+        mongo_port = ask('Mongo port', default=27017)
+        mongo_dbname = ask('Mongo db name', default='cocaine-flow')
+        mongo_replica_set = ask('Mongo replica set', empty=True)
+
+        kw = {}
+        if mongo_replica_set:
+            kw['replicaSet'] = mongo_replica_set
+            connection_cls = pymongo.ReplicaSetConnection
+        else:
+            connection_cls = pymongo.Connection
+
+        try:
+            conn = connection_cls("%s:%s" % (mongo_hostname, mongo_port), **kw)
+        except pymongo.errors.PyMongoError as e:
+            print "Wrong mongo connection settings: %s!" % e
+            continue
+
+        if not install_admin_user(storage, conn[mongo_dbname], username, password):
+            username = ask('Username', default="admin")
+            password = ask('Password', hidden=True, default='password')
+            continue
+
+        break
+
+    while True and storage == 'elliptics':
+        node = ask('Elliptics node (hostname[:port])', default="localhost:1025")
+        groups = ask('Elliptics groups', default='1,2,3')
+        node_split = node.split(':')
+
+        if len(node_split) == 1:
+            host = node_split[0]
+            elliptics_port = 1025
+        elif len(node_split) == 2:
+            host = node_split[0]
+            elliptics_port = node_split[1]
+        elif len(node_split) == 3:
+            host = node_split[0]
+            elliptics_port = node_split[1]
+        else:
+            print 'Unable to recognize elliptics node!'
+            continue
+
+        try:
+            node = Node(Logger("/tmp/cocainoom-elliptics.log"))
+            node.add_remote(host, int(elliptics_port))
+        except RuntimeError:
+            print "Wrong elliptics connection settings!"
+            continue
+
+        try:
+            from elliptics import Session
+
+            session = Session(node)
+        except ImportError:
+            session = node
+
+        groups = map(int, groups.split(','))
+        session.add_groups(groups)
+
+        try:
+            session.read(key('system', 'list:runlists'))
+        except RuntimeError:
+            try:
+                session.write(key('system', 'list:runlists'), ['default'])
+            except RuntimeError:
+                print "Wrong elliptics connection settings!"
+                continue
+
+        if not install_admin_user(storage, session, username, password):
+            username = ask('Username', default="admin")
+            password = ask('Password', hidden=True, default='password')
+            continue
+
+        break
+
+    port = ask("Port", default=5000)
+
+    if os.path.exists(settings_path):
+        with open(settings_path, 'r') as f:
+            settings = yaml.load(f)
+    else:
+        settings = {}
+
+    settings['PORT'] = port
+    settings['SECRET_KEY'] = str(uuid4())
+    settings['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    settings['UPLOAD_FOLDER'] = '/tmp'
+    settings['ALLOWED_EXTENSIONS'] = ['.gz']
+    settings['STORAGE'] = storage
+
+    if storage == 'mongo':
+        settings['MONGO_HOST'] = mongo_hostname
+        settings['MONGO_PORT'] = mongo_port
+        settings['MONGO_DBNAME'] = mongo_dbname
+        if mongo_replica_set:
+            settings['MONGO_REPLICA_SET'] = mongo_replica_set
+    elif storage == 'elliptics':
+        settings['ELLIPTICS_NODES'] = {
+            host: elliptics_port
+        }
+        settings['ELLIPTICS_GROUPS'] = groups
+
+    with open(settings_path, 'w') as f:
+        yaml.dump(settings, f)
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
+
+
