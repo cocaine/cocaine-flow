@@ -2,59 +2,29 @@
 from flask import render_template, request
 from flask.helpers import json
 from cocaine.flow.storages import storage
-from views import token_required, clean_entities, logged_in
-from cocaine.flow.common import read_hosts, write_hosts, add_prefix
-
-
-def clean_hosts():
-    hosts = storage.read(storage.key('system', "list:hosts"))
-    if not isinstance(hosts, dict):
-        storage.write(storage.key('system', "list:hosts"), {})
+from views import token_required, logged_in
+from cocaine.flow.common import add_prefix
 
 
 @token_required(admin=True)
 def maintenance(user):
     s = storage
-    manifests =  clean_entities("manifests", "system", "list:manifests")
-    profiles = clean_entities("profiles", "system", "list:profiles")
-    runlists = clean_entities("runlists", "system", "list:runlists")
-
-    #clean invalid apps from runlists
-    for runlist_name, runlist in runlists.items():
-        for app_uuid, profile_name in runlist.items():
-            try:
-                s.read(s.key("apps", app_uuid))
-            except RuntimeError:
-                del runlists[runlist_name][app_uuid]
-
-            try:
-                s.read(s.key("profiles", profile_name))
-            except RuntimeError:
-                runlists[runlist_name][app_uuid] = 'default'
-
-    for runlist_name, runlist in runlists.items():
-        s.write(s.key("runlists", runlist_name), runlist)
-
-    s.write(s.key("system", "list:runlists"), runlists.keys())
-
-    clean_hosts()
-
+    s.clean_manifests()
+    s.clean_profiles()
+    s.clean_runlists()
+    s.clean_hosts()
     return 'ok'
 
 
 @token_required(admin=True)
 def create_host(alias, host, user):
-    hosts = read_hosts()
-    hosts.setdefault(alias, []).append(host)
-    write_hosts(hosts)
+    storage.add_host(alias, host)
     return 'ok'
 
 
 @token_required(admin=True)
-def delete_host(host, user):
-    hosts = read_hosts()
-    hosts.remove(host)
-    write_hosts(hosts)
+def delete_host(alias, host, user):
+    storage.delete_host(alias, host)
     return 'ok'
 
 

@@ -42,7 +42,6 @@ from flask_pymongo.wrappers import Connection
 from flask_pymongo.wrappers import ReplicaSetConnection
 
 
-
 PRIMARY = pymongo.ReadPreference.PRIMARY
 """Send all queries to the replica set primary, and fail if none exists."""
 
@@ -131,6 +130,7 @@ class PyMongo(object):
             raise Exception('duplicate config_prefix "%s"' % config_prefix)
 
         self.config_prefix = config_prefix
+
         def key(suffix):
             return '%s_%s' % (config_prefix, suffix)
 
@@ -213,6 +213,7 @@ class PyMongo(object):
                 def call_end_request(response):
                     cx.end_request()
                     return response
+
                 app.after_request(call_end_request)
 
         cx = connection_cls(*args, **kwargs)
@@ -326,3 +327,11 @@ class PyMongo(object):
         storage = GridFS(self.db, base)
         storage.put(fileobj, filename=filename, content_type=content_type)
 
+    def remove_file(self, filename, base='fs'):
+        storage = GridFS(self.db, base)
+        try:
+            grid_file = storage.get_last_version(filename)
+            storage.delete(grid_file._id)
+            return True
+        except NoFile:
+            return False

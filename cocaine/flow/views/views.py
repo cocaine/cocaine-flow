@@ -8,12 +8,12 @@ import logging
 import os
 from uuid import uuid4
 from flask import request, render_template, session, flash, redirect, url_for, current_app, json, jsonify
-from pymongo.errors import DuplicateKeyError
 import sh
 import yaml
 from cocaine.flow.storages import storage
 from common import send_json_rpc, token_required, uniform, logged_in
-from cocaine.flow.common import read_hosts, read_entities, list_add, list_remove, dict_remove
+from .profile import PROFILE_OPTION_VALIDATORS
+from storages.exceptions import UserExists
 
 
 logger = logging.getLogger()
@@ -26,9 +26,9 @@ def home():
 
 
 def create_user(username, password, admin=False):
-    return current_app.mongo.db.users.insert(
-        {'_id': username, 'password': hashlib.sha1(password).hexdigest(), 'admin': admin, 'token': str(uuid4())},
-        safe=True)
+    token = str(uuid4())
+    password = hashlib.sha1(password).hexdigest()
+    return storage.create_user(username, password, admin, token)
 
 
 def register():
@@ -40,7 +40,7 @@ def register():
 
         try:
             create_user(username, password)
-        except DuplicateKeyError:
+        except UserExists:
             return render_template('register.html', error="Username is not available")
 
         session['logged_in'] = username
@@ -54,7 +54,7 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user = current_app.mongo.db.users.find_one({'_id': username})
+        user = storage.find_user_by_username(username)
         if user is None:
             return render_template('login.html', error='Invalid username')
 
@@ -79,35 +79,21 @@ def logout():
 
 @logged_in
 def dashboard(user):
-    try:
-        manifests = read_entities("manifests", "system", "list:manifests")
-        grouped_manifests = {}
-        for uuid, manifest in manifests.items():
-            if not user['admin'] and user['token'] != manifest['developer']:
-                continue
+    grouped_manifests = {}
 
-            common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
-            common_manifest_part.setdefault('description', manifest['description'])
-            common_manifest_part.setdefault('type', manifest['type'])
-            common_manifest_part.setdefault('manifests', []).append(manifest)
+    manifests = storage.read_manifests()
+    for uuid, manifest in manifests.items():
+        if not user['admin'] and user['token'] != manifest['developer']:
+            continue
 
-    except RuntimeError as e:
-        logger.warning(str(e))
-        manifests = {}
+        common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
+        common_manifest_part.setdefault('description', manifest['description'])
+        common_manifest_part.setdefault('type', manifest['type'])
+        common_manifest_part.setdefault('manifests', []).append(manifest)
 
-    try:
-        runlists = read_entities("runlists", "system", "list:runlists")
-    except RuntimeError as e:
-        logger.warning(str(e))
-        runlists = {}
-
-    try:
-        profiles = read_entities("profiles", "system", "list:profiles")
-    except RuntimeError as e:
-        logger.warning(str(e))
-        profiles = {}
-
-    return render_template('dashboard.html', hosts=read_hosts(), **locals())
+    runlists = storage.read_runlists()
+    profiles = storage.read_profiles()
+    return render_template('dashboard.html', hosts=storage.read_hosts(), **locals())
 
 
 @logged_in
@@ -122,11 +108,17 @@ def dashboard_edit(user):
     if entity_type == 'profile':
         profile_name = split_id[1]
         option = split_id[2]
-        profile_key = storage.key("profiles", profile_name)
-        profile = storage.read(profile_key)
+        profile = storage.read_profile(profile_name)
         if option in profile:
+            validator = PROFILE_OPTION_VALIDATORS.get(option)
+            if validator:
+                try:
+                    validator(value)
+                except Exception:
+                    logging.exception('invalid value %s for `%s` profile option' % (value, option))
+                    return split_id[3]
             profile[option] = value
-            storage.write(profile_key, profile)
+            storage.write_profile(profile_name, profile)
         else:
             return split_id[3] # old value
 
@@ -134,7 +126,7 @@ def dashboard_edit(user):
 
 @logged_in
 def stats(user):
-    hosts = read_hosts()
+    hosts = storage.read_hosts()
     if not hosts:
         return render_template('stats.html', user=user, hosts={})
 
@@ -153,32 +145,29 @@ def process_json_rpc_response(res, uuid):
 
 
 def start_app(uuid, profile):
-    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, read_hosts())
+    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, storage.read_hosts())
     return process_json_rpc_response(res, uuid)
 
 
 def stop_app(uuid):
-    res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, read_hosts())
+    res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, storage.read_hosts())
     return process_json_rpc_response(res, uuid)
 
 
 def get_profiles():
-    profiles = storage.read(storage.key('system', 'list:profiles'))
+    profiles = storage.read_profiles()
     view = request.values.get('view')
     if view == 'dict':
-        return jsonify(dict([(profile, profile) for profile in profiles]))
-    return json.dumps(profiles)
+        return jsonify(dict([(profile, profile) for profile in profiles.keys()]))
+    return json.dumps(profiles.keys())
 
 
 @token_required
 def create_profile(name, user=None):
     body = request.json
     if body:
-        id = '%s_%s' % (user.token, name)
-        body['_id'] = id
-        current_app.mongo.db.profiles.update({'_id': id}, body, upsert=True)
-
-    return ''
+        storage.write_profile(name, body)
+    return 'ok'
 
 
 def exists(prefix, postfix):
@@ -219,17 +208,11 @@ def upload_app(app, info, ref, token):
     s = storage
 
     # app
-    app_key = storage.key("apps", info['uuid'])
-    logger.info("Writing app to `%s`" % app_key)
-    s.write(app_key, app.read())
+    s.save_app(info['uuid'], app)
 
     #manifests
-    manifest_key = storage.key("manifests", info['uuid'])
     info['ref'] = ref
-    logger.info("Writing manifest to `%s`" % manifest_key)
-    s.write(manifest_key, info)
-
-    list_add("system", "list:manifests", info['uuid'])
+    s.write_manifest(info['uuid'], info)
 
     return info['uuid']
 
@@ -368,33 +351,22 @@ def deploy(runlist, uuid, profile, user):
     is_undeploy = (request.endpoint == 'undeploy')
 
     #read manifest
-    manifest_key = s.key('manifests', uuid)
-    try:
-        manifest = s.read(manifest_key)
-    except RuntimeError:
+    manifest = s.read_manifest(uuid)
+    if manifest is None:
         return 'Manifest for app %s doesn\'t exists' % uuid, 400
 
-
     # read runlists
-    runlist_key = s.key("runlists", runlist)
-    logger.info('Reading %s', runlist_key)
-    try:
-        runlist_dict = s.read(runlist_key)
-    except RuntimeError:
-        runlist_dict = {}
+    runlist_dict = s.read_runlist(runlist, {})
 
-    hosts = read_hosts()
+    hosts = s.read_hosts()
     if not hosts:
         return 'No hosts are available', 400
 
     post_body = request.stream.read()
     if post_body and not is_undeploy:
-        s.write(s.key('profiles', profile), json.loads(post_body))
-        list_add("system", "list:profiles", profile)
+        s.write_profile(profile, json.loads(post_body))
     else:
-        try:
-            s.read(s.key('profiles', profile))
-        except RuntimeError:
+        if s.read_profile(profile) is None:
             return 'Profile name is not valid', 400
 
     # update runlists
@@ -405,12 +377,9 @@ def deploy(runlist, uuid, profile, user):
     else:
         runlist_dict[uuid] = profile
 
-    logger.info('Writing runlist %s', runlist_key)
-    s.write(runlist_key, runlist_dict)
-
     #manifest update
     if is_undeploy:
-        del manifest['runlist']
+        manifest.pop('runlist', None)
     else:
         manifest['runlist'] = runlist
 
@@ -428,8 +397,8 @@ def deploy(runlist, uuid, profile, user):
                 return "%s - %s" % (app_uuid, res['error']), 500
             logger.debug("Deploy: %s. %s", app_uuid, res)
 
-    s.write(manifest_key, manifest)
-    list_add("system", "list:runlists", runlist)
+    s.write_runlist(runlist, runlist_dict)
+    s.write_manifest(uuid, manifest)
 
     return 'ok'
 
@@ -438,52 +407,24 @@ def delete_app(app_name):
     s = storage
 
     # define runlist for app from manifest
-    runlist = storage.read(s.key('manifests', app_name)).get('runlist')
+    runlist = storage.read_manifest(app_name, default={}).get('runlist')
     logger.info("Runlist in manifest is %s", runlist)
     if runlist is not None:
         logger.warning('Trying to delete deployed app - rejected')
         return 'error', 400
 
-    list_remove("system", "list:manifests", app_name)
-
-    s.remove(s.key('manifests', app_name))
-    s.remove(s.key('apps', app_name))
-
+    storage.remove_app(app_name)
     return 'ok'
 
 
 def get_hosts():
-    return json.dumps(read_hosts())
-
-
-def clean_entities(prefix, list_prefix, list_postfix, except_='default'):
-    s = storage
-    rv = {}
-    entities_keys = s.read(s.key(list_prefix, list_postfix))
-    if not isinstance(entities_keys, Iterable):
-        s.write(s.key(list_prefix, list_postfix), list())
-        return
-
-    original_keys = set(entities_keys)
-    cleaned_keys = copy(original_keys)
-    for key in original_keys:
-        try:
-            rv[key] = s.read(s.key(prefix, key))
-        except RuntimeError:
-            if key != except_:
-                cleaned_keys.remove(key)
-    keys_for_remove = original_keys - cleaned_keys
-    if keys_for_remove:
-        s.write(s.key(list_prefix, list_postfix), list(cleaned_keys))
-        logger.info('Removed %s during maintenance %s', prefix, keys_for_remove)
-
-    return rv
+    return json.dumps(storage.read_hosts())
 
 
 def get_token():
     username = request.form.get('username')
     password = request.form.get('password')
-    user = current_app.mongo.db.users.find_one({'_id': username})
+    user = storage.find_user_by_username(username)
     if user is None:
         return 'Username is invalid', 400
 
