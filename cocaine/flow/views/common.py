@@ -76,7 +76,7 @@ def send_json_rpc(cmd, args, hosts, timeout=0.5):
 
     for host in hosts:
         rv[host] = None
-        request = context.socket(zmq.REQ)
+        request = context.socket(zmq.DEALER)
         request.connect('tcp://%s:5000' % host)
         request.setsockopt(zmq.LINGER, 0)
 
