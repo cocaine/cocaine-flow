@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from time import time, sleep
 from flask import request, current_app, flash, redirect, session, url_for
+import msgpack
 import zmq
 from storages import storage
 
@@ -66,7 +67,7 @@ def logged_in(func):
     return wrapper
 
 
-def send_json_rpc(data, hosts, timeout=0.5):
+def send_json_rpc(cmd, args, hosts, timeout=0.5):
     rv = {}
     context = zmq.Context()
 
@@ -79,8 +80,7 @@ def send_json_rpc(data, hosts, timeout=0.5):
         request.connect('tcp://%s:5000' % host)
         request.setsockopt(zmq.LINGER, 0)
 
-        # Statistics
-        request.send_json(data)
+        request.send_multipart([msgpack.packb(cmd), msgpack.packb(args)])
 
         poller = zmq.Poller()
         poller.register(request, zmq.POLLIN)
@@ -88,7 +88,7 @@ def send_json_rpc(data, hosts, timeout=0.5):
         while True:
             socks = dict(poller.poll(timeout=timeout / 10.))
             if request in socks and socks[request] == zmq.POLLIN:
-                rv[host] = request.recv_json(zmq.POLLERR)
+                rv[host] = msgpack.unpackb(request.recv(zmq.POLLERR))
                 break
 
             if (time() - start) > timeout:

@@ -130,7 +130,7 @@ def stats(user):
     if not hosts:
         return render_template('stats.html', user=user, hosts={})
 
-    hosts = send_json_rpc({'version': 2, 'action': 'info'}, set(*[host for host in hosts.values()]))
+    hosts = send_json_rpc(2, [], set(*[host for host in hosts.values()]))
     return render_template('stats.html', user=user, hosts=hosts)
 
 
@@ -145,12 +145,12 @@ def process_json_rpc_response(res, uuid):
 
 
 def start_app(uuid, profile):
-    res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, storage.read_hosts())
+    res = send_json_rpc(0, [{uuid: profile}], storage.read_hosts())
     return process_json_rpc_response(res, uuid)
 
 
 def stop_app(uuid):
-    res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, storage.read_hosts())
+    res = send_json_rpc(1, [[uuid]], storage.read_hosts())
     return process_json_rpc_response(res, uuid)
 
 
