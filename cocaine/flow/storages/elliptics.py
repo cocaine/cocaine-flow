@@ -169,7 +169,7 @@ class Elliptics(Storage):
         return self.find_user_by_username(username)
 
     def save_app(self, uuid, data):
-        self.write(self.key("apps", uuid), data)
+        self.write(self.key("apps", uuid), data.read())
 
     def delete_app(self, uuid):
         self.list_remove("system", "list:manifests", uuid)
