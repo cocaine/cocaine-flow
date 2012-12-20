@@ -384,9 +384,9 @@ def deploy(runlist, uuid, profile, user):
         manifest['runlist'] = runlist
 
     if is_undeploy:
-        res = send_json_rpc({'version': 2, 'action': 'delete', 'apps': [uuid]}, *hosts.values())
+        res = send_json_rpc(1, [[uuid]], *hosts.values())
     else:
-        res = send_json_rpc({'version': 2, 'action': 'create', 'apps': {uuid: profile}}, *hosts.values())
+        res = send_json_rpc(0, [{uuid: profile}], *hosts.values())
 
     logger.debug("JSON RPC Response: %s" % res)
     for host, host_res in res.items():
