@@ -85,7 +85,8 @@ def dashboard(user):
     for uuid, manifest in manifests.items():
         if not user['admin'] and user['token'] != manifest['developer']:
             continue
-
+        
+        manifest['git_to_html_url'] = "http"+''.join(manifest['url'][3:]) 
         common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
         common_manifest_part.setdefault('description', manifest['description'])
         common_manifest_part.setdefault('type', manifest['type'])
@@ -93,6 +94,7 @@ def dashboard(user):
 
     runlists = storage.read_runlists()
     profiles = storage.read_profiles()
+    print locals()
     return render_template('dashboard.html', hosts=storage.read_hosts(), **locals())
 
 

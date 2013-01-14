@@ -7,12 +7,12 @@
             <tr>
                 <td>
                     <div>
-                        <a data-target="#versions_{{ app_name }}" data-toggle='collapse'>{{ app_name }}</a>
+                        <a data-target="#versions_{{ app_name|replace(" ","_")}}" data-toggle='collapse'>{{ app_name}}</a>
                         <small>({{ common_manifest_dict['manifests']|length }})</small>
                         - {{ common_manifest_dict['description'] }} -
                         <em>{{ common_manifest_dict['type'] }}</em>
                     </div>
-                    <div id="versions_{{ app_name }}" class="collapse in">
+                    <div id="versions_{{ app_name|replace(" ","_")}}" class="collapse in">
                         {% for manifest in common_manifest_dict['manifests'] %}
 
                             <dl>
@@ -40,7 +40,7 @@
                                     {% if manifest.url %}
                                         <dl>
                                             <dt>Cloned from</dt>
-                                            <dd>{{ manifest.url }}</dd>
+                                            <dd> <a href="{{ manifest.git_to_html_url }}"> {{ manifest.url }} </a></dd>
                                         </dl>
                                     {% endif %}
 
@@ -174,17 +174,24 @@
 {% endif %}
 
 {% if hosts %}
-    <h3>Hosts</h3>
+        <div class="well well-small">
+        <h3>Hosts</h3> 
+        </div>
+    <table class="table table-bordered">
+    <thead>
     {% for alias, hosts in hosts.items() %}
-        <dl>
-            <dt>{{ alias }}</dt>
-            <dd>
+            <tr class="info"><td > {{ alias }}</td></tr>
                 {% for host in hosts %}
-                    {{ host }}
+                    <tr><td>{{ host }} 
+                                            <button type="button" class="pull-right btn btn-danger btn-mini"
+                                                    data-uuid="">
+                                                    Remove
+                                            </button>
+                        </td></tr>
                 {% endfor %}
-            </dd>
-        </dl>
     {% endfor %}
+    </thead>
+    </table>
 {% else %}
     <h3>No hosts</h3>
 {% endif %}
@@ -335,3 +342,17 @@
         </script>
     {% endblock %}
 {% endif %}
+<!-- Modal -->
+<div id="myModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+<h3 id="myModalLabel">Modal header</h3>
+</div>
+<div class="modal-body">
+<p>One fine body…</p>
+</div>
+<div class="modal-footer">
+<button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+<button class="btn btn-primary">Add host</button>
+</div>
+</div>
