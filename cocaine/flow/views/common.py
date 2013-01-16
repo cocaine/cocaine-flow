@@ -76,23 +76,27 @@ def send_json_rpc(cmd, args, hosts, timeout=0.5):
 
     for host in hosts:
         rv[host] = None
-        request = context.socket(zmq.DEALER)
-        request.connect('tcp://%s:5000' % host)
-        request.setsockopt(zmq.LINGER, 0)
+        try:
+            request = context.socket(zmq.DEALER)
+            request.connect('tcp://%s:5000' % host)
+            request.setsockopt(zmq.LINGER, 0)
 
-        request.send_multipart([msgpack.packb(cmd), msgpack.packb(args)])
+            request.send_multipart([msgpack.packb(cmd), msgpack.packb(args)])
 
-        poller = zmq.Poller()
-        poller.register(request, zmq.POLLIN)
-        start = time()
-        while True:
-            socks = dict(poller.poll(timeout=timeout / 10.))
-            if request in socks and socks[request] == zmq.POLLIN:
-                rv[host] = msgpack.unpackb(request.recv(zmq.POLLERR))
-                break
+            poller = zmq.Poller()
+            poller.register(request, zmq.POLLIN)
+            start = time()
+            while True:
+                socks = dict(poller.poll(timeout=timeout / 10.))
+                if request in socks and socks[request] == zmq.POLLIN:
+                    rv[host] = msgpack.unpackb(request.recv(zmq.POLLERR))
+                    break
 
-            if (time() - start) > timeout:
-                break
-            sleep(timeout / 10.)
+                if (time() - start) > timeout:
+                    break
+                sleep(timeout / 10.)
+        except zmq.ZMQError as err:
+            print str(err)
+            continue
 
     return rv

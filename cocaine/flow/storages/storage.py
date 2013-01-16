@@ -41,6 +41,9 @@ class Storage(object):
     def find_user_by_username(self, username):
         raise NotImplementedError
 
+    def get_username_by_token(self, token):
+        raise NotImplementedError
+
     def read_manifest(self, uuid):
         raise NotImplementedError
 

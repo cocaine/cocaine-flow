@@ -143,15 +143,31 @@ class Elliptics(Storage):
 
     def add_host(self, alias, host):
         hosts = self.read_hosts()
-        hosts.setdefault(alias, []).append(host)
+        print hosts
+        #hosts.setdefault(alias, ).append(host)
+        # why tuple instead list
+        l = hosts.get(alias)
+        if l is None:
+            l = list()
+        else:
+            l = list(l)
+        l.append(str(host))
+        hosts[alias] = tuple(l)
+        print hosts 
         self.write_hosts(hosts)
 
     def delete_host(self, alias, host):
         hosts = self.read_hosts()
         if alias not in hosts:
             return
-
-        hosts[alias].remove(host)
+        l = hosts.get(alias)
+        if l is None:
+            return
+        else:
+            l = list(l)
+        if host in l:
+            l.remove(host)
+        hosts[alias] = l
         self.write_hosts(hosts)
 
     def find_user_by_username(self, username):
@@ -167,6 +183,14 @@ class Elliptics(Storage):
             return None
 
         return self.find_user_by_username(username)
+
+    def get_username_by_token(self, token):
+        try:
+            username = self.read(self.key('tokens', token))
+        except RuntimeError:
+            return None
+        else:
+            return username
 
     def save_app(self, uuid, data):
         self.write(self.key("apps", uuid), data.read())
