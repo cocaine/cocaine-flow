@@ -7,12 +7,12 @@ except ImportError:
 
 setup(
     name="cocaine-flow",
-    version="0.10.1",
+    version="0.10.2",
     description="Cocaine Flow",
     long_description="Cocaine Management Tools",
     url="https://github.com/cocaine/cocaine-flow",
-    author="Alexander Eliseev",
-    author_email="alex@inkvi.com",
+    author="Anton Tyurin",
+    author_email="noxiouz@yandex.ru",
     license="BSD 2-Clause",
     platforms=["Linux", "BSD", "MacOS"],
     packages=["cocaine","cocaine.flow", 'cocaine.flow.storages', 'cocaine.flow.views', 'flask_pymongo'],
