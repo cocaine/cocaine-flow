@@ -241,6 +241,7 @@ def deploy(runlist, app_uuid, profile_name,
            profile_path=('f', '', 'path to profile file'),
            undeploy=('u', False, 'undeploy'),
            *args, **kwargs):
+    """ Deploy application to the cloud """
     token = get_token(kwargs)
 
     if profile_path:
@@ -280,6 +281,7 @@ def convert(info_path=('i','info.yaml', 'path to info.yaml'),
             manifest_path=('m', 'manifest.json', 'path to manifest.json'),
             source=('s', 'manifest', 'source to convert: manifest or info'),
             *args, **kwargs):
+    """ Convert info.yaml to manifest.json"""
     if source not in ('manifest', 'info'):
         raise QuitError('Unrecognized source "{0}"'.format(source))
 
