@@ -126,7 +126,7 @@ def dashboard_edit(user):
             profile[option] = value
             storage.write_profile(profile_name, profile)
         else:
-            return split_id[3] # old value
+            return split_id[3]
 
     return value
 
