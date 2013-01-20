@@ -85,8 +85,13 @@ def dashboard(user):
     for uuid, manifest in manifests.items():
         if not user['admin'] and user['token'] != manifest['developer']:
             continue
-        
-        manifest['git_to_html_url'] = "http"+''.join(manifest['url'][3:]) 
+
+        #manifest['git_to_html_url'] = None 
+        if manifest.get('url') is not None:
+            try:
+                manifest['git_to_html_url'] = "http"+''.join(manifest['url'][3:]) 
+            except Exception as err:
+                print str(err)
         manifest['developer_username'] = storage.get_username_by_token(manifest['developer'])
         common_manifest_part = grouped_manifests.setdefault(manifest['name'], {})
         common_manifest_part.setdefault('description', manifest['description'])
