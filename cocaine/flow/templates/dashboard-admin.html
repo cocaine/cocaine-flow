@@ -139,7 +139,7 @@
     <div class="well well-small">
     <h3>Runlists
         <small>({{ runlists|length }})</small>
-        <a href="#myModal" role="button" class="pull-right btn btn-success" data-toggle="modal">Runlist manager</a>
+        <a href="#myModal" role="button" class="pull-right btn btn-success" data-toggle="modal">Add runlist</a>
     </h3>
     </div>
     <table class="table table-bordered runlists">
@@ -175,7 +175,7 @@
     <div class="well well-small">
     <h3>Profiles
         <small>({{ profiles|length }})</small>
-        <a href="#ModalAddProfile" role="button" class="pull-right btn btn-success" data-toggle="modal">Profile manager</a>
+        <a href="#ModalAddProfile" role="button" class="pull-right btn btn-success" data-toggle="modal">Add profile</a>
     </h3>
     </div>
     <table class="table table-bordered">
@@ -209,7 +209,7 @@
 {% if hosts %}
         <div class="well well-small">
                 <h3 >Hosts
-                        <a href="#ModalAddHost" role="button" class="pull-right btn btn-success" data-toggle="modal">Host manager</a>
+                        <a href="#ModalAddHost" role="button" class="pull-right btn btn-success" data-toggle="modal">Add host</a>
                 </h3>
         </div>
 {#
@@ -328,39 +328,105 @@
 </div>
 </div>
 <!-- END -->
+
 <!-- Modal window for add profile -->
-<div id="ModalAddProfile" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-<div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Enter hostname and press "Add host"</h3>
+<div id="ModalAddProfile" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
+
+<!-- dialog contents -->
+<div class="modal-body">
+<ul class="unstyled">
+    <li><h4>Profile name <span class="edit text-info" id="Profile-name"> </span> </h4> </li>
+    <li><strong>heartbeat-timeout</strong> <span class="edit text-info" > </span> </li>
+    <li><strong>startup-timeout</strong> <span class="edit text-info" > </span> </li>
+    <li><strong>idle-timeout</strong> <span class="edit text-info" > </span> </li>
+    <li><strong>pool-limit</strong> <span class="edit text-info" > </span> </li>
+    <li><strong>queue-timeout</strong> <span class="edit text-info" > </span> </li>
+    <li><strong>heartbeat-timeout</strong> <span class="edit text-info" > </span> </li>
+</ul>
+
 </div>
-<form class="form-search">
-<p>&nbsp</p>
-    <div class="span2"> 
-        <label class="control-label" for="url">
-            <p class="text-success"><h4>Hostname</h4></p>
-        </label>
-    </div>
-    <div class="control-group">
-        <div class="controls">
-            <input type="text" name="url" placeholder="mycluster" id="alias_name_for_add" class="input alias_name_for_add">
-        </div>
-    </div>
-</form>
+
+
+<!-- dialog buttons -->
 <div class="modal-footer">
-    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
-    <button class="btn btn-primary add_host">Add host</button>
+    <button class="btn" id="Profile_OK_button">OK</button>
+    <button class="btn primary" data-dismiss="modal" aria-hidden="true">Close</button>
 </div>
+</div>
+<!-- -->
+<div>
+    <button class="btn btn-primary test_btn">test btn</button>
 </div>
 <!-- END -->
 
 {% if user.admin %}
     {% block js %}
         <script type="text/javascript" src="{{ url_for('static', filename='bootbox.min.js') }}"></script>
+        <script src="http://ajax.googleapis.com/ajax/libs/dojo/1.7.0/dojo/dojo.js"
+            type="text/javascript"></script>
 
         <script type="text/javascript">
             $(document).ready(function ()
                               {
+                                  $('#Profile_OK_button').click(
+                                    function(){
+                                        var x = $('#Profile-name').html();
+                                        alert(x);
+                                    }
+                                  )
+                                  $('.test_btn').click(
+                                    function(){
+                                        var json_obj = {
+                                                    "heartbeat-timeout" : "asdsds",
+                                                    "foo2" : "asdsds"
+                                                            };
+                                        var schema = {
+                                            "type" : "object",
+                                            "properties" : {
+                                                'grow-threshold': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                },
+                                                'heartbeat-timeout': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                },
+                                                'idle-timeout': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                },
+                                                'pool-limit': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                },
+                                                'startup-timeout': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                },
+                                                'termination-timeout': {
+                                                    "type" : "number",
+                                                    "optional" : true
+                                                }
+                                            }
+                                        };
+                                    require(["dojox/json/schema"],function()
+                                    {
+                                        //Schema
+
+                                        var result = dojox.json.schema.validate(json_obj, schema);
+                                        if (result.valid)
+                                        {   
+                                            alert("ok");
+                                        }
+                                        else
+                                        {
+                                            alert("Fail");
+                                        }
+                                                                    
+                                    }
+                                    )
+                                    }
+                                  );
                                   $('.AAAA').click(
                                     function()
                                     {
