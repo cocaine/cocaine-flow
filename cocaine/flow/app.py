@@ -30,6 +30,7 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/dashboard', 'dashboard', view_func=views.dashboard, methods=['GET', 'POST'])
     app.add_url_rule('/dashboard/edit', view_func=views.dashboard_edit, methods=['POST'])
     app.add_url_rule('/stats', 'stats', view_func=views.stats, methods=['GET'])
+    app.add_url_rule('/stats/<string:alias>/<string:host>', endpoint='host_stats', view_func=views.host_stats, methods=['GET'])
     app.add_url_rule('/balances', 'balances', view_func=views.balances, methods=['GET'])
     app.add_url_rule('/balances/<string:group>/<string:app_name>', 'add_balances', view_func=views.add_balance_list, methods=['POST'])
     app.add_url_rule('/profiles/<string:name>', endpoint='create_profile', view_func=views.create_profile, methods=['POST'])

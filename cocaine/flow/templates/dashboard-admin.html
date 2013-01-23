@@ -239,11 +239,14 @@
 {% for alias, hosts in hosts.items() %}
     <div class="accordion-group">
         <div class="AAAA " my-target="hosts_{{alias}}">
-                                  <h4> &nbsp Cluster {{ alias }}
-                                    <button type="button" class="pull-right remove_alias btn btn-danger btn-mini"
+                            <div class="row">
+                                  <div class="span11"><h4>&nbsp Cluster {{ alias }}
+                                   <button type="button" class="pull-right remove_alias btn btn-danger btn-mini"
                                                     data-alias="{{alias}}">
                                                     Remove cluster
                                     </button></h4>
+                                  </div>
+                            </div>
         </div>
     </div>
         <div id="hosts_{{ alias }}" class="collapse">
@@ -251,9 +254,13 @@
                         <ul class="nav nav-tabs">
                             {% for host in hosts %}
                                 {% if loop.first%}
-                                    <li class="active"><a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
+                                    <li data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}" class="active info_host">
+                                        <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a>
+                                    </li>
                                 {% else %}
-                                    <li ><a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
+                                    <li data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}" class="info_host">
+                                            <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab" ><h4>{{host}}</h4></a>
+                                    </li>
                                 {% endif %}
                             {% endfor %}
                             </ul>
@@ -264,13 +271,22 @@
                                 {% else %}
                                     <div class="tab-pane" id="{{alias}}{{loop.index0}}_tab">
                                 {% endif %}
-                                    <h4>Some information about {{host}} bla-bla
-                                            <button type="button" class="pull-right remove_host btn btn-danger btn-mini"
-                                                    data-host="{{alias}}:{{host}}">
-                                                    Remove
-                                            </button>
-                                    </h4>
-                                   </div>
+                                        <h4>Some information about {{host}}
+                                            <span class="pull-right">
+                                                <button type="button" class="info_host btn btn-info btn-mini"
+                                                        data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}">
+                                                     Refresh
+                                                </button>
+
+                                                <button type="button" class="remove_host btn btn-danger btn-mini"
+                                                        data-host="{{alias}}:{{host}}"> 
+                                                        Remove
+                                                </button>
+                                            </span>
+                                        </h4>
+                                        <div class="tab_pane" id="tab_pane{{alias}}{{loop.index0}}">
+                                        </div>
+                                    </div>
                             {% endfor %}
                         </div>
                     </div>
@@ -350,6 +366,33 @@
                                     {
                                         var target = $(this).attr('my-target');
                                         $('#'+target).collapse('toggle');
+                                    }
+                                  );
+
+                                  $('.info_host').click(
+                                    function ()
+                                    {
+                                       var target = $(this).attr('data-host').split(':');
+                                       var panel = $(this).attr('data-target-panel');
+                                                      $.ajax({
+                                                                 url:'/stats/'+ target[0] + '/' + target[1] ,
+                                                                 type:"GET",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                    if (data != 'None'){
+                                                                        $('#'+panel).html('<pre>'+JSON.stringify(data, undefined,1) + '</pre>');
+                                                                    }
+                                                                    else {
+                                                                        $('#'+panel).html('<pre>Not available</pre>');
+                                                                    }
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 }       
+                                                             });
                                     }
                                   );
                                   $('.remove').click(

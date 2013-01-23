@@ -133,13 +133,21 @@ def dashboard_edit(user):
 
 @logged_in
 def stats(user):
+    import itertools
     hosts = storage.read_hosts()
     if not hosts:
         return render_template('stats.html', user=user, hosts={})
-
-    hosts = send_json_rpc(2, [], set(*[host for host in hosts.values()]))
+    hosts = send_json_rpc(2, [], set(itertools.chain(*hosts.values())))
     return render_template('stats.html', user=user, hosts=hosts)
 
+@token_required
+def host_stats(alias, host, user):
+    result_info =  send_json_rpc(2, [], set([host,]))
+    res = result_info.get(host)
+    if res is not None:
+        return jsonify(res)
+    else:
+        return 'None'
 
 def process_json_rpc_response(res, uuid):
     for host, rv in res.items():
