@@ -170,6 +170,13 @@ class Elliptics(Storage):
         hosts[alias] = l
         self.write_hosts(hosts)
 
+    def delete_alias(self, alias):
+        hosts = self.read_hosts()
+        if alias not in hosts:
+            return
+        hosts.pop(alias)
+        self.write_hosts(hosts)
+
     def find_user_by_username(self, username):
         try:
             return self.read(self.key('users', username))

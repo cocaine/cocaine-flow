@@ -43,6 +43,7 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/hosts/', view_func=views.get_hosts, methods=['GET'])
     app.add_url_rule('/hosts/<string:alias>/<string:host>', endpoint="create_host", view_func=views.create_host, methods=['POST', 'PUT'])
     app.add_url_rule('/hosts/<string:alias>/<string:host>', endpoint='delete_host', view_func=views.delete_host, methods=['DELETE'])
+    app.add_url_rule('/hosts/<string:alias>', endpoint='delete_alias', view_func=views.delete_alias, methods=['DELETE'])
     app.add_url_rule('/app/<string:app_name>', view_func=views.delete_app, methods=['DELETE'])
     app.add_url_rule('/app/start/<string:uuid>/<string:profile>', view_func=views.start_app, methods=['POST'])
     app.add_url_rule('/app/stop/<string:uuid>', view_func=views.stop_app, methods=['POST'])

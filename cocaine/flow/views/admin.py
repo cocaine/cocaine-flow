@@ -27,6 +27,10 @@ def delete_host(alias, host, user):
     storage.delete_host(alias, host)
     return 'ok'
 
+@token_required(admin=True)
+def delete_alias(alias, user):
+    storage.delete_alias(alias)
+    return 'ok'
 
 def read_balances():
     try:

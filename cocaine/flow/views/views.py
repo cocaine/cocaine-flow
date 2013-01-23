@@ -99,6 +99,7 @@ def dashboard(user):
         common_manifest_part.setdefault('manifests', []).append(manifest)
     runlists = storage.read_runlists()
     profiles = storage.read_profiles()
+    print profiles
     return render_template('dashboard.html', hosts=storage.read_hosts(), **locals())
 
 

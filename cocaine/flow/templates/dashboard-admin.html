@@ -175,7 +175,7 @@
     <div class="well well-small">
     <h3>Profiles
         <small>({{ profiles|length }})</small>
-        <a href="#myModal" role="button" class="pull-right btn btn-success" data-toggle="modal">Profile manager</a>
+        <a href="#ModalAddProfile" role="button" class="pull-right btn btn-success" data-toggle="modal">Profile manager</a>
     </h3>
     </div>
     <table class="table table-bordered">
@@ -212,13 +212,14 @@
                         <a href="#ModalAddHost" role="button" class="pull-right btn btn-success" data-toggle="modal">Host manager</a>
                 </h3>
         </div>
+{#
     <table class="table table-bordered table-hover">
-    <thead>
     {% for alias, hosts in hosts.items() %}
             <tr class="info"><td > <h4 class="text-success">{{ alias }}</h4> </td></tr>
-                {% for host in hosts %}
                 <tbody>
+                    {% for host in hosts %}
                     <tr><td>
+
                     <div class="host-info" data-hostname="{{host}}">
                     <strong> {{ host }} </strong>
                                             <button type="button" class="pull-right remove_host btn btn-danger btn-mini"
@@ -226,38 +227,55 @@
                                                     Remove
                                             </button>
                     </div>
-                        </td></tr>
+
+                    </td></tr>
+                    {% endfor %}
                 </tbody>
-                {% endfor %}
     {% endfor %}
-    </thead>
     </table>
+#}
 <!-- TEST -->
-<div>
-    <div class="tabbabel tabs-left">
-    {% for alias, hosts in hosts.items() %}
-        <ul class="nav nav-tabs">
-        {% for host in hosts %}
-            {% if loop.first%}
-                <li class="active"><a href="#{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
-            {% else %}
-                <li ><a href="#{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
-            {% endif %}
-        {% endfor %}
-        </ul>
-        <div class="tab-content">
-        {% for host in hosts %}
-            {% if loop.first%}
-             <div class="tab-pane active" id="{{loop.index0}}_tab">
-            {% else %}
-             <div class="tab-pane" id="{{loop.index0}}_tab">
-            {% endif %}
-                               <p>Some information about {{host}} bla-bla</p>
-            </div>
-        {% endfor %}
+<div >
+{% for alias, hosts in hosts.items() %}
+    <div class="accordion-group">
+        <div class="AAAA " my-target="hosts_{{alias}}">
+                                  <h4> &nbsp Cluster {{ alias }}
+                                    <button type="button" class="pull-right remove_alias btn btn-danger btn-mini"
+                                                    data-alias="{{alias}}">
+                                                    Remove cluster
+                                    </button></h4>
         </div>
-    {% endfor %}
     </div>
+        <div id="hosts_{{ alias }}" class="collapse">
+                    <div class="tabbabel tabs-left">
+                        <ul class="nav nav-tabs">
+                            {% for host in hosts %}
+                                {% if loop.first%}
+                                    <li class="active"><a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
+                                {% else %}
+                                    <li ><a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a></li>
+                                {% endif %}
+                            {% endfor %}
+                            </ul>
+                        <div class="tab-content">
+                            {% for host in hosts %}
+                                {% if loop.first%}
+                                    <div class="tab-pane active" id="{{alias}}{{loop.index0}}_tab">
+                                {% else %}
+                                    <div class="tab-pane" id="{{alias}}{{loop.index0}}_tab">
+                                {% endif %}
+                                    <h4>Some information about {{host}} bla-bla
+                                            <button type="button" class="pull-right remove_host btn btn-danger btn-mini"
+                                                    data-host="{{alias}}:{{host}}">
+                                                    Remove
+                                            </button>
+                                    </h4>
+                                   </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+        </div>
+{% endfor %}
 </div>
 <!-- ENDTEST -->
 {% else %}
@@ -266,10 +284,36 @@
 </div>
 {% endif %}
 
-
 <!-- Modal window for add host -->
 
 <div id="ModalAddHost" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Enter hostname and press "Add host"</h3>
+</div>
+<form class="form-search">
+<p>&nbsp</p>
+    <div class="span2"> 
+        <label class="control-label" for="url">
+            <p class="text-success"><h4>Cluster</h4></p>
+            <p class="text-success"><h4>Hostname</h4></p>
+        </label>
+    </div>
+    <div class="control-group">
+        <div class="controls">
+            <input type="text" name="url" placeholder="mycluster" id="alias_name_for_add" class="input alias_name_for_add">
+            <input type="text" name="url" placeholder="example.host.net" id="host_name_for_add" class="input host_name_for_add">
+        </div>
+    </div>
+</form>
+<div class="modal-footer">
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-primary add_host">Add host</button>
+</div>
+</div>
+<!-- END -->
+<!-- Modal window for add profile -->
+<div id="ModalAddProfile" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
     <h3 id="myModalLabel">Enter hostname and press "Add host"</h3>
@@ -283,7 +327,7 @@
     </div>
     <div class="control-group">
         <div class="controls">
-            <input type="text" name="url" placeholder="example.host.net" id="host_name_for_add" class="input host_name_for_add">
+            <input type="text" name="url" placeholder="mycluster" id="alias_name_for_add" class="input alias_name_for_add">
         </div>
     </div>
 </form>
@@ -301,11 +345,12 @@
         <script type="text/javascript">
             $(document).ready(function ()
                               {
-                                  $('.host-info').click(
-                                        function(){
-                                            var msg = $(this).attr("data-hostname");
-                                            alert(msg);
-                                        }
+                                  $('.AAAA').click(
+                                    function()
+                                    {
+                                        var target = $(this).attr('my-target');
+                                        $('#'+target).collapse('toggle');
+                                    }
                                   );
                                   $('.remove').click(
                                           function ()
@@ -376,13 +421,44 @@
                                           }
                                   );
 
+                                  $('.remove_alias').click(
+                                          function ()
+                                          {
+                                              var alias = $(this).attr('data-alias');
+                                              bootbox.confirm("Do u really want to remove?", "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                                            $.ajax({
+                                                                    url:'/hosts/'+ alias,
+                                                                    type:"DELETE",
+                                                                    success:function (data, textStatus, jqXHR)
+                                                                    {
+                                                                        bootbox.alert("Cluster " + alias + "is removed succesfully!", function(){
+                                                                            location.reload(true);
+                                                                        });
+                                                                    },
+                                                                    error:function (jqXHR, textStatus, errorThrown)
+                                                                    {
+                                                                        bootbox.alert(jqXHR.responseText, function(){
+                                                                        location.reload(true);
+                                                                    });
+                                                                    }       
+                                                                });
+                                                  }
+                                              });
+
+                                          }
+                                  );
+
                                   $('.add_host').click(
                                             function ()
                                             {
                                                 var hostname = $('.host_name_for_add').val();
+                                                var alias = $('.alias_name_for_add').val();
                                                 
                                                 $.ajax({
-                                                            url:'/hosts/dev/' + hostname,
+                                                            url:'/hosts/'+ alias + '/' + hostname,
                                                             type:"POST",
                                                             success:function (data, textStatus, jqXHR)
                                                             {
