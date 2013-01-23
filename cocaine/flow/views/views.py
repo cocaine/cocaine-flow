@@ -361,6 +361,7 @@ def upload(user):
 
 @token_required(admin=True)
 def deploy(runlist, uuid, profile, user):
+    import itertools
     s = storage
 
     is_undeploy = (request.endpoint == 'undeploy')
@@ -398,10 +399,11 @@ def deploy(runlist, uuid, profile, user):
     else:
         manifest['runlist'] = runlist
 
+    print hosts
     if is_undeploy:
-        res = send_json_rpc(1, [[uuid]], *hosts.values())
+        res = send_json_rpc(1, [[uuid]], itertools.chain(*hosts.values()))
     else:
-        res = send_json_rpc(0, [{uuid: profile}], *hosts.values())
+        res = send_json_rpc(0, [{uuid: profile}], itertools.chain(*hosts.values()))
 
     logger.debug("JSON RPC Response: %s" % res)
     for host, host_res in res.items():
