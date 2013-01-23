@@ -238,14 +238,14 @@
 <div >
 {% for alias, hosts in hosts.items() %}
     <div class="accordion-group">
-        <div class="AAAA " my-target="hosts_{{alias}}">
+        <div class="AAAA" my-target="hosts_{{alias}}">
                             <div class="row">
-                                  <div class="span11"><h4>&nbsp Cluster {{ alias }}
+                                   <div class="span4"><strong>Cluster {{ alias }}</strong></div>
                                    <button type="button" class="pull-right remove_alias btn btn-danger btn-mini"
                                                     data-alias="{{alias}}">
                                                     Remove cluster
-                                    </button></h4>
-                                  </div>
+                                    </button>
+                                  
                             </div>
         </div>
     </div>
@@ -255,11 +255,11 @@
                             {% for host in hosts %}
                                 {% if loop.first%}
                                     <li data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}" class="active info_host">
-                                        <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h4>{{host}}</h4></a>
+                                        <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab"><h5>{{host}}</h5></a>
                                     </li>
                                 {% else %}
                                     <li data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}" class="info_host">
-                                            <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab" ><h4>{{host}}</h4></a>
+                                            <a href="#{{alias}}{{loop.index0}}_tab" data-toggle="tab" ><h5>{{host}}</h5></a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
@@ -271,7 +271,8 @@
                                 {% else %}
                                     <div class="tab-pane" id="{{alias}}{{loop.index0}}_tab">
                                 {% endif %}
-                                        <h4>Some information about {{host}}
+                                        <p>&nbsp</p>
+                                        <strong>Some information about {{host}}</strong>
                                             <span class="pull-right">
                                                 <button type="button" class="info_host btn btn-info btn-mini"
                                                         data-host="{{alias}}:{{host}}" data-target-panel="tab_pane{{alias}}{{loop.index0}}">
@@ -283,7 +284,6 @@
                                                         Remove
                                                 </button>
                                             </span>
-                                        </h4>
                                         <div class="tab_pane" id="tab_pane{{alias}}{{loop.index0}}">
                                         </div>
                                     </div>
@@ -331,31 +331,44 @@
 
 <!-- Modal window for add profile -->
 <div id="ModalAddProfile" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
+<div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Fill fields:</h3>
+</div>
 
 <!-- dialog contents -->
 <div class="modal-body">
-<ul class="unstyled">
-    <li><h4>Profile name <span class="edit text-info" id="Profile-name"> </span> </h4> </li>
-    <li><strong>heartbeat-timeout</strong> <span class="edit text-info" > </span> </li>
-    <li><strong>startup-timeout</strong> <span class="edit text-info" > </span> </li>
-    <li><strong>idle-timeout</strong> <span class="edit text-info" > </span> </li>
-    <li><strong>pool-limit</strong> <span class="edit text-info" > </span> </li>
-    <li><strong>queue-timeout</strong> <span class="edit text-info" > </span> </li>
-    <li><strong>heartbeat-timeout</strong> <span class="edit text-info" > </span> </li>
-</ul>
-
+    <div class="row">
+    <div class="span4">
+    <div class="row">
+        <div class="span2"><strong>Profile name</strong></div> 
+        <input class="span2" type="number" id="Profile-name" min="1" required>
+    </div>
+    {% for OPTION in PROFILE_OPTIONS %}
+    <div class="row">
+        <div class="span2"><strong>{{OPTION}}</strong></div> 
+        <input class="span2 offset1" type="number" id="{{OPTION}}" min="1">
+    </div>
+    {%endfor %}
+    </div>
+    <div class="span2">
+        <blockquote class="pull-right">
+            <p class="text-info">Please specify the parameters that you are interested and the name of the profile</p>
+        </blockquote>
+        <div id="profile-msg">
+        </div>
+    </div>
+    </div>
 </div>
-
 
 <!-- dialog buttons -->
 <div class="modal-footer">
-    <button class="btn" id="Profile_OK_button">OK</button>
-    <button class="btn primary" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button class="btn btn-primary" id="Profile_OK_button">OK</button>
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
 </div>
 </div>
 <!-- -->
 <div>
-    <button class="btn btn-primary test_btn">test btn</button>
 </div>
 <!-- END -->
 
@@ -368,18 +381,7 @@
         <script type="text/javascript">
             $(document).ready(function ()
                               {
-                                  $('#Profile_OK_button').click(
-                                    function(){
-                                        var x = $('#Profile-name').html();
-                                        alert(x);
-                                    }
-                                  )
-                                  $('.test_btn').click(
-                                    function(){
-                                        var json_obj = {
-                                                    "heartbeat-timeout" : "asdsds",
-                                                    "foo2" : "asdsds"
-                                                            };
+                                  var profile_options = {{PROFILE_OPTIONS|safe}};
                                         var schema = {
                                             "type" : "object",
                                             "properties" : {
@@ -408,25 +410,59 @@
                                                     "optional" : true
                                                 }
                                             }
-                                        };
-                                    require(["dojox/json/schema"],function()
-                                    {
-                                        //Schema
-
-                                        var result = dojox.json.schema.validate(json_obj, schema);
-                                        if (result.valid)
-                                        {   
-                                            alert("ok");
-                                        }
-                                        else
-                                        {
-                                            alert("Fail");
-                                        }
-                                                                    
                                     }
-                                    )
-                                    }
-                                  );
+                                  $('#Profile_OK_button').click(
+                                    function(){
+                                        json_object = {};
+                                        for (y in profile_options){
+                                            var tmp = $('#'+profile_options[y]).val()
+                                            if (tmp != '' ){
+                                                value = parseInt(tmp)
+                                                if (value){
+                                                    json_object[profile_options[y]] = value;
+                                                }
+                                                else
+                                                {   
+                                                    alert("Wrong type: need number" + profile_options[y]);
+                                                    $('#profile-msg').html("<p class='text-error'> ERROR!</p>");
+                                                    return
+                                                }
+                                            }
+                                        }
+                                        var profile_name = $('#Profile-name').val();
+                                        if ((json_object != {}) & (profile_name != ''))
+                                            {
+                                                require(["dojox/json/schema"],function()
+                                                {
+                                                    var result = dojox.json.schema.validate(json_object, schema);
+                                                    if (!result.valid)
+                                                    {   
+                                                        //alert("ok");
+                                                        return
+                                                    }
+                                                })
+                                            }
+                                        $.ajax({
+                                                url:    '/profiles/' + profile_name,
+                                                type:   "POST",
+                                                data:   JSON.stringify(json_object),
+                                                dataType: 'json',
+                                                contentType : 'application/json',
+                                                success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 }       
+                                                             });
+                                  }
+                                  )
                                   $('.AAAA').click(
                                     function()
                                     {
