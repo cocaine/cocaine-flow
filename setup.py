@@ -11,7 +11,7 @@ setup(
     description="Cocaine Flow",
     long_description="Cocaine Management Tools",
     url="https://github.com/cocaine/cocaine-flow",
-    author="Anton Tyurin",
+    author="Anton Tyurin & Alexandr Eliseev",
     author_email="noxiouz@yandex.ru",
     license="BSD 2-Clause",
     platforms=["Linux", "BSD", "MacOS"],
