@@ -139,8 +139,10 @@
     <div class="well well-small">
     <h3>Runlists
         <small>({{ runlists|length }})</small>
+        {% if user.admin%}
         <a href="#ModalRemoveRunlist" role="button" class="span2 pull-right btn btn-danger" data-toggle="modal">Remove runlist</a>
         <a href="#ModalAddRunlist" role="button" class="span2 pull-right btn btn-success" data-toggle="modal">Add runlist</a>
+        {% endif %}
     </h3>
     </div>
     <table class="table table-bordered runlists">
@@ -178,7 +180,9 @@
     <div class="well well-small">
     <h3>Profiles
         <small>({{ profiles|length }})</small>
+        {% if user.admin %}
         <a href="#ModalAddProfile" role="button" class="pull-right btn btn-success" data-toggle="modal">Add profile</a>
+        {% endif %}
     </h3>
     </div>
     <table class="table table-bordered">
@@ -209,35 +213,13 @@
     <h3>No profiles</h3>
 {% endif %}
 
+{% if user.admin %}
 {% if hosts %}
         <div class="well well-small">
                 <h3 >Hosts
                         <a href="#ModalAddHost" role="button" class="pull-right btn btn-success" data-toggle="modal">Add host</a>
                 </h3>
         </div>
-{#
-    <table class="table table-bordered table-hover">
-    {% for alias, hosts in hosts.items() %}
-            <tr class="info"><td > <h4 class="text-success">{{ alias }}</h4> </td></tr>
-                <tbody>
-                    {% for host in hosts %}
-                    <tr><td>
-
-                    <div class="host-info" data-hostname="{{host}}">
-                    <strong> {{ host }} </strong>
-                                            <button type="button" class="pull-right remove_host btn btn-danger btn-mini"
-                                                    data-host="{{alias}}:{{host}}">
-                                                    Remove
-                                            </button>
-                    </div>
-
-                    </td></tr>
-                    {% endfor %}
-                </tbody>
-    {% endfor %}
-    </table>
-#}
-<!-- TEST -->
 <div >
 {% for alias, hosts in hosts.items() %}
     <div class="accordion-group">
@@ -302,6 +284,7 @@
 <div class="well well-small">
     <h3>No hosts</h3>
 </div>
+{% endif %}
 {% endif %}
 
 <!-- Modal window for add host -->
