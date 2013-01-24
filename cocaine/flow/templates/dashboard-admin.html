@@ -139,7 +139,8 @@
     <div class="well well-small">
     <h3>Runlists
         <small>({{ runlists|length }})</small>
-        <a href="#ModalAddRunlist" role="button" class="pull-right btn btn-success" data-toggle="modal">Add runlist</a>
+        <a href="#ModalRemoveRunlist" role="button" class="span2 pull-right btn btn-danger" data-toggle="modal">Remove runlist</a>
+        <a href="#ModalAddRunlist" role="button" class="span2 pull-right btn btn-success" data-toggle="modal">Add runlist</a>
     </h3>
     </div>
     <table class="table table-bordered runlists">
@@ -156,13 +157,10 @@
                              <strong class="span2 text-info">{{ runlist_name }}</strong>
                 </td>
                 <td>
-                            <button class="btn-mini btn-danger btn runlist_remove" data-toggle="modal" data-runlist="{{runlist_name}}" >Remove runlist</button>
-                </td>
-                <td>
                     {% for app_name, profile_name in runlist.items() %}
                         <div class="clearfix runlist">
                                 <span class="pull-left">
-                                    <strong>{{ app_name }} - <span class="edit select">{{ profile_name }}</strong></span>
+                                    <strong>{{ app_name }} - <span class="edit select text-success" >{{ profile_name }}</strong></span>
                                 </span>
                             <button type="button" class="pull-right undeploy btn btn-danger btn-mini"
                                data-url="{{ runlist_name }}/{{ app_name }}/{{ profile_name }}">Undeploy</button>
@@ -393,6 +391,33 @@
     </div>
 </div>
 <!-- END -->
+<!-- Remove modal -->
+<div id="ModalRemoveRunlist" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel" class="muted">Specify runlist name</h3>
+    </div>
+        
+        <div class="modal-body">
+            <div class="row">
+                <div class="span4" >
+                    <p>
+                            <select id="runlist_select" name="runlist_select">
+     {% for runlist_name, profile in runlists.items() %} 
+                            <option>{{runlist_name}}</option>
+     {% endfor %}
+                        </select>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary btn-danger runlist_remove" id="Runlist_OK_button">Delete</button>
+        <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    </div>
+</div>
+<!-- END -->
 
 {% if user.admin %}
     {% block js %}
@@ -435,7 +460,8 @@
                                     }
                                   $('.runlist_remove').click(
                                     function (){
-                                            var runlist_name = $(this).attr("data-runlist");
+                                            var runlist_name = $("#runlist_select :selected").html();
+                                            
                                               bootbox.confirm("Do u really want to remove?", "No", "Yes", function (result)
                                               {
                                                   if (result)
