@@ -99,6 +99,9 @@ def dashboard(user):
         common_manifest_part.setdefault('manifests', []).append(manifest)
     runlists = storage.read_runlists()
     profiles = storage.read_profiles()
+#===========
+    #print storage.read_entities("test_ents", "system", "list:test_ents")
+#===============
     PROFILE_OPTIONS = PROFILE_OPTION_VALIDATORS.keys()
     return render_template('dashboard.html', hosts=storage.read_hosts(),  **locals())
 
@@ -176,13 +179,6 @@ def get_profiles():
         return jsonify(dict([(profile, profile) for profile in profiles.keys()]))
     return json.dumps(profiles.keys())
 
-
-@token_required
-def create_profile(name, user=None):
-    body = request.json
-    if body:
-        storage.write_profile(name, body)
-    return 'ok'
 
 
 def exists(prefix, postfix):
@@ -459,7 +455,6 @@ def get_runlists():
         return json.dumps(storage.read(storage.key("system", "list:runlists")))
     except RuntimeError:
         return json.dumps([])
-
 
 def error_handler(exc):
     logger.error(exc)

@@ -51,6 +51,8 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/maintenance', endpoint='maintenance', view_func=views.maintenance, methods=['POST'])
     app.add_url_rule('/token', view_func=views.get_token, methods=['POST'])
     app.add_url_rule('/runlists', view_func=views.get_runlists)
+    app.add_url_rule('/runlists/<string:name>', endpoint='create_runlist', view_func=views.create_runlist, methods=['POST'])
+    app.add_url_rule('/runlists/<string:name>', endpoint='delete_runlist', view_func=views.delete_runlist, methods=['DELETE'])
 
     app.error_handler_spec[None][500] = views.error_handler
 

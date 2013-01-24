@@ -32,6 +32,35 @@ def delete_alias(alias, user):
     storage.delete_alias(alias)
     return 'ok'
 
+@token_required
+def create_runlist(name, user):
+    try:
+        storage.write_runlist(name,{})
+    except Exception as err:
+        return "Fail"
+    else:
+        return "ok"
+
+@token_required
+def delete_runlist(name, user=None):
+    try:
+        storage.delete_runlist(name)
+    except Exception as err:
+        return "Fail"
+    else:
+        return 'ok'
+
+@token_required
+def create_profile(name, user=None):
+    body = request.json
+    if body:
+        storage.write_profile(name, body)
+    return 'ok'
+
+@token_required
+def delete_profile(name, user=None):
+    return 'ok'
+
 def read_balances():
     try:
         balances = storage.read(storage.key('system', "list:balances"))

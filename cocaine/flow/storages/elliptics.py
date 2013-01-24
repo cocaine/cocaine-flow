@@ -56,6 +56,14 @@ class Elliptics(Storage):
 
         return key.replace(prefix, '')
 
+    #========================================================================================
+    """
+      Operations with Entities:
+        read_entities
+        write_entity
+        delete_entity
+    """
+
     def read_entities(self, prefix, list_prefix, list_postfix):
         s = self
         entities = s.bulk_read(s.key(prefix, s.read(s.key(list_prefix, list_postfix))))
@@ -68,6 +76,43 @@ class Elliptics(Storage):
     def write_entity(self, prefix, postfix, list_prefix, list_postfix, data):
         self.write(self.key(prefix, postfix), data)
         self.list_add(list_prefix, list_postfix, postfix)
+
+    def delete_entity(self, prefix, postfix, list_prefix, list_postfix):
+        """
+            Delete entity item like one runlist of profile
+        """
+        self.remove(self.key(prefix, postfix))
+        self.list_remove(list_prefix, list_postfix, postfix)
+
+    def clean_entities(self, prefix, list_prefix, list_postfix, except_='default'):
+        """
+            Remove invalid items from entity list
+        """
+        s = self
+        rv = {}
+        entities_keys = s.read(s.key(list_prefix, list_postfix))
+        if not isinstance(entities_keys, Iterable):
+            s.write(s.key(list_prefix, list_postfix), list())
+            return
+
+        original_keys = set(entities_keys)
+        cleaned_keys = copy(original_keys)
+        for key in original_keys:
+            try:
+                rv[key] = s.read(s.key(prefix, key))
+            except RuntimeError:
+                if key != except_:
+                    cleaned_keys.remove(key)
+        keys_for_remove = original_keys - cleaned_keys
+        if keys_for_remove:
+            s.write(s.key(list_prefix, list_postfix), list(cleaned_keys))
+            logger.info('Removed %s during maintenance %s', prefix, keys_for_remove)
+
+        return rv
+    #=======================================================================================
+    """
+        Operations with List
+    """
 
     def list_add(self, prefix, postfix, value, raise_on_missed_key=False):
         storage_key = self.key(prefix, postfix)
@@ -94,6 +139,11 @@ class Elliptics(Storage):
             # removing manifest from manifest list
             self.write(list_key, list(entities))
 
+    #======================================================================================
+    """
+        Manifest
+    """
+
     def read_manifests(self):
         return self.read_entities("manifests", "system", "list:manifests")
 
@@ -106,8 +156,13 @@ class Elliptics(Storage):
     def write_manifest(self, uuid, manifest):
         self.write_entity("manifests", uuid, "system", "list:manifests", manifest)
 
-    def write_profile(self, profile_name, profile):
-        self.write_entity("profiles", profile_name, "system", "list:profiles", profile)
+    def clean_manifests(self):
+        return self.clean_entities("manifests", "system", "list:manifests")
+
+    #======================================================================================
+    """
+        Runlists
+    """
 
     def write_runlist(self, runlist_name, runlist):
         self.write_entity("runlists", runlist_name, "system", "list:runlists", runlist)
@@ -119,7 +174,43 @@ class Elliptics(Storage):
             return default
 
     def read_runlists(self):
-        return self.read_entities("runlists", "system", "list:runlists")
+        res = self.read_entities("runlists", "system", "list:runlists")
+        return res
+
+    def delete_runlist(self, runlist_name):
+        runlists = self.read_runlists()
+        if runlist_name not in runlists:
+            return 
+        self.delete_entity("runlists", runlist_name, "system", "list:runlists")
+
+    def clean_runlists(self):
+        runlists =  self.clean_entities("runlists", "system", "list:runlists")
+
+        #clean invalid apps from runlists
+        for runlist_name, runlist in runlists.items():
+            for app_uuid, profile_name in runlist.items():
+                try:
+                    self.read(self.key("apps", app_uuid))
+                except RuntimeError:
+                    del runlists[runlist_name][app_uuid]
+
+                try:
+                    self.read(self.key("profiles", profile_name))
+                except RuntimeError:
+                    runlists[runlist_name][app_uuid] = 'default'
+
+        for runlist_name, runlist in runlists.items():
+            self.write(self.key("runlists", runlist_name), runlist)
+
+        self.write(self.key("system", "list:runlists"), runlists.keys())
+    #====================================================================================
+
+    """
+        Profiles
+    """
+
+    def write_profile(self, profile_name, profile):
+        self.write_entity("profiles", profile_name, "system", "list:profiles", profile)
 
     def read_profiles(self):
         return self.read_entities("profiles", "system", "list:profiles")
@@ -129,6 +220,14 @@ class Elliptics(Storage):
             return self.read(self.key('profiles', profile_name))
         except RuntimeError:
             return default
+
+    def clean_profiles(self):
+        return self.clean_entities("profiles", "system", "list:profiles")
+
+    #================================================================================
+    """
+        Hosts
+    """
 
     def read_hosts(self):
         hosts_key = self.key('system', "list:hosts")
@@ -143,7 +242,6 @@ class Elliptics(Storage):
 
     def add_host(self, alias, host):
         hosts = self.read_hosts()
-        print hosts
         #hosts.setdefault(alias, ).append(host)
         # why tuple instead list
         l = hosts.get(alias)
@@ -153,7 +251,6 @@ class Elliptics(Storage):
             l = list(l)
         l.append(str(host))
         hosts[alias] = tuple(l)
-        print hosts 
         self.write_hosts(hosts)
 
     def delete_host(self, alias, host):
@@ -170,6 +267,11 @@ class Elliptics(Storage):
         hosts[alias] = l
         self.write_hosts(hosts)
 
+    def clean_hosts(self):
+        hosts = self.read(self.key('system', "list:hosts"))
+        if not isinstance(hosts, dict):
+            self.write(self.key('system', "list:hosts"), {})
+
     def delete_alias(self, alias):
         hosts = self.read_hosts()
         if alias not in hosts:
@@ -177,6 +279,10 @@ class Elliptics(Storage):
         hosts.pop(alias)
         self.write_hosts(hosts)
 
+    #=====================================================================
+    """
+        Username operations
+    """
     def find_user_by_username(self, username):
         try:
             return self.read(self.key('users', username))
@@ -199,6 +305,11 @@ class Elliptics(Storage):
         else:
             return username
 
+    #==================================================================
+    """
+        App operations
+    """
+
     def save_app(self, uuid, data):
         self.write(self.key("apps", uuid), data.read())
 
@@ -206,59 +317,3 @@ class Elliptics(Storage):
         self.list_remove("system", "list:manifests", uuid)
         self.remove(self.key('manifests', uuid))
         self.remove(self.key('apps', uuid))
-
-    def clean_entities(self, prefix, list_prefix, list_postfix, except_='default'):
-        s = self
-        rv = {}
-        entities_keys = s.read(s.key(list_prefix, list_postfix))
-        if not isinstance(entities_keys, Iterable):
-            s.write(s.key(list_prefix, list_postfix), list())
-            return
-
-        original_keys = set(entities_keys)
-        cleaned_keys = copy(original_keys)
-        for key in original_keys:
-            try:
-                rv[key] = s.read(s.key(prefix, key))
-            except RuntimeError:
-                if key != except_:
-                    cleaned_keys.remove(key)
-        keys_for_remove = original_keys - cleaned_keys
-        if keys_for_remove:
-            s.write(s.key(list_prefix, list_postfix), list(cleaned_keys))
-            logger.info('Removed %s during maintenance %s', prefix, keys_for_remove)
-
-        return rv
-
-    def clean_manifests(self):
-        return self.clean_entities("manifests", "system", "list:manifests")
-
-    def clean_runlists(self):
-        runlists =  self.clean_entities("runlists", "system", "list:runlists")
-
-        #clean invalid apps from runlists
-        for runlist_name, runlist in runlists.items():
-            for app_uuid, profile_name in runlist.items():
-                try:
-                    self.read(self.key("apps", app_uuid))
-                except RuntimeError:
-                    del runlists[runlist_name][app_uuid]
-
-                try:
-                    self.read(self.key("profiles", profile_name))
-                except RuntimeError:
-                    runlists[runlist_name][app_uuid] = 'default'
-
-        for runlist_name, runlist in runlists.items():
-            self.write(self.key("runlists", runlist_name), runlist)
-
-        self.write(self.key("system", "list:runlists"), runlists.keys())
-
-    def clean_profiles(self):
-        return self.clean_entities("profiles", "system", "list:profiles")
-
-    def clean_hosts(self):
-        hosts = self.read(self.key('system', "list:hosts"))
-        if not isinstance(hosts, dict):
-            self.write(self.key('system', "list:hosts"), {})
-

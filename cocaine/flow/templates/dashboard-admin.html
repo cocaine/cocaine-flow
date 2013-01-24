@@ -139,25 +139,30 @@
     <div class="well well-small">
     <h3>Runlists
         <small>({{ runlists|length }})</small>
-        <a href="#myModal" role="button" class="pull-right btn btn-success" data-toggle="modal">Add runlist</a>
+        <a href="#ModalAddRunlist" role="button" class="pull-right btn btn-success" data-toggle="modal">Add runlist</a>
     </h3>
     </div>
     <table class="table table-bordered runlists">
         <thead>
         <tr>
-            <th>Name</th>
-            <th>Apps-Profiles</th>
+            <th class="muted">Name</th>
+            <th class="muted">Apps-Profiles</th>
         </tr>
         </thead>
 
         {% for runlist_name, runlist in runlists.items() %}
             <tr>
-                <td>{{ runlist_name }}</td>
+                <td>
+                             <strong class="span2 text-info">{{ runlist_name }}</strong>
+                </td>
+                <td>
+                            <button class="btn-mini btn-danger btn runlist_remove" data-toggle="modal" data-runlist="{{runlist_name}}" >Remove runlist</button>
+                </td>
                 <td>
                     {% for app_name, profile_name in runlist.items() %}
                         <div class="clearfix runlist">
                                 <span class="pull-left">
-                                    {{ app_name }} - <span class="edit select">{{ profile_name }}</span>
+                                    <strong>{{ app_name }} - <span class="edit select">{{ profile_name }}</strong></span>
                                 </span>
                             <button type="button" class="pull-right undeploy btn btn-danger btn-mini"
                                data-url="{{ runlist_name }}/{{ app_name }}/{{ profile_name }}">Undeploy</button>
@@ -188,7 +193,7 @@
 
         {% for profile_name, profile in profiles.items() %}
             <tr>
-                <td>{{ profile_name }}</td>
+                <td><strong class="text-info">{{ profile_name }}</strong></td>
                 <td>
                     <ul class="unstyled">
                         {% for option, value in profile|dictsort %}
@@ -240,7 +245,7 @@
     <div class="accordion-group">
         <div class="AAAA" my-target="hosts_{{alias}}">
                             <div class="row">
-                                   <div class="span4"><strong>Cluster {{ alias }}</strong></div>
+                                   <div class="span4"><strong class="text-info">&nbsp{{ alias }}</strong></div>
                                    <button type="button" class="pull-right remove_alias btn btn-danger btn-mini"
                                                     data-alias="{{alias}}">
                                                     Remove cluster
@@ -306,7 +311,7 @@
 <div id="ModalAddHost" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
 <div class="modal-header">
     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Enter hostname and press "Add host"</h3>
+    <h3 class="muted">Specify name of cluster and hostname </h3>
 </div>
 <form class="form-search">
 <p>&nbsp</p>
@@ -332,24 +337,23 @@
 
 <!-- Modal window for add profile -->
 <div id="ModalAddProfile" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
-<div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
-    <h3 id="myModalLabel">Fill fields:</h3>
-</div>
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 class="muted">Specify options</h3>
+    </div>
 
-<!-- dialog contents -->
-<div class="modal-body">
-    <div class="row">
-    <div class="span4">
-    <div class="row">
-        <div class="span2"><strong>Profile name</strong></div> 
-        <input class="span2" type="number" id="Profile-name" min="1" required>
-    </div>
+    <div class="modal-body">
+        <div class="row">
+            <div class="span4">
+                <div class="row">
+                    <div class="span2"><strong>Profile name</strong></div> 
+                    <input class="span2" type="number" id="Profile-name" min="1" required>
+                </div>
     {% for OPTION in PROFILE_OPTIONS %}
-    <div class="row">
-        <div class="span2"><strong>{{OPTION}}</strong></div> 
-        <input class="span2 offset1" type="number" id="{{OPTION}}" min="1">
-    </div>
+            <div class="row">
+                <div class="span2"><strong>{{OPTION}}</strong></div> 
+                <input class="span2 offset1" type="number" id="{{OPTION}}" min="1">
+            </div>
     {%endfor %}
     </div>
     <div class="span2">
@@ -361,15 +365,32 @@
     </div>
     </div>
 </div>
-
-<!-- dialog buttons -->
 <div class="modal-footer">
     <button class="btn btn-primary" id="Profile_OK_button">OK</button>
     <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
 </div>
 </div>
-<!-- -->
-<div>
+<!-- END OF ADD PROFILE -->
+
+<!-- Modal window for add runlist -->
+<div id="ModalAddRunlist" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel" class="muted">Enter runlist name</h3>
+    </div>
+        
+        <div class="modal-body">
+            <div class="row">
+                <div class="span4">
+                    <input type="text" id="Runlist-name" placeholder="MyRunlistName">
+                </div>
+            </div>
+        </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary" id="Runlist_OK_button">OK</button>
+        <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    </div>
 </div>
 <!-- END -->
 
@@ -412,6 +433,59 @@
                                                 }
                                             }
                                     }
+                                  $('.runlist_remove').click(
+                                    function (){
+                                            var runlist_name = $(this).attr("data-runlist");
+                                              bootbox.confirm("Do u really want to remove?", "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                            
+                                                      $.ajax({
+                                                                 url:'/runlists/'+ runlist_name,
+                                                                 type:"DELETE",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 }       
+                                                             });
+                                                    }
+                                                });
+
+                                    }
+                                  );
+                                  $('#Runlist_OK_button').click(
+                                    function() {
+                                        var runlist_name = $('#Runlist-name').val();
+                                        if (runlist_name == ''){
+                                            return
+                                        }
+                                                      $.ajax({
+                                                                 url:'/runlists/'+ runlist_name,
+                                                                 type:"POST",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 }       
+                                                             });
+                                    }
+                                  );
                                   $('#Profile_OK_button').click(
                                     function(){
                                         json_object = {};
@@ -602,6 +676,10 @@
                                             {
                                                 var hostname = $('.host_name_for_add').val();
                                                 var alias = $('.alias_name_for_add').val();
+                                                if ((alias == '' ) | ( hostname == ''))
+                                                {   
+                                                    return
+                                                }
                                                 
                                                 $.ajax({
                                                             url:'/hosts/'+ alias + '/' + hostname,
