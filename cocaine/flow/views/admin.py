@@ -81,9 +81,10 @@ def add_balance_list(group, app_name, user):
     s = storage
     balances = read_balances()
     try:
-        post_body = json.loads(request.stream.read())
+        post_body = request.json
     except ValueError:
         return 'Bad encoded JSON body', 400
+    print post_body
 
     if not post_body:
         return 'Empty body', 400
@@ -102,11 +103,17 @@ def add_balance_list(group, app_name, user):
     except RuntimeError:
         return "One of app's version is not uploaded"
 
-    balances.setdefault(group, {}).setdefault(app_name, {})
-    balances[group][app_name] = post_body
+    balances.setdefault(app_name, {})
+    balances[app_name]['AppVersions'] = post_body
+    balances[app_name]['Cluster'] = group
+    print balances
     try:
         s.write(s.key('system', "list:balances"), balances)
     except RuntimeError:
         return 'Failed to save balances to storage', 500
 
     return 'ok'
+
+@token_required(admin=True)
+def remove_balance_list(group, app_name, user):
+    pass

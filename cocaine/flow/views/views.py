@@ -14,6 +14,7 @@ from cocaine.flow.storages import storage
 from common import send_json_rpc, token_required, uniform, logged_in
 from .profile import PROFILE_OPTION_VALIDATORS
 from storages.exceptions import UserExists
+import admin
 
 
 logger = logging.getLogger()
@@ -98,10 +99,8 @@ def dashboard(user):
         common_manifest_part.setdefault('type', manifest['type'])
         common_manifest_part.setdefault('manifests', []).append(manifest)
     runlists = storage.read_runlists()
+    print storage.read_hosts()
     profiles = storage.read_profiles()
-#===========
-    #print storage.read_entities("test_ents", "system", "list:test_ents")
-#===============
     PROFILE_OPTIONS = PROFILE_OPTION_VALIDATORS.keys()
     return render_template('dashboard.html', hosts=storage.read_hosts(),  **locals())
 
