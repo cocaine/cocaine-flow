@@ -88,6 +88,7 @@ wget -qO - "http://COCAINE_API_SERVER/profiles"
 ```
  
 ### Добавить профиль:
+Доступно только администратору. Необходимо указать token.  
 Профиль передает ввиде валидного JSON. В примере: из файла pr.json:
 ```java
  { //pr.json
@@ -97,8 +98,42 @@ wget -qO - "http://COCAINE_API_SERVER/profiles"
   + Url: *COCAINE_API_SERVER/profiles/<profile-name>*
   + HTTP-метод: *POST*
   + Content-type: *application/json*
+  + Параметры: *token*
 
 Пример:
 ```bash
 curl -X POST -H Content-type:application/json "http://COCAINE_API_SERVER/profiles/testprofile?token=<admin's-token>" --data @pr.json
+```
+
+## Работа с runlists
+
+### Получить список доступных runlists:
+  + Url: *COCAINE_API_SERVER/runlists*
+  + HTTP-метод: *GET*
+
+Пример:  
+```bash
+wget -qO - "http://COCAINE_API_SERVER/runlists"
+```
+
+### Добавить runlist:
+Доступно только администратору. Необходимо указать token.
+  + Url: *COCAINE_API_SERVER/runlists/<runlist-name>*
+  + HTTP-метод: *POST*
+  + Параметры: *token*
+
+Пример:
+```bash
+curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token>"`
+```
+
+### Добавить runlist:
+Доступно только администратору. Необходимо указать token.
+  + Url: *COCAINE_API_SERVER/runlists/<runlist-name>*
+  + HTTP-метод: *DELETE*
+  + Параметры: *token*
+
+Пример:
+```bash
+curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token>"`
 ```
