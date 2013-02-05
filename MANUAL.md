@@ -63,4 +63,26 @@
 
 Пример:  
     `curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER?token=<admin's-token>"`
-   
+
+## Работа с профилями приложений
+
+### Получить список доступных профилей:
+  + Url: *COCAINE_API_SERVER/profiles*
+  + HTTP-метод: *GET*
+
+Пример:  
+    `wget -qO - "http://COCAINE_API_SERVER/profiles"`
+ 
+### Добавить профиль:
+Профиль передает ввиде валидного JSON. В примере: из файла pr.json:
+``` 
+ { //pr.json
+    "pool-limit" : 10 
+ }
+```
+  + Url: *COCAINE_API_SERVER/profiles/<profile-name>*
+  + HTTP-метод: *POST*
+  + Content-type: *application/json*
+
+Пример:
+    `curl -X POST -H Content-type:application/json "http://COCAINE_API_SERVER/profiles/testprofile?token=<admin's-token>" --data @pr.json`
