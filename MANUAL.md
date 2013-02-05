@@ -12,8 +12,10 @@
   + HTTP-метод: *POST*
   + Параметры: *username* и *password*  
 
-Пример:  
-    `curl "http://COCAINE_API_SERVER/register" -d "username=TESTUSER&password=TEST"`
+Пример:
+```bash
+curl "http://COCAINE_API_SERVER/register" -d "username=TESTUSER&password=TEST"`
+```
 
 ### Получение token для пользователя
 
@@ -22,7 +24,9 @@
   + Параметры: *username* и *password*
 
 Пример:  
-    `curl "http://COCAINE_API_SERVER/token" -d "username=TESTUSER&password=TEST"`
+```bash
+curl "http://COCAINE_API_SERVER/token" -d "username=TESTUSER&password=TEST"`
+```
 
 ## Упавление хостами
 
@@ -32,8 +36,10 @@
   + Url: *COCAINE_API_SERVER/hosts*
   + HTTP-метод: *GET*
 
-Пример:  
-    `wget -qO - "http://COCAINE_API_SERVER/hosts"`
+Пример:
+```bash
+wget -qO - "http://COCAINE_API_SERVER/hosts"`
+```
 
 ### Добавить хост:
 Доступно только администратору. Необходимо указать token.
@@ -41,18 +47,22 @@
   + HTTP-метод: *PUT* *POST*
   + Параметры: *token*
 
-Пример:  
-    `curl -X PUT "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admin's-token>"`
-    
+Пример:
+```bash
+curl -X PUT "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admin's-token>"`
+```
+
 ### Удалить хост:
 Доступно только администратору. Необходимо указать token.
   + Url: *COCAINE_API_SERVER/hosts/<claster_name>/<hostname>*
   + HTTP-метод: *DELETE*
   + Параметры: *token*
 
-Пример:  
-    `curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admin's-token>"`
-   
+Пример:
+```bash
+curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admin's-token>"`
+```
+
 ### Удалить кластер:
 **ВНИМАНИЕ:** это удалит все хосты, входящие в этот кластер!  
 Доступно только администратору. Необходимо указать token.
@@ -61,8 +71,10 @@
   + HTTP-метод: *DELETE*
   + Параметры: *token*
 
-Пример:  
-    `curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER?token=<admin's-token>"`
+Пример:
+```bash
+curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER?token=<admin's-token>"`
+```
 
 ## Работа с профилями приложений
 
@@ -71,11 +83,13 @@
   + HTTP-метод: *GET*
 
 Пример:  
-    `wget -qO - "http://COCAINE_API_SERVER/profiles"`
+```bash
+wget -qO - "http://COCAINE_API_SERVER/profiles"
+```
  
 ### Добавить профиль:
 Профиль передает ввиде валидного JSON. В примере: из файла pr.json:
-``` 
+```java
  { //pr.json
     "pool-limit" : 10 
  }
@@ -85,4 +99,6 @@
   + Content-type: *application/json*
 
 Пример:
-    `curl -X POST -H Content-type:application/json "http://COCAINE_API_SERVER/profiles/testprofile?token=<admin's-token>" --data @pr.json`
+```bash
+curl -X POST -H Content-type:application/json "http://COCAINE_API_SERVER/profiles/testprofile?token=<admin's-token>" --data @pr.json
+```
