@@ -127,7 +127,7 @@ wget -qO - "http://COCAINE_API_SERVER/runlists"
 curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token>"`
 ```
 
-### Добавить runlist:
+### Удалить runlist:
 Доступно только администратору. Необходимо указать token.
   + Url: *COCAINE_API_SERVER/runlists/<runlist-name>*
   + HTTP-метод: *DELETE*
@@ -137,3 +137,18 @@ curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token
 ```bash
 curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token>"`
 ```
+
+## Работа с приложениями
+
+### Upload приложения из CVS:
+Поддерживается загрузка приложения из систем контроля версий git, svn, hg. 
+Путь к репозиторию передается в параметре url. Можно указать параметр ref, содержащий branc/tag/hash
+  + Url: *COCAINE_API_SERVER/upload*
+  + HTTP-метод: *POST*
+  + Параметры: *token*, *url*, *ref*
+
+```bash
+curl -X POST "http://COCAINE_API_SERVER/upload" -d "token=<user-token>&url=git://git.blabal.com/someuser/dummy"
+```
+
+### Deploy приложения
