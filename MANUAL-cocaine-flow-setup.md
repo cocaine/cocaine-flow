@@ -1,7 +1,7 @@
 # Cocaine-flow-setup
 
 Эта утилита позволяет произвести первоначальную настройку Cocaine-flow. Настройка производится в режиме вопрос-ответ.
-В скобках указывается "значение по умолчанию"
+В скобках указывается "значение по умолчанию".
 
 Запускаем:
 ```bash
@@ -16,11 +16,11 @@ Installation path (default: /etc/cocaine-flow):
 Username (default: admin):
 Password (default: password):
 ```
-Тип стораджа:
+Тип хранилища:
 ```bash
 Storage (default: elliptics):
 ```
-Далее идет настройка стораджа.
+Далее идет настройка хранилища.
 Для **elliptics**:
 ```bash
 Elliptics node (hostname[:port])  # хост и порт
