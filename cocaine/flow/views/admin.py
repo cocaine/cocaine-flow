@@ -53,6 +53,7 @@ def delete_runlist(name, user=None):
 @token_required
 def create_profile(name, user=None):
     body = request.json
+    print body
     if body:
         storage.write_profile(name, body)
     return 'ok'
