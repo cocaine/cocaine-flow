@@ -43,7 +43,7 @@ wget -qO - "http://COCAINE_API_SERVER/hosts"`
 
 ### Добавить хост:
 Доступно только администратору. Необходимо указать token.
-  + Url: *COCAINE_API_SERVER/hosts/<claster_name>/<hostname>*
+  + Url: *COCAINE_API_SERVER/hosts/\<claster_name\>/\<hostname\>*
   + HTTP-метод: *PUT* *POST*
   + Параметры: *token*
 
@@ -54,7 +54,7 @@ curl -X PUT "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admin's
 
 ### Удалить хост:
 Доступно только администратору. Необходимо указать token.
-  + Url: *COCAINE_API_SERVER/hosts/<claster_name>/<hostname>*
+  + Url: *COCAINE_API_SERVER/hosts/\<claster_name\>/\<hostname\>*
   + HTTP-метод: *DELETE*
   + Параметры: *token*
 
@@ -67,7 +67,7 @@ curl -X DELETE "http://COCAINE_API_SERVER/hosts/TESTCLUSTER/TESTHOST?token=<admi
 **ВНИМАНИЕ:** это удалит все хосты, входящие в этот кластер!  
 Доступно только администратору. Необходимо указать token.
 
-  + Url: *COCAINE_API_SERVER/hosts/<claster_name>*
+  + Url: *COCAINE_API_SERVER/hosts/\<claster_name\>*
   + HTTP-метод: *DELETE*
   + Параметры: *token*
 
@@ -95,7 +95,7 @@ wget -qO - "http://COCAINE_API_SERVER/profiles"
     "pool-limit" : 10 
  }
 ```
-  + Url: *COCAINE_API_SERVER/profiles/<profile-name>*
+  + Url: *COCAINE_API_SERVER/profiles/\<profile-name\>*
   + HTTP-метод: *POST*
   + Content-type: *application/json*
   + Параметры: *token*
@@ -118,7 +118,7 @@ wget -qO - "http://COCAINE_API_SERVER/runlists"
 
 ### Добавить runlist:
 Доступно только администратору. Необходимо указать token.
-  + Url: *COCAINE_API_SERVER/runlists/<runlist-name>*
+  + Url: *COCAINE_API_SERVER/runlists/\<runlist-name\>*
   + HTTP-метод: *POST*
   + Параметры: *token*
 
@@ -129,7 +129,7 @@ curl -X PUT "http://COCAINE_API_SERVER/runlists/TESTRUNLIST?token=<admin's-token
 
 ### Удалить runlist:
 Доступно только администратору. Необходимо указать token.
-  + Url: *COCAINE_API_SERVER/runlists/<runlist-name>*
+  + Url: *COCAINE_API_SERVER/runlists/\<runlist-name\>*
   + HTTP-метод: *DELETE*
   + Параметры: *token*
 
@@ -152,3 +152,13 @@ curl -X POST "http://COCAINE_API_SERVER/upload" -d "token=<user-token>&url=git:/
 ```
 
 ### Deploy приложения
+Фактически запускает приложение в облаке
+  + Url: *COCAINE_API_SERVER/deploy/\<appuuid\>/\<profile\>*
+  + HTTP-метод: *POST*
+  + Параметры: *token*
+
+### Undeploy
+  + Url: *COCAINE_API_SERVER/undeploy/\<appuuid\>/\<profile\>*
+  + HTTP-метод: *POST*
+  + Параметры: *token*
+
