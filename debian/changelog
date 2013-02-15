@@ -1,3 +1,9 @@
+cocaine-flow (0.10.1-rc0) lucid; urgency=low
+
+  * rc0 for cocaine 10 
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Fri, 15 Feb 2013 20:35:19 +0400
+
 cocaine-flow (0.10.1) lucid; urgency=low
 
   * Bump version for new features,

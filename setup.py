@@ -7,7 +7,7 @@ except ImportError:
 
 setup(
     name="cocaine-flow",
-    version="0.10.0",
+    version="0.10.0-rc0",
     description="Cocaine Flow",
     long_description="Cocaine Management Tools",
     url="https://github.com/cocaine/cocaine-flow",
@@ -19,5 +19,8 @@ setup(
     package_data={'cocaine.flow': ['templates/*', 'static/style.css', 'static/bootstrap/css/*', 'static/bootstrap/js/*',
                                    'static/bootstrap/img/*']},
     scripts=['cocaine/flow/cocaine-flow', 'cocaine/flow/cocaine-flow-setup'],
-    requires=["msgpack"]
+    data_files = [('/etc/ubic/service', ['scripts/cocaine-flow']),
+                  ('/etc/cocaine-flow/',['exampleconf/settings.yaml']),
+                  ('/var/log/cocaine-flow',[])],
+    requires=["msgpack", "flask"]
 )

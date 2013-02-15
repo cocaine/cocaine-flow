@@ -1,7 +1,7 @@
 Source: cocaine-flow
 Section: utils
 Priority: extra
-Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
+Maintainer: Anton Tyurin <noxiouz@yandex.ru>
 Build-Depends:
  cdbs,
  debhelper (>= 7.0.13),
@@ -20,9 +20,12 @@ Depends:
  python-flask,
  python-msgpack,
  python-yaml,
- python-pymongo,
+ python-pymongo | elliptics-client,
  python-sh,
- python-zmq
+ python-zmq,
+ python-gunicorn,
+ ubic,
+ libyaml-perl
 Description: Cocaine - Flow
  Cocaine management tools.
 XB-Python-Version: >= 2.6
