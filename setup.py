@@ -17,7 +17,7 @@ setup(
     platforms=["Linux", "BSD", "MacOS"],
     packages=["cocaine","cocaine.flow", 'cocaine.flow.storages', 'cocaine.flow.views', 'flask_pymongo'],
     package_data={'cocaine.flow': ['templates/*', 'static/style.css', 'static/bootstrap/css/*', 'static/bootstrap/js/*',
-                                   'static/bootstrap/img/*', 'static/jquery.jeditable.js']},
+                                   'static/bootstrap/img/*', 'static/jquery.jeditable.js', 'static/bootbox.min.js', 'static/jquery.jeditable.mini.js']},
     scripts=['cocaine/flow/cocaine-flow', 'cocaine/flow/cocaine-flow-setup'],
     data_files = [('/etc/ubic/service', ['scripts/cocaine-flow']),
                   ('/etc/cocaine-flow/',['exampleconf/settings.yaml']),
