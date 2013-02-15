@@ -81,7 +81,8 @@ def send_json_rpc(cmd, args, hosts, timeout=0.5):
             request.connect('tcp://%s:5000' % host)
             request.setsockopt(zmq.LINGER, 0)
 
-            request.send_multipart([msgpack.packb(cmd), msgpack.packb(args)])
+            #request.send_multipart([msgpack.packb(cmd), msgpack.packb(args)])
+            request.send(msgpack.packb([cmd, args]))
 
             poller = zmq.Poller()
             poller.register(request, zmq.POLLIN)
