@@ -214,13 +214,13 @@
 {% endif %}
 
 {% if user.admin %}
-{% if hosts %}
-        <div class="well well-small">
+<div class="well well-small">
                 <h3 >Hosts
                         <a href="#ModalAddHost" role="button" class="pull-right btn btn-success" data-toggle="modal">Add host</a>
                 </h3>
         </div>
 <div >
+{% if hosts %}
 {% for alias, hosts in hosts.items() %}
     <div class="accordion-group">
         <div class="AAAA" my-target="hosts_{{alias}}">
@@ -281,9 +281,7 @@
 </div>
 <!-- ENDTEST -->
 {% else %}
-<div class="well well-small">
     <h3>No hosts</h3>
-</div>
 {% endif %}
 {% endif %}
 
