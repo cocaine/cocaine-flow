@@ -415,8 +415,8 @@ def deploy(runlist, uuid, profile, user):
 
     return 'ok'
 
-
-def delete_app(app_name):
+@token_required(admin=False)
+def delete_app(app_name, user=None):
     s = storage
 
     # define runlist for app from manifest
@@ -425,8 +425,7 @@ def delete_app(app_name):
     if runlist is not None:
         logger.warning('Trying to delete deployed app - rejected')
         return 'error', 400
-
-    storage.remove_app(app_name)
+    storage.delete_app(app_name)
     return 'ok'
 
 
