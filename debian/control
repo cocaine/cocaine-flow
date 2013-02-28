@@ -18,7 +18,7 @@ Depends:
  ${misc:Depends},
  ${python:Depends},
  python-flask,
- python-msgpack,
+ python-msgpack | msgpack-python,
  python-yaml,
  python-pymongo | elliptics-client,
  python-sh,
