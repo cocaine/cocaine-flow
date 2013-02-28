@@ -69,7 +69,7 @@ class Elliptics(Storage):
         entities = s.bulk_read(s.key(prefix, s.read(s.key(list_prefix, list_postfix))))
         entities = self.remove_prefix(prefix, entities)
         for k, entity in entities.items():
-            entity_unpacked = msgpack.unpackb(entity)
+            entity_unpacked = msgpack.unpackb(entity, list_hook=list)
             entities[k] = entity_unpacked
         return entities
 
@@ -204,7 +204,6 @@ class Elliptics(Storage):
 
         self.write(self.key("system", "list:runlists"), runlists.keys())
     #====================================================================================
-
     """
         Profiles
     """
@@ -214,6 +213,12 @@ class Elliptics(Storage):
 
     def read_profiles(self):
         return self.read_entities("profiles", "system", "list:profiles")
+
+    def delete_profile(self, profile):
+        profiles = self.read_profiles()
+        if profile not in profiles:
+            return
+        self.delete_entity("profiles", profile, "system", "list:profiles")
 
     def read_profile(self, profile_name, default=None):
         try:
@@ -317,3 +322,11 @@ class Elliptics(Storage):
         self.list_remove("system", "list:manifests", uuid)
         self.remove(self.key('manifests', uuid))
         self.remove(self.key('apps', uuid))
+
+    #=================================================================
+    """
+        Host recipes
+    """
+
+    def write_recipes(self, host, data):
+        pass

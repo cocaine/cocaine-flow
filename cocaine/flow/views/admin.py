@@ -60,7 +60,8 @@ def create_profile(name, user=None):
 
 @token_required
 def delete_profile(name, user=None):
-    return 'ok'
+    storage.delete_profile(name)
+    return 'Ok'
 
 def read_balances():
     try:

@@ -23,8 +23,10 @@ Depends:
  python-pymongo | elliptics-client,
  python-sh,
  python-zmq,
+ python-pip,
  python-gunicorn,
  ubic,
+ git-core,
  libyaml-perl
 Description: Cocaine - Flow
  Cocaine management tools.

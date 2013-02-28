@@ -135,7 +135,6 @@
     <h3>No manifests</h3>
 {% endif %}
 
-{% if runlists %}
     <div class="well well-small">
     <h3>Runlists
         <small>({{ runlists|length }})</small>
@@ -145,6 +144,7 @@
         {% endif %}
     </h3>
     </div>
+{% if runlists %}
     <table class="table table-bordered runlists">
         <thead>
         <tr>
@@ -176,15 +176,16 @@
     <h3>No runlists</h3>
 {% endif %}
 
-{% if profiles %}
     <div class="well well-small">
     <h3>Profiles
         <small>({{ profiles|length }})</small>
         {% if user.admin %}
-        <a href="#ModalAddProfile" role="button" class="pull-right btn btn-success" data-toggle="modal">Add profile</a>
+        <a href="#ModalRemoveProfile" role="button" class="span2 pull-right btn btn-danger" data-toggle="modal">Remove profile</a>
+        <a href="#ModalAddProfile" role="button" class="span2 pull-right btn btn-success" data-toggle="modal">Add profile</a>
         {% endif %}
     </h3>
     </div>
+{% if profiles %}
     <table class="table table-bordered">
         <thead>
         <tr>
@@ -350,6 +351,33 @@
 </div>
 </div>
 <!-- END OF ADD PROFILE -->
+<!-- Remove modal -->
+<div id="ModalRemoveProfile" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="myModalLabel" class="muted">Specify runlist name</h3>
+    </div>
+        
+        <div class="modal-body">
+            <div class="row">
+                <div class="span4" >
+                    <p>
+                            <select id="profile_select" name="profile_select">
+     {% for profile in profiles.keys() %} 
+                            <option>{{profile}}</option>
+     {% endfor %}
+                        </select>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary btn-danger profile_remove" id="Profile_OK_button">Delete</button>
+        <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+    </div>
+</div>
+<!-- END -->
 
 <!-- Modal window for add runlist -->
 <div id="ModalAddRunlist" class="modal hide fade" aria-hidden="true" role="dialog" tabindex="-1" >
@@ -439,6 +467,36 @@
                                                 }
                                             }
                                     }
+                                  $('.profile_remove').click(
+                                    function (){
+                                            var profile_name = $("#profile_select :selected").html();
+                                            
+                                              bootbox.confirm("Do u really want to remove?", "No", "Yes", function (result)
+                                              {
+                                                  if (result)
+                                                  {
+                                            
+                                                      $.ajax({
+                                                                 url:'/profiles/'+ profile_name,
+                                                                 type:"DELETE",
+                                                                 success:function (data, textStatus, jqXHR)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 },
+                                                                 error:function (jqXHR, textStatus, errorThrown)
+                                                                 {
+                                                                    bootbox.alert(jqXHR.responseText, function(){
+                                                                    location.reload(true);
+                                                                 });
+                                                                 }       
+                                                             });
+                                                    }
+                                                });
+
+                                    }
+                                  );
                                   $('.runlist_remove').click(
                                     function (){
                                             var runlist_name = $("#runlist_select :selected").html();
