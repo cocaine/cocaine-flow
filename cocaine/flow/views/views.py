@@ -236,6 +236,11 @@ def download_depends(depends, type_, path):
         output = sh.pip("install", "-v", "-I", "-b", path, "--src", path, "--install-option",
                         "--install-lib=%s" % install_path, *depends)
         return os.listdir(install_path)
+    elif type_ == 'nodejs':
+        install_path = "%s/node_modules"%path 
+        sh.mkdir("-p",install_path)
+        sh.npm("install","--production",_cwd=path)
+        return os.listdir(install_path)
 
 
 def upload_repo(token):
@@ -291,7 +296,10 @@ def upload_repo(token):
         try:
             logger.debug("Packing application to tar.gz")
             sh.git("archive", ref, "--worktree-attributes", format="tar", o="app.tar", _cwd=clone_path),
-            sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
+            if type_ == "nodejs":
+                sh.tar("-uf", "app.tar", "-C", clone_path + "/node_modules", *depends_path, _cwd=clone_path)
+            elif:
+                sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
             sh.gzip("app.tar", _cwd=clone_path)
             package_files = sh.tar('-tf', 'app.tar.gz', _cwd=clone_path)
             package_info['structure'] = [f.strip() for f in package_files]
