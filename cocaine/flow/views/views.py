@@ -191,7 +191,7 @@ def exists(prefix, postfix):
 def validate_info(info):
     logger.debug('Validating package info')
     package_type = info.get('type')
-    if package_type not in ['python']:
+    if package_type not in ['python','nodejs']:
         raise ValueError('%s type is not supported' % package_type)
 
     app_name = info.get('name')
@@ -211,8 +211,12 @@ def upload_app(app, info, ref, token):
     if app_name:
         info['uuid'] = app_name.strip()
     else:
+        s = storage
+        user = s.find_user_by_token(token)
+        username = user["username"]
         ref = ref.strip()
-        info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
+        #info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
+        info['uuid'] = ("%s_%s" % (info['name'], username)).strip()
 
     info['developer'] = token
 
@@ -248,6 +252,12 @@ def upload_repo(token):
     type_ = request.form.get('type')
     ref = request.form.get('ref')
 
+    s = storage
+
+    user = s.find_user_by_token(token)
+    logger.error("user %s uploading repo",user["username"])
+    username = user["username"]
+
     if not url:
         return 'Empty url', 400
 
@@ -260,7 +270,11 @@ def upload_repo(token):
     if type_ not in ['git', 'cvs', 'hg']:
         return 'Invalid cvs type', 400
 
-    clone_path = "/tmp/%s" % os.path.basename(url)
+    if "UPLOAD_FOLDER" in current_app.config:
+        base_clone_path = current_app.config["UPLOAD_FOLDER"]
+    else:
+        base_clone_path = "/tmp"
+    clone_path = "%s/%s" % (base_clone_path,os.path.basename(url))
     if os.path.exists(clone_path):
         sh.rm("-rf", clone_path)
 
@@ -298,7 +312,7 @@ def upload_repo(token):
             sh.git("archive", ref, "--worktree-attributes", format="tar", o="app.tar", _cwd=clone_path),
             if type_ == "nodejs":
                 sh.tar("-uf", "app.tar", "-C", clone_path + "/node_modules", *depends_path, _cwd=clone_path)
-            elif:
+            elif type_ == "python":
                 sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
             sh.gzip("app.tar", _cwd=clone_path)
             package_files = sh.tar('-tf', 'app.tar.gz', _cwd=clone_path)
@@ -436,6 +450,12 @@ def delete_app(app_name, user=None):
     storage.delete_app(app_name)
     return 'ok'
 
+def get_apps():
+    try:
+        mm = storage.read_manifests()
+        return json.dumps([k for k in mm.iterkeys()])
+    except RuntimeError:
+        return json.dumps([])
 
 def get_hosts():
     return json.dumps(storage.read_hosts())
@@ -456,12 +476,14 @@ def get_token():
         return 'Token is not set for user', 400
     return str(token)
 
-
 def get_runlists():
     try:
         return json.dumps(storage.read(storage.key("system", "list:runlists")))
     except RuntimeError:
         return json.dumps([])
+
+def get_runlists_apps():
+    return json.dumps(storage.read_runlists())
 
 def error_handler(exc):
     logger.error(exc)

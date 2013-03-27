@@ -55,6 +55,7 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/hosts/<string:alias>/<string:host>', endpoint='delete_host', view_func=views.delete_host, methods=['DELETE'])
     app.add_url_rule('/hosts/<string:alias>', endpoint='delete_alias', view_func=views.delete_alias, methods=['DELETE'])
     #Apps
+    app.add_url_rule('/apps/', view_func=views.get_apps, methods=['GET'])
     app.add_url_rule('/app/<string:app_name>', view_func=views.delete_app, methods=['DELETE'])
     app.add_url_rule('/app/start/<string:uuid>/<string:profile>', view_func=views.start_app, methods=['POST'])
     app.add_url_rule('/app/stop/<string:uuid>', view_func=views.stop_app, methods=['POST'])
@@ -62,6 +63,7 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/runlists', view_func=views.get_runlists)
     app.add_url_rule('/runlists/<string:name>', endpoint='create_runlist', view_func=views.create_runlist, methods=['POST'])
     app.add_url_rule('/runlists/<string:name>', endpoint='delete_runlist', view_func=views.delete_runlist, methods=['DELETE'])
+    app.add_url_rule('/runlists_apps/', view_func=views.get_runlists_apps, methods=['GET'])
 
     app.error_handler_spec[None][500] = views.error_handler
 
