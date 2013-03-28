@@ -216,7 +216,7 @@ def upload_app(app, info, ref, token):
         username = user["username"]
         ref = ref.strip()
         #info['uuid'] = ("%s_%s" % (info['name'], ref)).strip()
-        info['uuid'] = ("%s_%s" % (info['name'], username)).strip()
+        info['uuid'] = ("%s.%s_%s" % (info['name'], username, ref)).strip()
 
     info['developer'] = token
 

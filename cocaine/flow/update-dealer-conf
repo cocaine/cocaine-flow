@@ -23,9 +23,15 @@ def get_apps():
 def bake_config(config,apps):
     service_default_config = config["services"]["__default__"]
     del config["services"]["__default__"]
-    for k in apps:
-        config["services"][k] = service_default_config
-        config["services"][k]["app"] = k
+    for app_ref in apps:
+        #app.user_ref
+        try:
+            app,ref = app_ref.split("_")
+        except ValueError:
+            continue
+        if not app in config["services"]:
+            config["services"][app] = service_default_config.copy()
+            config["services"][app]["app"] = app_ref
 
 def sha1(s):
     return hashlib.sha1(s).hexdigest()
