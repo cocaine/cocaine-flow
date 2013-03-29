@@ -310,9 +310,9 @@ def upload_repo(token):
         try:
             logger.debug("Packing application to tar.gz")
             sh.git("archive", ref, "--worktree-attributes", format="tar", o="app.tar", _cwd=clone_path),
-            if type_ == "nodejs":
-                sh.tar("-uf", "app.tar", "-C", clone_path + "/node_modules", *depends_path, _cwd=clone_path)
-            elif type_ == "python":
+            if package_info["type"] == "nodejs":
+                sh.tar("-uf", "app.tar", "node_modules", _cwd=clone_path)
+            elif package_info["type"] == "python":
                 sh.tar("-uf", "app.tar", "-C", clone_path + "/depends", *depends_path, _cwd=clone_path)
             sh.gzip("app.tar", _cwd=clone_path)
             package_files = sh.tar('-tf', 'app.tar.gz', _cwd=clone_path)
