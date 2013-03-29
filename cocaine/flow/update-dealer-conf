@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import os
+import sys
+import sh
+import json
+import requests
+import hashlib
+
+API_SERVER = os.environ.get('COCAINE_API_SERVER', 'http://localhost:5000')
+if not API_SERVER.startswith('http://'):
+    API_SERVER = 'http://' + API_SERVER
+DEFAULT_CONFIG_PATH = "/etc/cocaine-dealer/default.conf"
+CONFIG_PATH = "/etc/cocaine-dealer/dealer.conf"
+
+def get_apps():
+    url = API_SERVER + '/runlists_apps'
+    rv = requests.get(url)
+    runlists = json.loads(rv.text)
+    apps = runlists["nodejs"]
+    return [k for k in apps.iterkeys()]
+
+def bake_config(config,apps):
+    service_default_config = config["services"]["__default__"]
+    del config["services"]["__default__"]
+    for app_ref in apps:
+        #app.user_ref
+        try:
+            app,ref = app_ref.split("_")
+        except ValueError:
+            continue
+        if not app in config["services"]:
+            config["services"][app] = service_default_config.copy()
+            config["services"][app]["app"] = app_ref
+
+def sha1(s):
+    return hashlib.sha1(s).hexdigest()
+
+def blink():
+    apps = get_apps()
+    conf = json.load(file(DEFAULT_CONFIG_PATH,"r"))
+    bake_config(conf,apps)
+    of0 = file(CONFIG_PATH,"r")
+    conf0=of0.read()
+    conf1=json.dumps(conf,indent=2)
+    if sha1(conf0)!=sha1(conf1):
+        print "updating"
+        of1 = file(CONFIG_PATH,"w")
+        of1.write(conf1)
+        sh.service("fastcgi-daemon2","restart","all")
+    else:
+        print
+
+if __name__ == "__main__":
+    blink()
+
