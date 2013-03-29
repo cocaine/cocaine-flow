@@ -63,6 +63,12 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/runlists/<string:name>', endpoint='create_runlist', view_func=views.create_runlist, methods=['POST'])
     app.add_url_rule('/runlists/<string:name>', endpoint='delete_runlist', view_func=views.delete_runlist, methods=['DELETE'])
 
+    # JSON API
+    app.add_url_rule('/api/auth', view_func=views.auth, methods=['POST'])
+    app.add_url_rule('/api/register', view_func=views.register_json, methods=['POST'])
+    app.add_url_rule('/api/userinfo', view_func=views.userinfo, methods=['GET'])
+    app.add_url_rule('/api/logout', view_func=views.logout_json, methods=['GET'])
+
     app.error_handler_spec[None][500] = views.error_handler
 
     init_storage(app)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from time import time, sleep
-from flask import request, current_app, flash, redirect, session, url_for
+from flask import request, current_app, flash, redirect, session, url_for, jsonify
 import msgpack
 import zmq
 from storages import storage
@@ -101,3 +101,43 @@ def send_json_rpc(cmd, args, hosts, timeout=0.5):
             continue
 
     return rv
+
+# JSON API
+
+def token_required_json(admin=False):
+    def wrapper(func):
+        def _wrapper(*args, **kwargs):
+            token = request.values.get('token') or session.get('logged_in')
+
+            if not token:
+                return jsonify({"result" : "fail", "reason" : 'Access denied'})
+
+            user = storage.find_user_by_token(token)
+            if user is None:
+                return jsonify({"result" : "ok", "reason" : 'Valid token is required'})
+
+            if isinstance(admin, bool)  and admin and not user.get('admin', False):
+                return jsonify({"result" : "fail", "reason" : 'Admin token is required for this operation'})
+
+            return func(*args, user=user, **kwargs)
+
+        return _wrapper
+
+    if callable(admin):
+        return wrapper(admin)
+    else:
+        return wrapper
+
+def logged_in_json(func):
+    def wrapper(*args, **kwargs):
+        token = session.get('logged_in')
+        if not token:
+            return jsonify({"result" : "fail"})
+
+        user = storage.find_user_by_token(session['logged_in'])
+        if user is None:
+            session.pop('logged_in', None)
+            return jsonify({"result" : "Fail"})
+
+        return func(user, *args, **kwargs)
+    return wrapper
