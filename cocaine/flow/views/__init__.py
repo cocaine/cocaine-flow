@@ -2,3 +2,4 @@
 
 from admin import *
 from views import *
+from jsonapi import *
