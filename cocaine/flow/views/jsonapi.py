@@ -1,3 +1,5 @@
+import hashlib
+
 from flask import request, render_template, session, flash, redirect, url_for, current_app, json, jsonify
 
 from common import send_json_rpc, token_required, token_required_json, uniform, logged_in, logged_in_json
@@ -40,6 +42,14 @@ def auth():
         return jsonify({"reason" : 'Token is not set for user', "result" : "fail"})
     session['logged_in'] = token
     return jsonify({"result" : "ok", "token":token, "login" : username, "ACL" : {}})
+
+def check_login():
+    username = request.values.get("login")
+    user = storage.find_user_by_username(username)
+    if user is not None:
+        return jsonify({"result" : "ok"})
+    else:
+        return jsonify({"result" : "fail"})
 
 @token_required_json(admin=False)
 def userinfo(user):
