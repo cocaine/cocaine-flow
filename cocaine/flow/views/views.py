@@ -31,6 +31,12 @@ def create_user(username, password, admin=False):
     password = hashlib.sha1(password).hexdigest()
     return storage.create_user(username, password, admin, token)
 
+def is_valid_username(login):
+    return True
+
+def is_valid_password(passw):
+    return len(passw) >= 6
+
 
 def register():
     if request.method == 'POST':
