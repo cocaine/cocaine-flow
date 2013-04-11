@@ -2,16 +2,32 @@
 from collections import Iterable
 from copy import copy
 import re
-from yaml import YAMLError
 import hashlib
 import logging
 import os
 from uuid import uuid4
-from flask import request, render_template, session, flash, redirect, url_for, current_app, json, jsonify
-import sh
+
+from flask import request
+from flask import render_template
+from flask import session
+from flask import flash
+from flask import redirect
+from flask import url_for
+from flask import current_app
+from flask import json
+from flask import jsonify
+
 import yaml
+from yaml import YAMLError
+import sh
+
 from cocaine.flow.storages import storage
-from common import send_json_rpc, token_required, token_required_json, uniform, logged_in, logged_in_json
+from common import send_json_rpc
+from common import token_required
+from common import token_required_json
+from common import uniform
+from common import logged_in
+from common import logged_in_json
 from .profile import PROFILE_OPTION_VALIDATORS
 from storages.exceptions import UserExists
 import admin
@@ -105,7 +121,6 @@ def dashboard(user):
         common_manifest_part.setdefault('type', manifest['type'])
         common_manifest_part.setdefault('manifests', []).append(manifest)
     runlists = storage.read_runlists()
-    print storage.read_hosts()
     storage.delete_alias('test ')
     profiles = storage.read_profiles()
     PROFILE_OPTIONS = PROFILE_OPTION_VALIDATORS.keys()
@@ -423,7 +438,6 @@ def deploy(runlist, uuid, profile, user):
     else:
         manifest['runlist'] = runlist
 
-    print hosts
     if is_undeploy:
         res = send_json_rpc(1, [[uuid]], itertools.chain(*hosts.values()))
     else:

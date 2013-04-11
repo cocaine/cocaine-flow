@@ -70,7 +70,11 @@ def create_app(settings_path='/etc/cocaine-flow/settings.yaml'):
     app.add_url_rule('/api/register', view_func=views.register_json, methods=['POST'])
     app.add_url_rule('/api/userinfo', view_func=views.userinfo, methods=['GET'])
     app.add_url_rule('/api/logout', view_func=views.logout_json, methods=['GET'])
-    app.add_url_rule('/api/check-login', view_func=views.check_login, methods=['GET'])
+    app.add_url_rule('/api/check-username', view_func=views.check_username, methods=['GET'])
+    #app.add_url_rule('/api/user-remove', view_func=views.user_remove, methods=['DELETE'])
+
+    #TEST STREAM
+    app.add_url_rule('/test/stream', view_func=views.streamed_response, methods=['GET'])
 
     app.error_handler_spec[None][500] = views.error_handler
 
