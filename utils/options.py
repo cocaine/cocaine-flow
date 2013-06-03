@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 #
-#    Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
+#   Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
 #    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 #
 #    This file is part of Cocaine.
@@ -19,33 +18,11 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from tornado import web
-from tornado.ioloop import IOLoop
 from tornado.options import options
+from tornado.options import define
+from tornado.options import parse_config_file
 
-from utils.route import Route
-import utils.options
-
-import userapi # Add userapi handler to app
-import appsapi 
-
-class SessionManager(object):
-
-    def __init__(self):
-        self._cache = dict()
-
-class Application(web.Application):
-
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
-        self.session_manager = SessionManager()
-
-settings = {
-    "cookie_secret" : options.SECRET_KEY,
-    "debug" : True
-}
-
-app = Application(Route.routes(), static_path="./", **settings)
-
-app.listen(8080)
-IOLoop.instance().start()
+define("AUTHORIZATION_COOKIE", type=str, default="AUTHCOOKIE")
+define("SECRET_KEY")
+define("port", type=int, default=8080)
+parse_config_file("./config")

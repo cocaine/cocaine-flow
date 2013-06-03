@@ -19,7 +19,9 @@
 #
 
 from tornado import web
+from tornado.options import options
 from utils.route import Route
+from utils.storage import Storage
 
 __all__ = ["Login", "Logout"]
 
@@ -28,11 +30,19 @@ class Login(web.RequestHandler):
 
     def get(self):
         self.write("Hello, world")
-        self.set_cookie("TEST", "sdsfsf")
+        self.set_secure_cookie(options.AUTHORIZATION_COOKIE, "sdsfsf")
 
 @Route(r"/logout", isREST=True)
 class Logout(web.RequestHandler):
 
     def get(self):
         self.write("Hello, world")
-        self.clear_cookie("TEST")
+        self.clear_cookie(options.AUTHORIZATION_COOKIE)
+
+@Route(r"/Create")
+class CreateUser(web.RequestHandler):
+
+    @web.asynchronous
+    def get(self):
+        s = Storage()
+        s.create_user("test", "test", self)

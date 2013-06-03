@@ -19,3 +19,4 @@
 #
 
 from applications import *
+from profiles import *

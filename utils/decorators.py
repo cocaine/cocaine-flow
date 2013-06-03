@@ -18,11 +18,50 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from tornado.options import options
+
+__all__ = ["authorization_require", "CocaineCoroutine"]
+
 def authorization_require(func):
     def wrapper(self, *args, **kwargs):
-        if self.get_cookie("TEST"):
+        if self.get_secure_cookie(options.AUTHORIZATION_COOKIE):
             return func(self, *args, **kwargs)
         else:
             self.write("authorization_require")
             self.finish()
     return wrapper
+
+class _Coroutine(object):
+
+    def __call__(self, func):
+        def wrapper(*args, **kwargs):
+            self.obj = func(*args, **kwargs)
+            try:
+                f = self.obj.next()
+                f.bind(self.push, self.error, self.push)
+            except StopIteration as err:
+                pass
+            except Exception as err:
+                print err
+        return wrapper
+
+    def push(self, chunk=None):
+        try:
+            f = self.obj.send(chunk)
+            f.bind(self.push, self.error, self.push)
+        except StopIteration as err:
+            pass
+
+    def error(self, err):
+        try:
+            f = self.obj.throw(err)
+            f.bind(self.push, self.error, self.push)
+        except StopIteration as err:
+            pass
+
+def CocaineCoroutine(func):
+    """ Wrapper for coroutine based API
+    of cocaine-framework-python.
+    Make it easy to using services into coroutines
+    """
+    return _Coroutine()(func)

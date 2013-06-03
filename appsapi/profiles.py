@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 #
-#    Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
+#   Copyright (c) 2011-2013 Anton Tyurin <noxiouz@yandex.ru>
 #    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 #
 #    This file is part of Cocaine.
@@ -18,34 +17,37 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import json
 
 from tornado import web
-from tornado.ioloop import IOLoop
-from tornado.options import options
+#from cocaine.services import Service
+from utils.storage import Storage
 
 from utils.route import Route
-import utils.options
+from utils.decorators import authorization_require
 
-import userapi # Add userapi handler to app
-import appsapi 
 
-class SessionManager(object):
+@Route(r"/profiles")
+class Profiles(web.RequestHandler):
 
-    def __init__(self):
-        self._cache = dict()
+    @web.asynchronous
+    def get(self):
+        s = Storage()
+        s.profiles(self)
 
-class Application(web.Application):
+import time
 
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
-        self.session_manager = SessionManager()
+@Route(r"/profile/([^/]*)")
+class Profile_add(web.RequestHandler):
 
-settings = {
-    "cookie_secret" : options.SECRET_KEY,
-    "debug" : True
-}
+    @web.asynchronous
+    def post(self, name):
+        s = Storage()
+        s.profile_add(name, json.loads(self.request.body), self)
 
-app = Application(Route.routes(), static_path="./", **settings)
+    @web.asynchronous
+    def delete(self, name):
+        s = Storage()
+        s.profile_remove(name, self)
 
-app.listen(8080)
-IOLoop.instance().start()
+
