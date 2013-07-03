@@ -24,25 +24,22 @@ from tornado.ioloop import IOLoop
 from tornado.options import options
 
 from utils.route import Route
+from utils.storage import Storage
 import utils.options
 
-import userapi # Add userapi handler to app
-import appsapi 
+from views import *
 
-class SessionManager(object):
-
-    def __init__(self):
-        self._cache = dict()
+Storage()
 
 class Application(web.Application):
 
     def __init__(self, *args, **kwargs):
         super(Application, self).__init__(*args, **kwargs)
-        self.session_manager = SessionManager()
 
 settings = {
     "cookie_secret" : options.SECRET_KEY,
-    "debug" : True
+    "debug" : True,
+    "login_url" : "/login"
 }
 
 app = Application(Route.routes(), static_path="./", **settings)

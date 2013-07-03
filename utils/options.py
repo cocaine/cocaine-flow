@@ -22,7 +22,6 @@ from tornado.options import options
 from tornado.options import define
 from tornado.options import parse_config_file
 
-define("AUTHORIZATION_COOKIE", type=str, default="AUTHCOOKIE")
 define("SECRET_KEY")
 define("port", type=int, default=8080)
 parse_config_file("./config")

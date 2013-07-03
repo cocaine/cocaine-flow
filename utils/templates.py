@@ -18,5 +18,11 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import json
 
-from authorization import *
+def result(status, reason, code, **kwargs):
+    res = { "status" : status,
+             "reason" : reason,
+             "code" : code }
+    res.update(kwargs)
+    return res

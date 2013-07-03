@@ -18,5 +18,18 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from applications import *
-from profiles import *
+import logging
+
+from tornado import web
+from tornado.options import options
+
+
+class CocaineRequestHandler(web.RequestHandler):
+
+    log = logging.getLogger()
+
+    def get_current_user(self):
+        self.log.debug("Get current user")
+        user = self.get_secure_cookie("username")
+        self.log.debug("Current user %s" % user)
+        return user

@@ -18,93 +18,90 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import uuid
+import logging
+from functools import wraps
 
-#from msgpack import packb as SERIALIZE
-#from msgpack import unpackb as DESERIALIZE
-from json import dumps as SERIALIZE
-from json import loads as DESERIALIZE
-
+import msgpack
 from cocaine.services import Service
-from cocaine.futures import NextTick
 
-from utils.decorators import CocaineCoroutine
+from utils.decorators import unwrap_result
 
-def serialize(data):
-    # TBD - add crypt()
-    return SERIALIZE(data)
 
-def deserialize(data):
-    # TDB - add encrypt()
-    return DESERIALIZE(data)
+class Singleton(type):
 
-__all__ = ["Storage"]
+    def __init__(self, *args, **kwargs):
+        self.__instance = None
+        self.log = logging.getLogger()
+        super(Singleton, self).__init__(*args, **kwargs)
 
-USERS_NAMESPACE = "flow_users"
-USERS_TAG = "user"
+    def __call__(self, *args, **kwargs): 
+        if self.__instance is None:
+            self.__instance = super(Singleton, self).__call__(*args, **kwargs)
+            return self.__instance
+        else:
+            return self.__instance
 
-PROFILES_NAMESPACE = "flow_profiles"
-PROFILES_TAG = "profile"
 
-MISC_NAMESPACE = "flow_misc"
-MISC_TAG = "misc"
+def insure_connected(func):
+    def wrapper(self, callback, *args, **kwargs):
+        if self.connected:
+            return func(self, callback, *args, **kwargs)
+        else:
+            self.log.warning("Disconnected. Try reconnect")
+
+            def on_reconnect(res):
+                try:
+                    res.get()
+                    self.log.info("Reconnect to %s" % self.endpoint)
+                    return func(self, callback, *args, **kwargs)
+                except Exception as err:
+                    self.log.error("Unable to reconnect %s" % str(err))
+                    callback(res)
+            self._storage.async_reconnect(on_reconnect, 1)
+    return wrapper
+
+
+def deserializer(func):
+    @wraps(func)
+    def wrapper(res):
+        try:
+            val = msgpack.unpackb(res)
+        except Exception as err:
+            return func(res)
+        else:
+            return func(val)
+    return wrapper
+
+
+def deserialize_result(func):
+    @wraps(func)
+    def wrapper(self, callback, *args):
+        return func(self, deserializer(callback), *args)
+    return wrapper
 
 
 class Storage(object):
 
-    def __init__(self, instance=None):
-        self._storage = instance or Service("storage")
+    __metaclass__ = Singleton
 
-    # Users
-    
-    @CocaineCoroutine
-    def create_user(self, login, passwod, response):
-        res = yield self._storage.find(USERS_NAMESPACE, [USERS_TAG])
-        if login in res:
-            response.write("User %s exists" % login)
-            response.finish()
-            raise StopIteration
+    def __init__(self):
+        self._storage = Service("storage")
+        self.log.info("Initialize storage successfully: %s" % self._storage.service_endpoint)
 
-        uid = str(uuid.uuid4())
-        data = {    "uid" : uid,
-                    "login" : login,
-                    "passwod" : passwod,
-                    "ACL"  : True }
-        yield self._storage.write(USERS_NAMESPACE, login, SERIALIZE(data), [USERS_TAG])
+    @property
+    def connected(self):
+        return self._storage.connected
 
-        response.write("Create user succefully")
-        response.finish()
+    @property
+    def endpoint(self):
+        return self._storage.service_endpoint
 
-    # Profiles
+    @insure_connected
+    def profiles(self, callback):
+        self._storage.find("profiles", ["profile"]).then(callback)
 
-    @CocaineCoroutine
-    def profiles(self, response):
-        profiles = yield self._storage.find(PROFILES_NAMESPACE, [PROFILES_TAG])
-        res = dict()
-        for profile in profiles:
-            raw_profile = yield self._storage.read(PROFILES_NAMESPACE, profile)
-            res[profile] = DESERIALIZE(raw_profile)
-        response.write(res)
-        response.finish()      
-
-    @CocaineCoroutine
-    def profile_add(self, name, profile, response):
-        try:
-            yield self._storage.write(PROFILES_NAMESPACE, name, SERIALIZE(profile), [PROFILES_TAG])      
-        except Exception as err:
-            response.write("Failed")
-        else:
-            response.write("Done")
-        response.finish()
-
-    @CocaineCoroutine
-    def profile_remove(self, name, response):
-        try:
-            yield self._storage.remove(PROFILES_NAMESPACE, name)
-        except Exception as err:
-            print err
-            response.write("Failed")
-        else:
-            response.write("DONE")
-        response.finish()
+    @deserialize_result
+    @insure_connected
+    def get_profile(self, callback, name):
+        self._storage.read("profiles", name).then(unwrap_result(callback))
 
