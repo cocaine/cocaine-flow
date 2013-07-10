@@ -5,8 +5,8 @@
 #    This file is part of Cocaine.
 #
 #    Cocaine is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation; either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    Cocaine is distributed in the hope that it will be useful,
@@ -19,27 +19,36 @@
 #
 
 import logging
+import hmac
 from functools import wraps
+import json
+import uuid
+
+SEREALIZE = json.dumps
+DESEREALIZE = json.loads
 
 import msgpack
 from cocaine.services import Service
 
-from utils.decorators import unwrap_result
+from utils.decorators import unwrap_result, RewrapResult
+
+from cocaine.exceptions import ChokeEvent
+
+FLOW_USERS = "cocaine_flow_users"
 
 
 class Singleton(type):
 
-    def __init__(self, *args, **kwargs):
-        self.__instance = None
-        self.log = logging.getLogger()
-        super(Singleton, self).__init__(*args, **kwargs)
+    def __init__(cls, *args, **kwargs):
+        cls.__instance = None
+        super(Singleton, cls).__init__(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs): 
-        if self.__instance is None:
-            self.__instance = super(Singleton, self).__call__(*args, **kwargs)
-            return self.__instance
+    def __call__(cls, *args, **kwargs):
+        if cls.__instance is None:
+            cls.__instance = super(Singleton, cls).__call__(*args, **kwargs)
+            return cls.__instance
         else:
-            return self.__instance
+            return cls.__instance
 
 
 def insure_connected(func):
@@ -66,7 +75,7 @@ def deserializer(func):
     def wrapper(res):
         try:
             val = msgpack.unpackb(res)
-        except Exception as err:
+        except Exception:
             return func(res)
         else:
             return func(val)
@@ -84,9 +93,12 @@ class Storage(object):
 
     __metaclass__ = Singleton
 
+    log = logging.getLogger()
+
     def __init__(self):
         self._storage = Service("storage")
-        self.log.info("Initialize storage successfully: %s" % self._storage.service_endpoint)
+        self.log.info("Initialize storage successfully: %s"
+                      % self._storage.service_endpoint)
 
     @property
     def connected(self):
@@ -105,3 +117,51 @@ class Storage(object):
     def get_profile(self, callback, name):
         self._storage.read("profiles", name).then(unwrap_result(callback))
 
+    def check_user(self, name):
+        def wrapper(res):
+            try:
+                data = res.get()
+                if len(data) > 0:
+                    self.log.debug("user %s exists" % name)
+                    return data
+                else:
+                    self.log.debug("user %s doesn't exist" % name)
+                    return data  # [] is False
+            except ChokeEvent:
+                pass
+                # print repr(err)
+        return self._storage.find(FLOW_USERS, [name]).then(wrapper)
+
+    def create_user(self, callback, name, passwd):
+        self.log.info("Create user %s" % name)
+        _uuid = str(uuid.uuid4())
+        data = {"username": name,
+                "id": _uuid,
+                "ACL": {},
+                "status": "ok",
+                "passwd": hmac.new(_uuid, passwd).hexdigest()}
+
+        def on_check(res):
+            if not res.get():
+                self.log.info("Create new user")
+                self._storage.write(FLOW_USERS,
+                                    _uuid,
+                                    SEREALIZE(data),
+                                    ["users", name]).then(callback)
+            else:
+                self.log.warning("User already exists")
+                callback(RewrapResult("Already exists"))
+
+        self.check_user(name).then(on_check)
+
+    def find_user(self, callback, name):
+        tag = name or "users"
+
+        def on_check(_all):
+            out = list()
+            for i in _all.get():
+                tmp = yield self._storage.read(FLOW_USERS, i)
+                out.append(DESEREALIZE(tmp))
+            callback(RewrapResult(out))
+
+        self.check_user(tag).then(on_check)

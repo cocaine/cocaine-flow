@@ -5,8 +5,8 @@
 #    This file is part of Cocaine.
 #
 #    Cocaine is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation; either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    Cocaine is distributed in the hope that it will be useful,
@@ -18,19 +18,30 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import json
+from functools import partial
+
 from tornado import web
 
 from utils.requesthandler import CocaineRequestHandler
 from utils.route import Route
+from utils.storage import Storage
 from utils.templates import result
 
-__all__ = ["Login"]
+from cocaine.exceptions import ChokeEvent
 
-@Route('/login')
+
+__all__ = ["Login", "Logout"]
+
+
+@Route(r'/login')
 class Login(CocaineRequestHandler):
 
+    @web.asynchronous
     def post(self):
-        self.set_secure_cookie("username", self.get_argument("username"))
+        username = self.get_argument("username")
+        #password = self.get_argument("password")
+        self.set_secure_cookie("username", username)
         self.write(result("ok", "all good", 0, k=1, b=2))
         self.finish()
 
@@ -39,7 +50,7 @@ class Login(CocaineRequestHandler):
         self.finish()
 
 
-@Route('/logout')
+@Route(r'/logout')
 class Logout(CocaineRequestHandler):
 
     def get(self):
@@ -48,3 +59,53 @@ class Logout(CocaineRequestHandler):
         self.finish()
 
 
+@Route(r'/user/?([^/]*)/?')
+class UserOperations(CocaineRequestHandler):
+
+    @web.asynchronous
+    def post(self, *args):  # POST
+        """Create new user"""
+        password = self.get_argument("password")
+        print password
+        name = self.get_argument("username")
+        print name
+        self.log.info("Emit user creation %s" % name)
+        Storage().create_user(partial(on_create_user, self), name, password)
+
+    @web.asynchronous
+    def get(self, name=None):
+        """ Info about users """
+        Storage().find_user(partial(on_find_user, self), name)
+
+    def delete(self, name):
+        """Delete user"""
+        self.write(name)
+
+    def put(self, name):
+        self.write(name)
+
+
+def on_create_user(self, res):
+    try:
+        res.get()
+    except ChokeEvent:
+        self.write(result("ok", "Create user successfully", 0))
+    except Exception as err:
+        self.log.exception("Creation user error %s" % err)
+        self.write(result("fail", "Unable to create user", 1))
+    else:
+        self.write(result("fail", "User already exists", 1))
+    finally:
+        self.finish()
+
+
+def on_find_user(self, res):
+    data = res.get()
+    # Drow provate fields
+    res = list()
+    for item in data:
+        item.pop("passwd", None)
+        res.append(item)
+    print res
+    self.write(json.dumps(res))
+    self.finish()

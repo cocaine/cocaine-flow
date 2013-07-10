@@ -31,3 +31,11 @@ def unwrap_result(func):
             print err
             func(str(err))
     return wrapper
+
+class RewrapResult(object):
+
+	def __init__(self, result):
+		self.res = result
+
+	def get(self):
+		return self.res

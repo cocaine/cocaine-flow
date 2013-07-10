@@ -6,8 +6,8 @@
 #    This file is part of Cocaine.
 #
 #    Cocaine is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation; either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    Cocaine is distributed in the hope that it will be useful,
@@ -31,18 +31,19 @@ from views import *
 
 Storage()
 
+
 class Application(web.Application):
 
     def __init__(self, *args, **kwargs):
         super(Application, self).__init__(*args, **kwargs)
 
-settings = {
-    "cookie_secret" : options.SECRET_KEY,
-    "debug" : True,
-    "login_url" : "/login"
+SETTINGS = {
+    "cookie_secret": options.SECRET_KEY,
+    "debug": True,
+    "login_url": "/login"
 }
 
-app = Application(Route.routes(), static_path="./", **settings)
+app = Application(Route.routes(), static_path="./", **SETTINGS)
 
 app.listen(8080)
 IOLoop.instance().start()
