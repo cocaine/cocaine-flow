@@ -20,10 +20,10 @@
 
 from tornado import web
 
-from utils.storage import Storage
-from utils.requesthandler import CocaineRequestHandler
-from utils.route import Route
-from utils.templates import result
+from flow.utils.storage import Storage
+from flow.utils.requesthandler import CocaineRequestHandler
+from flow.utils.route import Route
+from flow.utils.templates import result
 
 __all__ = ["Profiles"]
 

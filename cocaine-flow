@@ -23,19 +23,13 @@ from tornado import web
 from tornado.ioloop import IOLoop
 from tornado.options import options
 
-from utils.route import Route
-from utils.storage import Storage
-import utils.options
+from flow.utils.route import Route
+from flow.utils.storage import Storage
+from flow.utils.daemon import Daemon
+#import utils.options  # some tornado's options are defined here
+from flow.utils.options import actions
 
-from views import *
-
-Storage()
-
-
-class Application(web.Application):
-
-    def __init__(self, *args, **kwargs):
-        super(Application, self).__init__(*args, **kwargs)
+from flow.views import *
 
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
@@ -43,7 +37,27 @@ SETTINGS = {
     "login_url": "/login"
 }
 
-app = Application(Route.routes(), static_path="./", **SETTINGS)
+def main():
+    Storage()
+    app = web.Application(Route.routes(), static_path="./", **SETTINGS)
+    app.listen(8080)
+    IOLoop.instance().start()
 
-app.listen(8080)
-IOLoop.instance().start()
+if __name__ == "__main__":
+    if options.daemon:
+        d = Daemon(options.pidfile)
+        if "start" in actions:
+            d.run = main
+            d.start()
+        elif "stop" in actions:
+            d.stop()
+        elif "restart" in actions:
+            d.run = main
+            d.restart()
+        elif "status" in actions:
+            d.status()
+        else:
+            print("start|stop|restart|status")
+            exit(0)
+    else:
+        main()

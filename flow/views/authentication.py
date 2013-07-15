@@ -23,10 +23,10 @@ from functools import partial
 
 from tornado import web
 
-from utils.requesthandler import CocaineRequestHandler
-from utils.route import Route
-from utils.storage import Storage
-from utils.templates import result
+from flow.utils.requesthandler import CocaineRequestHandler
+from flow.utils.route import Route
+from flow.utils.storage import Storage
+from flow.utils.templates import result
 
 from cocaine.exceptions import ChokeEvent
 
@@ -75,11 +75,13 @@ class UserOperations(CocaineRequestHandler):
     @web.asynchronous
     def get(self, name=None):
         """ Info about users """
+        print "AAA", name
         Storage().find_user(partial(on_find_user, self), name)
 
+    @web.asynchronous
     def delete(self, name):
         """Delete user"""
-        self.write(name)
+        Storage().remove_user(partial(on_remove_user, self), name)
 
     def put(self, name):
         self.write(name)
@@ -108,4 +110,13 @@ def on_find_user(self, res):
         res.append(item)
     print res
     self.write(json.dumps(res))
+    self.finish()
+
+
+def on_remove_user(self, res):
+    try:
+        print res.get()
+    except Exception as err:
+        print err
+    self.write("DONE")
     self.finish()

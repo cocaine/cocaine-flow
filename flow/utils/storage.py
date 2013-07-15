@@ -30,7 +30,7 @@ DESEREALIZE = json.loads
 import msgpack
 from cocaine.services import Service
 
-from utils.decorators import unwrap_result, RewrapResult
+from flow.utils.decorators import unwrap_result, RewrapResult
 
 from cocaine.exceptions import ChokeEvent
 
@@ -165,3 +165,6 @@ class Storage(object):
             callback(RewrapResult(out))
 
         self.check_user(tag).then(on_check)
+
+    def remove_user(self, callback, name):
+        self._storage.remove(FLOW_USERS, name).then(callback)
