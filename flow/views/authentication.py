@@ -76,7 +76,7 @@ class UserOperations(CocaineRequestHandler):
     @web.asynchronous
     def get(self, name=None):
         """ Info about users """
-        self.log.info("Request user %s info"  % name)
+        self.log.info("Request user %s info" % name)
         Storage().find_user(partial(on_find_user, self), name)
 
     @web.asynchronous

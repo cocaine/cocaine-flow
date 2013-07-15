@@ -37,10 +37,11 @@ SETTINGS = {
     "login_url": "/login"
 }
 
+
 def main():
     Storage()
     app = web.Application(Route.routes(), static_path="./", **SETTINGS)
-    app.listen(8080)
+    app.listen(options.port)
     IOLoop.instance().start()
 
 if __name__ == "__main__":

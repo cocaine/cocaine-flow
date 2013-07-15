@@ -66,7 +66,7 @@ def insure_connected(func):
                 except Exception as err:
                     self.log.error("Unable to reconnect %s" % str(err))
                     callback(res)
-            self._storage.async_reconnect(on_reconnect, 1)
+            self.backend.async_reconnect(on_reconnect, 1)
     return wrapper
 
 
@@ -107,6 +107,10 @@ class Storage(object):
     @property
     def endpoint(self):
         return self._storage.service_endpoint
+
+    @property
+    def backend(self):
+        return self._storage
 
     @insure_connected
     def profiles(self, callback):
@@ -154,6 +158,7 @@ class Storage(object):
 
         self.check_user(name).then(on_check)
 
+    @insure_connected
     def find_user(self, callback, name):
         tag = name or "users"
 
