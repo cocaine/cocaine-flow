@@ -59,7 +59,7 @@ class Logout(CocaineRequestHandler):
         self.finish()
 
 
-@Route(r'/user/?([^/]*)/?')
+@Route(r'/user/([^/]*)/?')
 class UserOperations(CocaineRequestHandler):
 
     @web.asynchronous
@@ -72,10 +72,11 @@ class UserOperations(CocaineRequestHandler):
         self.log.info("Emit user creation %s" % name)
         Storage().create_user(partial(on_create_user, self), name, password)
 
+    @web.addslash
     @web.asynchronous
     def get(self, name=None):
         """ Info about users """
-        print "AAA", name
+        self.log.info("Request user %s info"  % name)
         Storage().find_user(partial(on_find_user, self), name)
 
     @web.asynchronous
