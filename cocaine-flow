@@ -31,6 +31,7 @@ from flow.utils.options import actions
 
 from flow.views import *
 
+
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
     "debug": True,

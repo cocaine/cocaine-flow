@@ -51,7 +51,7 @@ class Singleton(type):
             return cls.__instance
 
 
-def insure_connected(func):
+def ensure_connected(func):
     def wrapper(self, callback, *args, **kwargs):
         if self.connected:
             return func(self, callback, *args, **kwargs)
@@ -112,12 +112,12 @@ class Storage(object):
     def backend(self):
         return self._storage
 
-    @insure_connected
+    @ensure_connected
     def profiles(self, callback):
         self._storage.find("profiles", ["profile"]).then(callback)
 
     @deserialize_result
-    @insure_connected
+    @ensure_connected
     def get_profile(self, callback, name):
         self._storage.read("profiles", name).then(unwrap_result(callback))
 
@@ -158,7 +158,7 @@ class Storage(object):
 
         self.check_user(name).then(on_check)
 
-    @insure_connected
+    @ensure_connected
     def find_user(self, callback, name):
         tag = name or "users"
 

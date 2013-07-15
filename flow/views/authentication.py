@@ -42,7 +42,7 @@ class Login(CocaineRequestHandler):
         username = self.get_argument("username")
         #password = self.get_argument("password")
         self.set_secure_cookie("username", username)
-        self.write(result("ok", "all good", 0, k=1, b=2))
+        self.write(result("ok", "all good", 0))
         self.finish()
 
     def get(self):
@@ -60,7 +60,7 @@ class Logout(CocaineRequestHandler):
 
 
 @Route(r'/user/([^/]*)/?')
-class UserOperations(CocaineRequestHandler):
+class User(CocaineRequestHandler):
 
     @web.asynchronous
     def post(self, *args):  # POST
