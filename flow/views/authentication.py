@@ -109,7 +109,6 @@ def on_find_user(self, res):
     for item in data:
         item.pop("passwd", None)
         res.append(item)
-    print res
     self.write(json.dumps(res))
     self.finish()
 
@@ -117,7 +116,8 @@ def on_find_user(self, res):
 def on_remove_user(self, res):
     try:
         print res.get()
+    except ChokeEvent:
+        self.write("DONE")
     except Exception as err:
         print err
-    self.write("DONE")
     self.finish()

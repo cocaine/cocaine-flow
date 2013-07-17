@@ -142,7 +142,7 @@ class Storage(object):
         data = {"username": name,
                 "id": _uuid,
                 "ACL": {},
-                "status": "ok",
+                "status": "OK",
                 "passwd": hmac.new(_uuid, passwd).hexdigest()}
 
         def on_check(res):
