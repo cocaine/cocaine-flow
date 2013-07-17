@@ -27,12 +27,12 @@ import msgpack
 from flow.utils.storage import Storage
 from flow.utils.requesthandler import CocaineRequestHandler
 from flow.utils.route import Route
-#from flow.utils.templates import result
 
-from cocaine.tools.actions.profile import List
-from cocaine.tools.actions.profile import View
+from cocaine.tools.actions import profile as ProfileTool
+
 from cocaine.exceptions import CocaineError
 from cocaine.exceptions import ServiceError
+from cocaine.exceptions import ChokeEvent
 from cocaine.futures.chain import Chain
 
 __all__ = ["Profiles"]
@@ -49,16 +49,37 @@ class Profiles(CocaineRequestHandler):
             Chain([partial(do_profiles_view, self)])
         else:
             self.log.info("Request profile %s" % name)
-            View(Storage().backend, name=name).execute()\
+            ProfileTool.View(Storage().backend, name=name).execute()\
                 .then(partial(do_view, self, name))
 
     @web.asynchronous
-    def delete(self, *args):
+    def delete(self, name):  # TBD add name's check
+        self.log.info("Remove profile %s" % name)
+        ProfileTool.Remove(Storage().backend, name=name).execute()\
+            .then(partial(on_profile_delete, self, name))
+
+    @web.asynchronous
+    def post(self, *args):  # Need ability to upload from raw json profile
         self.finish("pass")
 
     @web.asynchronous
     def put(self, *args):
-        self.finish("pass")
+        self.post(*args)
+
+
+def on_profile_delete(obj, name, res):
+    obj.debug("enter_profile_delete event")
+    try:
+        res.get()
+    except ChokeEvent:
+        obj.log.info("Remove profile %s successfully" % name)
+        obj.finish({"status": "ok"})
+    except CocaineError as err:
+        obj.log.error(str(err))
+        obj.finish(str(err))
+    except Exception as err:
+        obj.log.error("Unknown error")
+        obj.finish("unknown error")
 
 
 def do_view(obj, name, res):
@@ -73,10 +94,11 @@ def do_view(obj, name, res):
 
 def do_profiles_view(self):
     try:
-        profiles = yield List(Storage().backend).execute()
+        profiles = yield ProfileTool.List(Storage().backend).execute()
         views = dict()
         for profile in profiles:
-            view = yield View(Storage().backend, name=profile).execute()
+            view = yield ProfileTool.View(Storage().backend, name=profile)\
+                                    .execute()
             views[profile] = msgpack.unpackb(view)
         self.write(json.dumps(views))
     except ServiceError as err:
