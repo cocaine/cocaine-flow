@@ -38,6 +38,6 @@ setup(
         "flow.utils",
         "flow.mock"  # temp
     ],
-    install_requires=["msgpack_python", "tornado"],
+    install_requires=["msgpack_python", "tornado", "pygit2"],
     scripts=["cocaine-flow"]
 )
