@@ -22,28 +22,33 @@
 from tornado import web
 from tornado.ioloop import IOLoop
 from tornado.options import options
+from tornadio2 import SocketServer
 
 from flow.utils.route import Route
 from flow.utils.storage import Storage
 from flow.utils.daemon import Daemon
-#import utils.options  # some tornado's options are defined here
 from flow.utils.options import actions
 
+from flow.views.WebSock import Router
 from flow.views import *
 
 
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
     "debug": True,
-    "login_url": "/login"
+    "login_url": "/login",
+ 
 }
 
 
 def main():
     Storage()
-    app = web.Application(Route.routes(), static_path="./", **SETTINGS)
-    app.listen(options.port)
-    IOLoop.instance().start()
+    app = web.Application(
+        Router.apply_routes(Route.routes()),
+        socket_io_port = 8001,
+        **SETTINGS)
+    SocketServer(app)
+
 
 if __name__ == "__main__":
     if options.daemon:

@@ -19,21 +19,19 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-import pygit2
 
 
-def main(path):
-    repo = pygit2.repository.Repository(path)
-    head = repo.head.get_object()
-    for i in repo.walk(head.oid, pygit2.GIT_SORT_TIME):
-        d = dict()
-        d["message"] = i.message
-        d["hash"] = i.hex
-        d["author"] = "%s <%s>" % (i.author.name, i.author.email)
-        d["time"] = i.commit_time
-        yield d
+from flow.utils.requesthandler import CocaineRequestHandler
+from flow.utils.route import Route
+
+__all__ = ["Repository"]
 
 
-if __name__ == "__main__":
-    for i in main("/Users/noxiouz/Documents/github/cocaine-flow"):
-        print i
+@Route(r'/repository')
+class Repository(CocaineRequestHandler):
+
+    def get(self):
+        app_name = self.get_argument("app_name")
+        cvs_url = self.get_argument("cvs_url")
+        self.finish("%s %s" % (app_name, cvs_url))
+

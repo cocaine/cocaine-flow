@@ -5,8 +5,8 @@
 #    This file is part of Cocaine.
 #
 #    Cocaine is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation; either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    Cocaine is distributed in the hope that it will be useful,
@@ -18,13 +18,12 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-from tornado.options import options
 from tornado.options import define
 from tornado.options import parse_config_file
 from tornado.options import parse_command_line
 
 define("SECRET_KEY")
-define("port", default=8080, type=int, help="listening port number")
+define("port", default=8001, type=int, help="listening port number")
 define("daemon", default=False, type=bool, help="daemonize")
 define("pidfile", default="/var/run/tornado", type=str, help="pidfile")
 #define("user", default=DEFAULT_USER, type=str, help="Set process's username")

@@ -19,25 +19,21 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+from functools import partial
 
-from setuptools import setup
+from tornado import web
 
-setup(
-    name="cocaine_flow",
-    version="0.10.1",
-    description="Cocaine Flow",
-    long_description="Web interface for cloud",
-    url="https://github.com/cocaine/cocaine-flow",
-    author="Anton Tyurin",
-    author_email="noxiouz@yandex.ru",
-    license="LGPLv3+",
-    platforms=["Linux", "BSD", "MacOS"],
-    packages=[
-        "flow",
-        "flow.views",
-        "flow.utils",
-        "flow.mock"  # temp
-    ],
-    install_requires=["msgpack_python", "tornado", "pygit2", "tornadio2"],
-    scripts=["cocaine-flow"]
-)
+from flow.utils.requesthandler import CocaineRequestHandler
+from flow.utils.route import Route
+from flow.utils.helpers import get_applications
+
+from cocaine.futures.chain import Chain
+
+
+@Route(r"/apps")
+class Apps(CocaineRequestHandler):
+
+    @web.asynchronous
+    def get(self):
+        Chain([partial(get_applications,
+            self.finish)])

@@ -20,21 +20,24 @@
 
 import logging
 import hmac
-from functools import wraps
 import json
 import uuid
+from functools import partial
 
 SEREALIZE = json.dumps
 DESEREALIZE = json.loads
 
-import msgpack
 from cocaine.services import Service
 
-from flow.utils.decorators import unwrap_result, RewrapResult
+from flow.utils.decorators import RewrapResult
 
+from cocaine.futures.chain import Chain
 from cocaine.exceptions import ChokeEvent
 
 FLOW_USERS = "cocaine_flow_users"
+FLOW_PROFILES = "cocaine_flow_profiles"
+FLOW_APPS_DATA = "cocaine_flow_apps_data"
+FLOW_APPS = "cocaine_flow_apps"
 
 
 class Singleton(type):
@@ -70,25 +73,6 @@ def ensure_connected(func):
     return wrapper
 
 
-def deserializer(func):
-    @wraps(func)
-    def wrapper(res):
-        try:
-            val = msgpack.unpackb(res)
-        except Exception:
-            return func(res)
-        else:
-            return func(val)
-    return wrapper
-
-
-def deserialize_result(func):
-    @wraps(func)
-    def wrapper(self, callback, *args):
-        return func(self, deserializer(callback), *args)
-    return wrapper
-
-
 class Storage(object):
 
     __metaclass__ = Singleton
@@ -113,14 +97,6 @@ class Storage(object):
         return self._storage
 
     @ensure_connected
-    def profiles(self, callback):
-        self._storage.find("profiles", ["profile"]).then(callback)
-
-    @deserialize_result
-    @ensure_connected
-    def get_profile(self, callback, name):
-        self._storage.read("profiles", name).then(unwrap_result(callback))
-
     def check_user(self, name):
         def wrapper(res):
             try:
@@ -136,6 +112,7 @@ class Storage(object):
                 # print repr(err)
         return self._storage.find(FLOW_USERS, [name]).then(wrapper)
 
+    @ensure_connected
     def create_user(self, callback, name, passwd):
         self.log.info("Create user %s" % name)
         _uuid = str(uuid.uuid4())
@@ -171,5 +148,48 @@ class Storage(object):
 
         self.check_user(tag).then(on_check)
 
+    @ensure_connected
     def remove_user(self, callback, name):
-        self._storage.remove(FLOW_USERS, name).then(callback)
+        Chain([partial(self._on_remove_action, callback, FLOW_USERS, name)])
+
+    @ensure_connected
+    def store_profile(self, callback, name, data):
+        #self._storage.write(FLOW_PROFILES, name, data, ["profiles", name])
+        Chain([partial(self._on_write_action, callback,
+                FLOW_PROFILES, name, data, ["profiles"])])
+
+    @ensure_connected
+    def remove_profile(self, callback, name):
+        Chain([partial(self._on_remove_action, callback, FLOW_PROFILES, name)])
+
+    @ensure_connected
+    def write_apps_data(self, callback, name, data):
+        Chain([partial(self._on_write_action, callback,
+                       FLOW_APPS_DATA, name, data, ["apps_data"])])
+
+    @ensure_connected
+    def write_apps(self, callback, name, data):
+        Chain([partial(self._on_write_action, callback,
+                       FLOW_APPS, name, data, ["apps"])])
+
+    def list_app_future(self):
+        return self._storage.find(FLOW_APPS, ["apps"])
+
+    def read_app_future(self, name):
+        return self._storage.read(FLOW_APPS, name)
+
+    def _on_remove_action(self, callback, namespace, item):
+        try:
+            yield self._storage.remove(namespace, item)
+        except Exception as err:
+            print err
+        finally:
+            callback("OK")
+
+    def _on_write_action(self, callback, namespace, item, data, tags):
+        try:
+            yield self._storage.write(namespace, item, data, tags)
+        except Exception as err:
+            print err
+        finally:
+            callback("OK")
