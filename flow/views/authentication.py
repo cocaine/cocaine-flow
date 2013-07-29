@@ -18,20 +18,17 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
-import json
 from functools import partial
 
 from tornado import web
 
 from flow.utils.requesthandler import CocaineRequestHandler
 from flow.utils.route import Route
-from flow.utils.storage import Storage
 from flow.utils.templates import result
 
 from flow.utils.helpers import store_user
 from flow.utils.helpers import get_user
 
-from cocaine.exceptions import ChokeEvent
 from cocaine.futures.chain import Chain
 
 
@@ -79,51 +76,11 @@ class User(CocaineRequestHandler):
                        password,
                        name=name)])
 
-
     @web.asynchronous
-    def get(self, name=None):
+    def get(self, name):
         """ Info about users """
         self.log.info("Request user %s info" % name)
+        password = self.get_argument('password', None)
         Chain([partial(get_user,
                        self.finish,
-                       name)])
-
-    @web.asynchronous
-    def delete(self, name):
-        """Delete user"""
-        Storage().remove_user(partial(on_remove_user, self), name)
-
-
-def on_create_user(self, res):
-    try:
-        res.get()
-    except ChokeEvent:
-        self.write(result("ok", "Create user successfully", 0))
-    except Exception as err:
-        self.log.exception("Creation user error %s" % err)
-        self.write(result("fail", "Unable to create user", 1))
-    else:
-        self.write(result("fail", "User already exists", 1))
-    finally:
-        self.finish()
-
-
-def on_find_user(self, res):
-    data = res.get()
-    # Drow provate fields
-    res = list()
-    for item in data:
-        item.pop("passwd", None)
-        res.append(item)
-    self.write(json.dumps(res))
-    self.finish()
-
-
-def on_remove_user(self, res):
-    try:
-        print res.get()
-    except ChokeEvent:
-        self.write("DONE")
-    except Exception as err:
-        print err
-    self.finish()
+                       name, password)])

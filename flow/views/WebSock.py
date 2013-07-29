@@ -40,10 +40,6 @@ def apps_get(self, *args):
 # EVENT: users
 def users_get(self, data, *args, **kwargs):
     """on login or validation username
-    {"name":"users","args":
-        ["get",{"username":"login","password":"999999999999",
-        "meta":{"query":"{\"username\":\"login\",
-        \"password\":\"999999999999\"}"}}]}
     """
     user = data['username']
     password = data.get('password')
@@ -70,7 +66,6 @@ def user_get(self, data, *args, **kwargs):
           }})
     else:
         self.emit("user/me", {"user": {
-                              "status": "fail",
                               "id": "me"}})
     return
 
@@ -121,6 +116,13 @@ class WebSockInterface(SocketConnection):
         APP_LOGGER.error("Not implemented method %s", method)
         raise NotImplementedError("Not implemented method %s" % method)
 
+    @event('apps')
+    @dispatch(get=apps_get)
+    def apps(self, method, *args):
+        """implemetns in decorator"""
+        APP_LOGGER.error("Not implemented method %s", method)
+        raise NotImplementedError("Not implemented method %s" % method)
+
     @event('profiles')
     def profiles(self, *args):
         print "profiles", args
@@ -131,7 +133,6 @@ class WebSockInterface(SocketConnection):
                 "idleTimeout": 1,
                 "startupTimeout": 2,
                 "terminationTimeout": 0,
-
                 "concurrency": 4,
                 "crashlogLimit": 10,
                 "growThreshold": 40,
@@ -222,13 +223,7 @@ class WebSockInterface(SocketConnection):
                     "git clone https://github.com/cocaine/cocaine-flow %s --progress" % path,
                     g.send)
 
-    @event('apps')
-    @dispatch(get=apps_get)
-    def apps(self, method, *args):
-        """implemetns in decorator"""
-        APP_LOGGER.error("Not implemented method %s" % method)
-        raise NotImplementedError("Not implemented method %s" % method)
-
+ 
     @event('summary')
     def summary(self, method, app_id):
         APP_LOGGER.debug("Event summary, method %s, app_id %s" % (method, app_id))

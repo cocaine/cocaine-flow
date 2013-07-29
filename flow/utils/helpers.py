@@ -57,15 +57,14 @@ def get_user(answer, name, password=None):
             user_info = json.loads(item)
         except ValueError:
             logger.exception("Bad json")
-        if password is None:
+        if password is None or not verify_password(password, user_info):
             response = {"users": [{"id": user_info['id'],
                                    "username": user_info['username'],
                                    "status": "OK"}]}
-        elif verify_password(password, user_info):
+        else:
             user_info.pop('uuid', None)
             user_info.pop('password', None)
             response = {"users": [user_info]}
-            print response
     answer(response)
 
 
@@ -107,5 +106,4 @@ def store_user(answer, username, password, **kwargs):
         answer({'user': {'id': data['id'],
                          'ACL': data['ACL'],
                          'status': data['status'],
-                         'username': data['username']}
-                })
+                         'username': data['username']}})
