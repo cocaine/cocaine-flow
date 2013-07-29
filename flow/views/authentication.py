@@ -28,7 +28,11 @@ from flow.utils.route import Route
 from flow.utils.storage import Storage
 from flow.utils.templates import result
 
+from flow.utils.helpers import store_user
+from flow.utils.helpers import get_user
+
 from cocaine.exceptions import ChokeEvent
+from cocaine.futures.chain import Chain
 
 
 __all__ = ["Login", "Logout"]
@@ -65,27 +69,29 @@ class User(CocaineRequestHandler):
     @web.asynchronous
     def post(self, *args):  # POST
         """Create new user"""
-        password = self.get_argument("password")
-        print password
-        name = self.get_argument("username")
-        print name
-        self.log.info("Emit user creation %s" % name)
-        Storage().create_user(partial(on_create_user, self), name, password)
+        self.log.info("Create new user")
+        username = self.get_argument('username')
+        password = self.get_argument('password')
+        name = self.get_argument('name')
+        Chain([partial(store_user,
+                       self.finish,
+                       username,
+                       password,
+                       name=name)])
 
-    @web.addslash
+
     @web.asynchronous
     def get(self, name=None):
         """ Info about users """
         self.log.info("Request user %s info" % name)
-        Storage().find_user(partial(on_find_user, self), name)
+        Chain([partial(get_user,
+                       self.finish,
+                       name)])
 
     @web.asynchronous
     def delete(self, name):
         """Delete user"""
         Storage().remove_user(partial(on_remove_user, self), name)
-
-    def put(self, name):
-        self.write(name)
 
 
 def on_create_user(self, res):

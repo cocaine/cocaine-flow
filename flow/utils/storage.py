@@ -35,6 +35,7 @@ from cocaine.futures.chain import Chain
 from cocaine.exceptions import ChokeEvent
 
 FLOW_USERS = "cocaine_flow_users"
+FLOW_USERS_TAG = "flow_users"
 FLOW_PROFILES = "cocaine_flow_profiles"
 FLOW_APPS_DATA = "cocaine_flow_apps_data"
 FLOW_APPS = "cocaine_flow_apps"
@@ -172,12 +173,24 @@ class Storage(object):
         Chain([partial(self._on_write_action, callback,
                        FLOW_APPS, name, data, ["apps"])])
 
+    # futures for helpers
+    # app
     def list_app_future(self):
         return self._storage.find(FLOW_APPS, ["apps"])
 
     def read_app_future(self, name):
         return self._storage.read(FLOW_APPS, name)
 
+    # user
+    def read_user_future(self, name):
+        return self._storage.read(FLOW_USERS, name)
+
+    def write_user_furure(self, name, data):
+        return self._storage.write(FLOW_USERS, name, data, [FLOW_USERS_TAG])
+
+
+
+    # actions: DEPRECATED
     def _on_remove_action(self, callback, namespace, item):
         try:
             yield self._storage.remove(namespace, item)

@@ -11,10 +11,12 @@ from tornadio2 import event
 from flow.utils.asyncprocess import asyncprocess
 from flow.utils.storage import Storage
 from flow.utils.helpers import get_applications
+from flow.utils.helpers import get_user
+from flow.utils.helpers import store_user
 
 from cocaine.futures.chain import Chain
 
-log = logging.getLogger()
+APP_LOGGER = logging.getLogger()
 
 
 def dispatch(**gl_kwargs):
@@ -28,33 +30,96 @@ def dispatch(**gl_kwargs):
         return wrapper
     return decorator
 
+
+# EVENT: apps
 def apps_get(self, *args):
     Chain([partial(get_applications,
                    partial(self.emit, "apps"))])
 
 
+# EVENT: users
+def users_get(self, data, *args, **kwargs):
+    """on login or validation username
+    {"name":"users","args":
+        ["get",{"username":"login","password":"999999999999",
+        "meta":{"query":"{\"username\":\"login\",
+        \"password\":\"999999999999\"}"}}]}
+    """
+    user = data['username']
+    password = data.get('password')
+    key = data['meta']['query']
+    APP_LOGGER.debug('Read user %s, key %s', user, key)
+    Chain([partial(get_user,
+                   partial(self.emit, 'users/%s' % key),
+                   user, password)])
+
+
+# EVENT: user
+def user_get(self, data, *args, **kwargs):
+    ''' Analog of user/me '''
+    # Check cookies here
+    print self.connection_info  # Extract cookie!
+    user = False
+    if not user:
+        self.emit("user/me",
+          {"user": {
+          "id": "me",
+          "username": "arkel",
+          "status": "OK",
+          "ACL": {}
+          }})
+    else:
+        self.emit("user/me", {"user": {
+                              "status": "fail",
+                              "id": "me"}})
+    return
+
+
+def user_post(self, data, *args, **kwargs):
+    try:
+        user_info = data['user']
+        username = user_info['username']
+        password = user_info['password']
+        name = user_info['name']
+    except KeyError as err:
+        APP_LOGGER.error("Missing argument, %s", str(err))
+        return
+
+    APP_LOGGER.info('Create user: %s', username)
+    key = data['meta']['query']
+    APP_LOGGER.warning("event: user, method: post, key: %s", key)
+    Chain([partial(store_user,
+                   partial(self.emit, "user/%s" % key),
+                   username,
+                   password, name=name)])
+
+
 class WebSockInterface(SocketConnection):
+
+    def __init__(self, *args, **kwargs):
+        super(WebSockInterface, self).__init__(*args, **kwargs)
+        self.connection_info = None
 
     def on_open(self, info):
         # TBD: place into active sessions
         print 'Client connected'
-        print info.ip
-        print str(info.cookies)
-        print info.arguments
+        self.connection_info = info
 
     def on_close(self):
         print 'Client disconnected'
 
-    @event('user/me')
-    def user(self, *args):
-        """ On failure - not now """
-        self.emit("user/me",
-                  {"user": {
-                        "id": "me",
-                        "username": "arkel",
-                        "status": "OK",
-                        "ACL": {}
-                        }})
+    @event('users')
+    @dispatch(get=users_get)
+    def users(self, method, *args, **kwargs):
+        """implemetns in decorator"""
+        APP_LOGGER.error("Not implemented method %s", method)
+        raise NotImplementedError("Not implemented method %s" % method)
+
+    @event('user')
+    @dispatch(get=user_get, post=user_post)
+    def user(self, method, data):
+        APP_LOGGER.error("Not implemented method %s", method)
+        raise NotImplementedError("Not implemented method %s" % method)
 
     @event('profiles')
     def profiles(self, *args):
@@ -77,7 +142,7 @@ class WebSockInterface(SocketConnection):
 
     @event('profile')
     def profile(self, meth, profile_id, *args, **kwargs):
-        log.debug("PROFILE %s %s" % (meth, profile_id))
+        APP_LOGGER.debug("PROFILE %s %s", meth, profile_id)
         if meth == 'get':
             self.emit("profile/%s" % profile_id, {"profile": {
                 "id": 1,
@@ -92,17 +157,14 @@ class WebSockInterface(SocketConnection):
                 "poolLimit": 30,
                 "queueLimit": 20,
                 "logOutput": False
-                } })
+                }})
         else:
             print "PROFILE PUT"
-            #Storage().store_profile(partial(self.emit, {"profile": {
-            #    "id" : 10
-            #    }}))
 
     @event('clusters')
     def clusters(self, *args):
         print "clusters", args
-        self.emit("clusters", {"clusters" : [{
+        self.emit("clusters", {"clusters": [{
                 "id": 1,
                 "name": "default"
             },{
@@ -164,12 +226,12 @@ class WebSockInterface(SocketConnection):
     @dispatch(get=apps_get)
     def apps(self, method, *args):
         """implemetns in decorator"""
-        log.error("Not implemented method %s" % method)
+        APP_LOGGER.error("Not implemented method %s" % method)
         raise NotImplementedError("Not implemented method %s" % method)
 
     @event('summary')
     def summary(self, method, app_id):
-        log.debug("Event summary, method %s, app_id %s" % (method, app_id))
+        APP_LOGGER.debug("Event summary, method %s, app_id %s" % (method, app_id))
         self.emit("summary/%s" % app_id, {"summary": {
                     "id": 1,
                     "app": 1,
@@ -215,6 +277,35 @@ class WebSockInterface(SocketConnection):
                 "last": True
             }]})
 
+    @event('graphs')
+    def graphs(self, method, *args, **kwargs):
+        print args
+
+
+
+    @event('deploy')
+    def deploy(self, method, app_id, *args, **kwargs):
+        APP_LOGGER.info("deploy, %s" % app_id)
+        import time
+        if method == "post":
+            self.emit("deploy/%s" % app_id, {"message": "A",
+                                             "percentage": 20})
+            time.sleep(0.5)
+            self.emit("deploy/%s" % app_id, {"message": "b",
+                                             "percentage": 40})
+            time.sleep(0.5)
+            self.emit("partial/app/%s" % app_id, {"app": {"status": "OK",
+                                                  "status-message": "normal",
+                                                  "id": app_id}})
+            self.emit("deploy/%s" % app_id, {"message": "c",
+                                             "percentage": 100,
+                                             "finished": True,
+                                             "id": app_id})  # Add arrayof cms
+
+    @event('keepalive/deploy')
+    def partial_deploy(self, method, app_id, *args):
+        print method, app_id, args
+
 
 
 def on_git_clone(obj, url, vcs_type, ref, path):
@@ -242,12 +333,12 @@ def on_git_clone(obj, url, vcs_type, ref, path):
             break
     # for test app name
     app_id = "MY_APP_ID" + hashlib.md5(str(ref)).hexdigest()
-    app_info = { "name": app_id,
-                 "id" : app_id,
-                 "reference": ref,
-                 "status": "OK",
-                 "profile": 1,
-                 "status-message": "normal"}
+    app_info = {"name": app_id,
+                "id": app_id,
+                "reference": ref,
+                "status": "OK",
+                "profile": 1,
+                "status-message": "normal"}
 
     print app_info
     # Make tar.gz
@@ -256,7 +347,7 @@ def on_git_clone(obj, url, vcs_type, ref, path):
                         "percentage": 90})
     shutil.make_archive("%s/%s" % (path, app_id),
                         "gztar", root_dir=path,
-                        base_dir=path, logger=log)
+                        base_dir=path, logger=APP_LOGGER)
 
     # Store archive
     msg.append("Store archive\n")
@@ -272,8 +363,8 @@ def on_git_clone(obj, url, vcs_type, ref, path):
 
 
 def on_app_data_upload(obj, app_id, msg, app_info, res):
-    log.info(res)
-    log.info(app_info)
+    APP_LOGGER.info(res)
+    APP_LOGGER.info(app_info)
     msg.append("Store information about application\n")
     obj.emit("upload", {"message": ''.join(msg),
                         "percentage": 98})
@@ -284,7 +375,7 @@ def on_app_data_upload(obj, app_id, msg, app_info, res):
 
 
 def on_app_upload(obj, app_id, msg, res):
-    log.info(res)
+    APP_LOGGER.info(res)
     msg.append("Done\n")
     obj.emit("upload", {"finished": True,
                         "id": app_id,
