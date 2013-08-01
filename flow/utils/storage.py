@@ -19,9 +19,7 @@
 #
 
 import logging
-import hmac
 import json
-import uuid
 from functools import partial
 
 SEREALIZE = json.dumps
@@ -32,11 +30,13 @@ from cocaine.services import Service
 from flow.utils.decorators import RewrapResult
 
 from cocaine.futures.chain import Chain
-from cocaine.exceptions import ChokeEvent
 
 FLOW_USERS = "cocaine_flow_users"
 FLOW_USERS_TAG = "flow_users"
+
 FLOW_PROFILES = "cocaine_flow_profiles"
+FLOW_PROFILES_TAG = "flow_profiles"
+
 FLOW_APPS_DATA = "cocaine_flow_apps_data"
 FLOW_APPS = "cocaine_flow_apps"
 
@@ -98,45 +98,6 @@ class Storage(object):
         return self._storage
 
     @ensure_connected
-    def check_user(self, name):
-        def wrapper(res):
-            try:
-                data = res.get()
-                if len(data) > 0:
-                    self.log.debug("user %s exists" % name)
-                    return data
-                else:
-                    self.log.debug("user %s doesn't exist" % name)
-                    return data  # [] is False
-            except ChokeEvent:
-                pass
-                # print repr(err)
-        return self._storage.find(FLOW_USERS, [name]).then(wrapper)
-
-    @ensure_connected
-    def create_user(self, callback, name, passwd):
-        self.log.info("Create user %s" % name)
-        _uuid = str(uuid.uuid4())
-        data = {"username": name,
-                "id": _uuid,
-                "ACL": {},
-                "status": "OK",
-                "passwd": hmac.new(_uuid, passwd).hexdigest()}
-
-        def on_check(res):
-            if not res.get():
-                self.log.info("Create new user")
-                self._storage.write(FLOW_USERS,
-                                    _uuid,
-                                    SEREALIZE(data),
-                                    ["users", name]).then(callback)
-            else:
-                self.log.warning("User already exists")
-                callback(RewrapResult("Already exists"))
-
-        self.check_user(name).then(on_check)
-
-    @ensure_connected
     def find_user(self, callback, name):
         tag = name or "users"
 
@@ -157,7 +118,7 @@ class Storage(object):
     def store_profile(self, callback, name, data):
         #self._storage.write(FLOW_PROFILES, name, data, ["profiles", name])
         Chain([partial(self._on_write_action, callback,
-                FLOW_PROFILES, name, data, ["profiles"])])
+                       FLOW_PROFILES, name, data, ["profiles"])])
 
     @ensure_connected
     def remove_profile(self, callback, name):
@@ -187,6 +148,13 @@ class Storage(object):
 
     def write_user_furure(self, name, data):
         return self._storage.write(FLOW_USERS, name, data, [FLOW_USERS_TAG])
+
+    # profile
+    def read_profile_future(self, name):
+        return self._storage.read(FLOW_PROFILES, name)
+
+    def write_profile_future(self, name, data):
+        return self._storage.write(FLOW_PROFILES, name, data, [FLOW_PROFILES_TAG])
 
 
 

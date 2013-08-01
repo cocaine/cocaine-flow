@@ -32,7 +32,7 @@ from flow.utils.helpers import get_user
 from cocaine.futures.chain import Chain
 
 
-__all__ = ["Login", "Logout"]
+__all__ = ["Login", "Logout", "User"]
 
 
 @Route(r'/login')

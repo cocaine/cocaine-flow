@@ -58,9 +58,13 @@ def get_user(answer, name, password=None):
         except ValueError:
             logger.exception("Bad json")
         if password is None or not verify_password(password, user_info):
+            if password is None:
+                status = "OK"
+            else:
+                status = "fail"
             response = {"users": [{"id": user_info['id'],
                                    "username": user_info['username'],
-                                   "status": "OK"}]}
+                                   "status": status}]}
         else:
             user_info.pop('uuid', None)
             user_info.pop('password', None)
@@ -107,3 +111,27 @@ def store_user(answer, username, password, **kwargs):
                          'ACL': data['ACL'],
                          'status': data['status'],
                          'username': data['username']}})
+
+
+def store_profile(answer, name, data):
+    try:
+        data['id'] = name
+        yield Storage().write_profile_future(name, json.dumps(data))
+    except ServiceError as err:
+        logger.error(str(err))
+    except Exception as err:
+        logger.exception(err)
+    else:
+        answer({"profile": {"id": name}})
+
+
+def get_profile(answer, name):
+    profile = None
+    try:
+        profile = yield Storage().read_profile_future(name)
+    except ServiceError as err:
+        logger.error(str(err))
+    except Exception:
+        logger.exception(err)
+    else:
+        answer({"profile": json.loads(profile)})

@@ -5,8 +5,8 @@
 #    This file is part of Cocaine.
 #
 #    Cocaine is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU Lesser General Public License as published by
-#    the Free Software Foundation; either version 3 of the License, or
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation; either version 3 of the License, or
 #    (at your option) any later version.
 #
 #    Cocaine is distributed in the hope that it will be useful,
@@ -22,6 +22,7 @@ from functools import wraps
 
 __all__ = ["unwrap_result"]
 
+
 def unwrap_result(func):
     @wraps(func)
     def wrapper(res):
@@ -32,10 +33,27 @@ def unwrap_result(func):
             func(str(err))
     return wrapper
 
+
 class RewrapResult(object):
 
-	def __init__(self, result):
-		self.res = result
+    def __init__(self, result):
+        self.res = result
 
-	def get(self):
-		return self.res
+    def get(self):
+        return self.res
+
+
+def dispatch(**gl_kwargs):
+    '''
+    Wraps Socket.IO methods for dispatching event in handler
+    base on method name (get, post, etc)
+    '''
+    def decorator(func):
+        def wrapper(self, method, *args, **kwargs):
+            job = gl_kwargs.get(method)
+            if job:
+                job(self, *args, **kwargs)
+            else:
+                func(self, method, *args, **kwargs)
+        return wrapper
+    return decorator

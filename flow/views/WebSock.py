@@ -8,44 +8,32 @@ from tornadio2 import SocketConnection
 from tornadio2 import TornadioRouter
 from tornadio2 import event
 
+from flow.utils.decorators import dispatch
 from flow.utils.asyncprocess import asyncprocess
 from flow.utils.storage import Storage
-from flow.utils.helpers import get_applications
-from flow.utils.helpers import get_user
-from flow.utils.helpers import store_user
+from flow.utils import helpers
 
 from cocaine.futures.chain import Chain
 
 APP_LOGGER = logging.getLogger()
 
 
-def dispatch(**gl_kwargs):
-    def decorator(func):
-        def wrapper(self, method, *args, **kwargs):
-            job = gl_kwargs.get(method)
-            if job:
-                job(self, *args, **kwargs)
-            else:
-                func(self, method, *args, **kwargs)
-        return wrapper
-    return decorator
-
-
 # EVENT: apps
 def apps_get(self, *args):
-    Chain([partial(get_applications,
+    Chain([partial(helpers.get_applications,
                    partial(self.emit, "apps"))])
 
 
 # EVENT: users
 def users_get(self, data, *args, **kwargs):
-    """on login or validation username
-    """
+    '''
+    on login and check username
+    '''
     user = data['username']
     password = data.get('password')
     key = data['meta']['query']
     APP_LOGGER.debug('Read user %s, key %s', user, key)
-    Chain([partial(get_user,
+    Chain([partial(helpers.get_user,
                    partial(self.emit, 'users/%s' % key),
                    user, password)])
 
@@ -58,12 +46,12 @@ def user_get(self, data, *args, **kwargs):
     user = False
     if not user:
         self.emit("user/me",
-          {"user": {
-          "id": "me",
-          "username": "arkel",
-          "status": "OK",
-          "ACL": {}
-          }})
+                  {"user": {
+                  "id": "me",
+                  "username": "arkel",
+                  "status": "OK",
+                  "ACL": {}
+                  }})
     else:
         self.emit("user/me", {"user": {
                               "id": "me"}})
@@ -83,10 +71,38 @@ def user_post(self, data, *args, **kwargs):
     APP_LOGGER.info('Create user: %s', username)
     key = data['meta']['query']
     APP_LOGGER.warning("event: user, method: post, key: %s", key)
-    Chain([partial(store_user,
+    Chain([partial(helpers.store_user,
                    partial(self.emit, "user/%s" % key),
                    username,
                    password, name=name)])
+
+
+# EVENT: profile
+def profile_post(self, data, *args, **kwargs):
+    APP_LOGGER.info("Store profile")
+    key = data['meta']['query']
+    profile = data['profile']
+    print profile
+    Chain([partial(helpers.store_profile,
+                   partial(self.emit, "profiles/%s" % key),
+                   profile['name'],
+                   profile)])
+
+
+def profile_get(self, name, *args, **kwargs):
+    APP_LOGGER.info("Get profile")
+    Chain([partial(helpers.get_profile,
+                   partial(self.emit, 'profile/%s' % name),
+                   name)])
+
+
+def profile_put(self, profile, *args, **kwargs):
+    APP_LOGGER.info("Put profile")
+    key = profile['id']
+    Chain([partial(helpers.store_profile,
+                   partial(self.emit, "profiles/%s" % key),
+                   profile['name'],
+                   profile)])
 
 
 class WebSockInterface(SocketConnection):
@@ -127,40 +143,24 @@ class WebSockInterface(SocketConnection):
     def profiles(self, *args):
         print "profiles", args
         self.emit("profiles", {"profiles": [{
-                "id": 1,
-                "name": "default",
-                "heartbeatTimeout": 21,
-                "idleTimeout": 1,
-                "startupTimeout": 2,
-                "terminationTimeout": 0,
-                "concurrency": 4,
-                "crashlogLimit": 10,
-                "growThreshold": 40,
-                "poolLimit": 30,
-                "queueLimit": 20,
-                "logOutput": False
-            }]})
+                               "id": 1,
+                               "name": "default",
+                               "heartbeatTimeout": 21,
+                               "idleTimeout": 1,
+                               "startupTimeout": 2,
+                               "terminationTimeout": 0,
+                               "concurrency": 4,
+                               "crashlogLimit": 10,
+                               "growThreshold": 40,
+                               "poolLimit": 30,
+                               "queueLimit": 20,
+                               "logOutput": False}]})
 
     @event('profile')
-    def profile(self, meth, profile_id, *args, **kwargs):
-        APP_LOGGER.debug("PROFILE %s %s", meth, profile_id)
-        if meth == 'get':
-            self.emit("profile/%s" % profile_id, {"profile": {
-                "id": 1,
-                "name": "default",
-                "heartbeatTimeout": 21,
-                "idleTimeout": 1,
-                "startupTimeout": 2,
-                "terminationTimeout": 0,
-                "concurrency": 4,
-                "crashlogLimit": 10,
-                "growThreshold": 40,
-                "poolLimit": 30,
-                "queueLimit": 20,
-                "logOutput": False
-                }})
-        else:
-            print "PROFILE PUT"
+    @dispatch(get=profile_get, post=profile_post, put=profile_put)
+    def profile(self, method, *args, **kwargs):
+        APP_LOGGER.error("Not implemented method %s", method)
+        raise NotImplementedError("Not implemented method %s" % method)
 
     @event('clusters')
     def clusters(self, *args):
@@ -168,7 +168,7 @@ class WebSockInterface(SocketConnection):
         self.emit("clusters", {"clusters": [{
                 "id": 1,
                 "name": "default"
-            },{
+            }, {
                 "id": 2,
                 "name": "favorite"
             }, {
@@ -183,14 +183,14 @@ class WebSockInterface(SocketConnection):
             def wr(obj):
                 try:
                     data = yield Storage().read_app_future(app_id)
-                    obj.emit("app/%s" % app_id, {"app" : json.loads(data), "commits" : {
+                    obj.emit("app/%s" % app_id, {"app": json.loads(data), "commits": {
                             "id": 1,
                             "summary": 1,
                             "app": app_id,
                             "page": 1,
                             "hash": "c43733",
-                            "link": "https://github.com/...", 
-                            "date": 1368486236487, 
+                            "link": "https://github.com/...",
+                            "date": 1368486236487,
                             "message": "TTTT",
                             "author": "Oleg <markelog@gmail.com>",
                             "active": True,
@@ -202,7 +202,6 @@ class WebSockInterface(SocketConnection):
             print "TTTT"
         else:
             print "app update", method, app_id
-
 
     @event('upload')
     def upload(self, data):
@@ -223,7 +222,6 @@ class WebSockInterface(SocketConnection):
                     "git clone https://github.com/cocaine/cocaine-flow %s --progress" % path,
                     g.send)
 
- 
     @event('summary')
     def summary(self, method, app_id):
         APP_LOGGER.debug("Event summary, method %s, app_id %s" % (method, app_id))
@@ -238,7 +236,7 @@ class WebSockInterface(SocketConnection):
                     "tracker": "some tracker",
                     "dependencies": "sh==1.02, msgpack-python",
                     "use-frequency": "often"},
-                    "commits" : {
+                    "commits": {
                             "id": 1,
                             "summary": 1,
                             "app": app_id,
@@ -258,29 +256,25 @@ class WebSockInterface(SocketConnection):
         print args
         #print kwargs
         self.emit(r"commits/%s" % (args['meta']['query']),
-                 {"commits" : [{
-                "id": 2,
-                "summary": args['summary'],
-                "app":  "MY_APP_IDe15e216fc1c639f787b1231ecdfa1bf8",
-                "page": 2,
-                "hash": "a044a3",
-                "link": "https://github.com/...",
-                "date": 1366630011651,
-                "message": "message",
-                "author": "Oleg <markelog@gmail.com>",
-                "active": False,
-                "last": True
-            }]})
+                 {"commits": [{"id": 2,
+                               "summary": args['summary'],
+                               "app": "MY_APP_IDe15e216fc1c639f787b1231ecdfa1bf8",
+                               "page": 2,
+                               "hash": "a044a3",
+                               "link": "https://github.com/...",
+                               "date": 1366630011651,
+                               "message": "message",
+                               "author": "Oleg <markelog@gmail.com>",
+                               "active": False,
+                               "last": True}]})
 
     @event('graphs')
     def graphs(self, method, *args, **kwargs):
         print args
 
-
-
     @event('deploy')
     def deploy(self, method, app_id, *args, **kwargs):
-        APP_LOGGER.info("deploy, %s" % app_id)
+        APP_LOGGER.info("deploy, %s", app_id)
         import time
         if method == "post":
             self.emit("deploy/%s" % app_id, {"message": "A",
@@ -300,7 +294,6 @@ class WebSockInterface(SocketConnection):
     @event('keepalive/deploy')
     def partial_deploy(self, method, app_id, *args):
         print method, app_id, args
-
 
 
 def on_git_clone(obj, url, vcs_type, ref, path):
@@ -356,7 +349,6 @@ def on_git_clone(obj, url, vcs_type, ref, path):
                                    'rb').read())
 
 
-
 def on_app_data_upload(obj, app_id, msg, app_info, res):
     APP_LOGGER.info(res)
     APP_LOGGER.info(app_info)
@@ -366,7 +358,6 @@ def on_app_data_upload(obj, app_id, msg, app_info, res):
     Storage().write_apps(partial(on_app_upload, obj, app_id, msg),
                          app_id,
                          json.dumps(app_info))
-
 
 
 def on_app_upload(obj, app_id, msg, res):
