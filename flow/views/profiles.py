@@ -36,10 +36,14 @@ class Profiles(CocaineRequestHandler):
 
     @web.asynchronous
     def get(self, *args, **kwargs):
-        name = self.get_argument('name')
-        Chain([partial(helpers.get_profile,
-                       self.finish,
-                       name)])
+        name = self.get_argument('name', None)
+        if name:
+            Chain([partial(helpers.get_profile,
+                           self.finish,
+                           name)])
+        else:
+            Chain([partial(helpers.list_profiles,
+                           self.finish)])
 
     @web.asynchronous
     def delete(self, *args, **kwargs):

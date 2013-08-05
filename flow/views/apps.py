@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # encoding: utf-8
 #
 #    Copyright (c) 2011-2012 Anton Tyurin <noxiouz@yandex.ru>
@@ -36,4 +35,4 @@ class Apps(CocaineRequestHandler):
     @web.asynchronous
     def get(self):
         Chain([partial(get_applications,
-            self.finish)])
+                       self.finish)])
