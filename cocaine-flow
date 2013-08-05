@@ -20,7 +20,6 @@
 #
 
 from tornado import web
-from tornado.ioloop import IOLoop
 from tornado.options import options
 from tornadio2 import SocketServer
 
@@ -36,16 +35,14 @@ from flow.views import *
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
     "debug": True,
-    "login_url": "/login",
- 
-}
+    "login_url": "/login"}
 
 
 def main():
     Storage()
     app = web.Application(
         Router.apply_routes(Route.routes()),
-        socket_io_port = 8080,
+        socket_io_port=8080,
         **SETTINGS)
     SocketServer(app)
 

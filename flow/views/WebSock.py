@@ -1,6 +1,4 @@
 import logging
-import shutil
-import hashlib
 import json
 from functools import partial
 
@@ -8,34 +6,13 @@ from tornadio2 import SocketConnection
 from tornadio2 import TornadioRouter
 from tornadio2 import event
 
-from flow.utils.decorators import dispatch
-from flow.utils.asyncprocess import asyncprocess
+
 from flow.utils.storage import Storage
 from flow.utils import helpers
 
 from cocaine.futures.chain import Chain
 
 APP_LOGGER = logging.getLogger()
-
-
-# EVENT: user
-def user_post(self, data, *args, **kwargs):
-    try:
-        user_info = data['user']
-        username = user_info['username']
-        password = user_info['password']
-        name = user_info['name']
-    except KeyError as err:
-        APP_LOGGER.error("Missing argument, %s", str(err))
-        return
-
-    APP_LOGGER.info('Create user: %s', username)
-    key = data['meta']['query']
-    APP_LOGGER.warning("event: user, method: post, key: %s", key)
-    Chain([partial(helpers.store_user,
-                   partial(self.emit, "user/%s" % key),
-                   username,
-                   password, name=name)])
 
 
 class WebSockInterface(SocketConnection):
@@ -45,12 +22,11 @@ class WebSockInterface(SocketConnection):
         self.connection_info = None
 
     def on_open(self, info):
-        # TBD: place into active sessions
-        print 'Client connected'
+        APP_LOGGER.warning('Client connected')
         self.connection_info = info
 
     def on_close(self):
-        print 'Client disconnected'
+        APP_LOGGER.warning('Client disconnected')
 
     @event('logout')
     def logout(self):
@@ -74,10 +50,34 @@ class WebSockInterface(SocketConnection):
             self.emit(key, {"user": {"id": "me"}})
         return
 
+    @event('create:user')
+    def create_user(self, data, key):
+        '''
+        Create user with information in data.
+
+        :param data: JSON contains userinfo as value for 'user' key
+        :param key: name of emitted event to answer
+        '''
+        try:
+            user_info = data['user']
+            username = user_info['username']
+            password = user_info['password']
+            name = user_info['name']
+        except KeyError as err:
+            APP_LOGGER.error("Missing argument, %s", str(err))
+            return
+
+        APP_LOGGER.info('Create user: %s', username)
+        APP_LOGGER.warning("event: user, method: post, key: %s", key)
+        Chain([partial(helpers.store_user,
+                       partial(self.emit, key),
+                       username,
+                       password, name=name)])
+
     @event('find:users')
     def find_users(self, data, key):
         '''
-        Returns information about the user.
+        Return information about the user.
         If the request is passed password and it is valid,
         it returns the full information about the user,
         otherwise just login. Is used to check whether the
@@ -107,6 +107,7 @@ class WebSockInterface(SocketConnection):
     @event('id:app')
     def id_app(self, name, key):
         APP_LOGGER.error('Mock id_app')
+
         def wr(obj):
             try:
                 data = yield Storage().read_app_future(name)
@@ -126,10 +127,6 @@ class WebSockInterface(SocketConnection):
             except Exception as err:
                 print err
         Chain([partial(wr, self)])
-
-    @event('upload:app')
-    def upload_app(self, data, key):
-        APP_LOGGER.error('Not implemented upload:app')
 
     @event('cancel-upload')
     def cancel_upload(self, *args):
@@ -206,41 +203,29 @@ class WebSockInterface(SocketConnection):
     @event('all:clusters')
     def all_clusters(self, _, key):
         APP_LOGGER.error('Mock all:clusters')
-        self.emit(key, {"clusters": [
-            {"id": 1,
-             "name": "default"},
-            {"id": 2,
-             "name": "favorite"},
-            {"id": 3,
-             "name": "heavy"}]})
+        self.emit(key, {"clusters": [{"id": 1}]})
 
-    @event('upload')
-    def upload(self, data):
-        url, vcs_type, ref = (_["value"] for _ in data)
-        if ref == '':
-            ref = "HEAD"
-        self.emit("upload", {"message": "Clone repository", "percentage": 0})
-        path = "/tmp/COCAINE_FLOW"
-        try:
-            shutil.rmtree(path)
-        except OSError as err:
-            print err
+    @event('upload:app')
+    def upload(self, data, key):
+        '''
+        Fetch application from VCS
 
-        g = on_git_clone(self, url, vcs_type, ref, path)
-        g.next()
-        asyncprocess(self,
-                    # REPLACE WITH REAL URL
-                    "git clone https://github.com/cocaine/cocaine-flow %s --progress" % path,
-                    g.send)
+        :param data: information about repository
+        :param key: name of emitted event to answer
+        '''
+        APP_LOGGER.error(str(data))
+        repository_info = dict((item['name'], item['value']) for item in data)
+        Chain([partial(helpers.git_clone,
+                       partial(self.emit, key),
+                       repository_info)])
 
     @event('summary')
     def summary(self, method, app_id):
-        APP_LOGGER.debug("Event summary, method %s, app_id %s" % (method, app_id))
+        APP_LOGGER.error("Event summary, method %s, app_id %s" % (method, app_id))
         self.emit("summary/%s" % app_id, {"summary": {
                     "id": 1,
                     "app": 1,
                     "commits": [1, 2],
-
                     "repository": "git://github.yandex-team.ru/user/application.git",
                     "address": "test",
                     "developers": "admin, tester",
@@ -278,83 +263,5 @@ class WebSockInterface(SocketConnection):
                                "active": False,
                                "last": True}]})
 
-    @event('keepalive/deploy')
-    def partial_deploy(self, method, app_id, *args):
-        print method, app_id, args
-
-
-def on_git_clone(obj, url, vcs_type, ref, path):
-    """Upload from git process"""
-    msg = ["Cloning %s\r\n" % url, "", "", "", ""]
-    while True:
-        data = yield
-        if data is not None:
-            for line in data.split('\r'):
-                if "Counting objects" in line:
-                    msg[1] = line
-                    prog = 25
-                elif "Compressing objects" in line:
-                    msg[2] = line
-                    prog = 40
-                elif "Receiving objects:" in line:
-                    msg[3] = line
-                    prog = 60
-                elif "Resolving deltas:" in line:
-                    msg[4] = line
-                    prog = 75
-                obj.emit("upload", {"message": ''.join(msg),
-                                    "percentage": prog})
-        else:
-            break
-    # for test app name
-    app_id = "MY_APP_ID" + hashlib.md5(str(ref)).hexdigest()
-    app_info = {"name": app_id,
-                "id": app_id,
-                "reference": ref,
-                "status": "OK",
-                "profile": 1,
-                "status-message": "normal"}
-
-    print app_info
-    # Make tar.gz
-    msg.append("Make tar.gz\n")
-    obj.emit("upload", {"message": ''.join(msg),
-                        "percentage": 90})
-    shutil.make_archive("%s/%s" % (path, app_id),
-                        "gztar", root_dir=path,
-                        base_dir=path, logger=APP_LOGGER)
-
-    # Store archive
-    msg.append("Store archive\n")
-    obj.emit("upload", {"message": ''.join(msg),
-                        "percentage": 95})
-    Storage().write_apps_data(partial(on_app_data_upload,
-                                      obj, app_id,
-                                      msg, app_info),
-                              app_id,
-                              open("%s/%s.tar.gz" % (path, app_id),
-                                   'rb').read())
-
-
-def on_app_data_upload(obj, app_id, msg, app_info, res):
-    APP_LOGGER.info(res)
-    APP_LOGGER.info(app_info)
-    msg.append("Store information about application\n")
-    obj.emit("upload", {"message": ''.join(msg),
-                        "percentage": 98})
-    Storage().write_apps(partial(on_app_upload, obj, app_id, msg),
-                         app_id,
-                         json.dumps(app_info))
-
-
-def on_app_upload(obj, app_id, msg, res):
-    APP_LOGGER.info(res)
-    msg.append("Done\n")
-    obj.emit("upload", {"finished": True,
-                        "id": app_id,
-                        "percentage": 100,
-                        "message": ''.join(msg)})
-
 # Create TornadIO2 router
 Router = TornadioRouter(WebSockInterface)
-

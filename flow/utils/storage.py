@@ -38,7 +38,10 @@ FLOW_PROFILES = "cocaine_flow_profiles"
 FLOW_PROFILES_TAG = "flow_profiles"
 
 FLOW_APPS_DATA = "cocaine_flow_apps_data"
+FLOW_APPS_DATA_TAG = "flow_apps_data"
+
 FLOW_APPS = "cocaine_flow_apps"
+FLOW_APPS_TAG = "apps"
 
 
 class Singleton(type):
@@ -137,10 +140,17 @@ class Storage(object):
     # futures for helpers
     # app
     def list_app_future(self):
-        return self._storage.find(FLOW_APPS, ["apps"])
+        return self._storage.find(FLOW_APPS, [FLOW_APPS_TAG])
 
     def read_app_future(self, name):
         return self._storage.read(FLOW_APPS, name)
+
+    def write_app_future(self, name, data):
+        return self._storage.write(FLOW_APPS, name, data, [FLOW_APPS_TAG])
+
+    def write_app_data_future(self, name, data):
+        return self._storage.write(FLOW_APPS_DATA, name,
+                                   data, [FLOW_APPS_DATA_TAG])
 
     # user
     def read_user_future(self, name):
@@ -161,8 +171,6 @@ class Storage(object):
 
     def delete_profile_future(self, name):
         return self._storage.remove(FLOW_PROFILES, name)
-
-
 
     # actions: DEPRECATED
     def _on_remove_action(self, callback, namespace, item):
