@@ -28,7 +28,7 @@ from flow.utils.storage import Storage
 from flow.utils.daemon import Daemon
 from flow.utils.options import actions
 
-from flow.views.WebSock import Router
+from flow.views.SocketIO import Router
 from flow.views import *
 
 

@@ -19,27 +19,19 @@
 #
 
 from functools import partial
-import json
 
 from tornado import web
-import msgpack
 
-from flow.utils.storage import Storage
 from flow.utils.requesthandler import CocaineRequestHandler
 from flow.utils.route import Route
 from flow.utils import helpers
 
-from cocaine.tools.actions import profile as ProfileTool
-
-from cocaine.exceptions import CocaineError
-from cocaine.exceptions import ServiceError
-from cocaine.exceptions import ChokeEvent
 from cocaine.futures.chain import Chain
 
 __all__ = ["Profiles"]
 
 
-@Route(r'/profiles/?')
+@Route(r'/REST/profiles/?')
 class Profiles(CocaineRequestHandler):
 
     @web.asynchronous
@@ -50,10 +42,12 @@ class Profiles(CocaineRequestHandler):
                        name)])
 
     @web.asynchronous
-    def delete(self, name):  # TBD add name's check
+    def delete(self, *args, **kwargs):
+        name = self.get_argument('name')
         self.log.info("Remove profile %s" % name)
-        ProfileTool.Remove(Storage().backend, name=name).execute()\
-            .then(partial(on_profile_delete, self, name))
+        Chain([partial(helpers.delete_profile,
+                       self.finish,
+                       name)])
 
     @web.asynchronous
     def post(self, *args):  # Need ability to upload from raw json profile
@@ -66,45 +60,3 @@ class Profiles(CocaineRequestHandler):
     @web.asynchronous
     def put(self, *args):
         self.post(*args)
-
-
-def on_profile_delete(obj, name, res):
-    obj.debug("enter_profile_delete event")
-    try:
-        res.get()
-    except ChokeEvent:
-        obj.log.info("Remove profile %s successfully" % name)
-        obj.finish({"status": "ok"})
-    except CocaineError as err:
-        obj.log.error(str(err))
-        obj.finish(str(err))
-    except Exception as err:
-        obj.log.error("Unknown error")
-        obj.finish("unknown error")
-
-
-def do_view(obj, name, res):
-    try:
-        data = res.get()
-        obj.write(json.dumps({name: msgpack.unpackb(data)}))
-    except CocaineError as err:
-        obj.log.error(str(err))
-        obj.write(str(err))
-    obj.finish()
-
-
-def do_profiles_view(self):
-    try:
-        profiles = yield ProfileTool.List(Storage().backend).execute()
-        views = dict()
-        for profile in profiles:
-            view = yield ProfileTool.View(Storage().backend, name=profile)\
-                                    .execute()
-            views[profile] = msgpack.unpackb(view)
-        self.write(json.dumps(views))
-    except ServiceError as err:
-        print repr(err)
-        self.write(str(err))
-    except ValueError as err:
-        print repr(err)
-    self.finish()

@@ -30,7 +30,7 @@ from flow.utils.helpers import get_applications
 from cocaine.futures.chain import Chain
 
 
-@Route(r"/apps")
+@Route(r"/REST/apps")
 class Apps(CocaineRequestHandler):
 
     @web.asynchronous

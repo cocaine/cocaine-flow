@@ -35,7 +35,7 @@ from cocaine.futures.chain import Chain
 __all__ = ["Login", "Logout", "User"]
 
 
-@Route(r'/login')
+@Route(r'/REST/login')
 class Login(CocaineRequestHandler):
 
     @web.asynchronous

@@ -13,22 +13,22 @@ from flow.utils.storage import Storage
 from cocaine.futures.chain import Chain
 from cocaine.exceptions import ServiceError
 
-logger = logging.getLogger()
+LOGGER = logging.getLogger()
 
 
 def verify_password(password, user_info):
-    logger.info('verify_password')
+    LOGGER.info('verify_password')
     try:
         user_uuid = user_info['uuid']
         crypt_password = user_info['password']
     except KeyError:
-        logger.exception("Bad user info")
+        LOGGER.exception("Bad user info")
     try:
         result = crypt_password == hmac.new(str(user_uuid), password,
                                             digestmod=hashlib.sha1).hexdigest()
     except TypeError:
-        logger.exception()
-    logger.info("verify result %s", result)
+        LOGGER.exception()
+    LOGGER.info("verify result %s", result)
     return result
 
 
@@ -36,18 +36,18 @@ def get_applications(answer):
     try:
         items = yield Storage().list_app_future()
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     except Exception:
-        logger.exception()
+        LOGGER.exception()
     res = []
     for item in items:
         tmp = yield Storage().read_app_future(item)
         try:
             res.append(json.loads(tmp))
         except ServiceError as err:
-            logger.error(str(err))
+            LOGGER.error(str(err))
         except Exception:
-            logger.exception()
+            LOGGER.exception()
     answer({"apps": res})
 
 
@@ -56,17 +56,17 @@ def get_user(answer, name, password=None):
     try:
         item = yield Storage().read_user_future(name)
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     except Exception as err:
-        logger.exception(str(err))
+        LOGGER.exception(str(err))
     if item is None:
         response = {"users": [{}]}
     else:
-        logger.warning("User %s data:  %s", name, item)
+        LOGGER.warning("User %s data:  %s", name, item)
         try:
             user_info = json.loads(item)
         except ValueError:
-            logger.exception("Bad json")
+            LOGGER.exception("Bad json")
         if password is None or not verify_password(password, user_info):
             if password is None:
                 status = "OK"
@@ -97,7 +97,7 @@ def store_user(answer, username, password, **kwargs):
     except ServiceError:
         pass
     else:
-        logger.warning('User %s already exists. Rewrite it', username)
+        LOGGER.warning('User %s already exists. Rewrite it', username)
         # TBD: Raise error
 
     data = dict()
@@ -113,9 +113,9 @@ def store_user(answer, username, password, **kwargs):
     try:
         yield Storage().write_user_furure(username, json.dumps(data))
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     except Exception as err:
-        logger.exception(str(err))
+        LOGGER.exception(str(err))
     else:
         answer({'user': {'id': data['id'],
                          'ACL': data['ACL'],
@@ -128,9 +128,9 @@ def store_profile(answer, name, data):
         data['id'] = name
         yield Storage().write_profile_future(name, json.dumps(data))
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     except Exception as err:
-        logger.exception(err)
+        LOGGER.exception(err)
     else:
         answer({"profile": {"id": name}})
 
@@ -140,10 +140,10 @@ def get_profile(answer, name):
     try:
         profile = yield Storage().read_profile_future(name)
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
         answer({"profile": {}})
     except Exception:
-        logger.exception(err)
+        LOGGER.exception(err)
     else:
         answer({"profile": json.loads(profile)})
 
@@ -152,7 +152,7 @@ def delete_profile(answer, name):
     try:
         yield Storage().delete_profile_future(name)
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     else:
         answer({})
 
@@ -161,37 +161,42 @@ def list_profiles(answer):
     try:
         items = yield Storage().list_profile_future()
     except ServiceError as err:
-        logger.error(str(err))
+        LOGGER.error(str(err))
     except Exception:
-        logger.exception()
+        LOGGER.exception()
     res = []
     for item in items:
         tmp = yield Storage().read_profile_future(item)
         try:
             res.append(json.loads(tmp))
         except ServiceError as err:
-            logger.error(str(err))
+            LOGGER.error(str(err))
         except Exception:
-            logger.exception()
+            LOGGER.exception()
     answer({"profiles": res})
 
 VCS_TEMP_DIR = "/tmp/COCAINE_FLOW"
 
 
 def git_clone(answer, repository_info):
+    repo_url = repository_info['repository']
+    LOGGER.info("Clone GIT repository  %s", repo_url)
     if repository_info['reference'] == '':
         repository_info['reference'] = 'HEAD'
 
+    LOGGER.info("Ref:  %s", repository_info['reference'])
     answer({"message": "Clone repository", "percentage": 0})
     try:
+        LOGGER.info('Clean temp folder %s', VCS_TEMP_DIR)
         shutil.rmtree(VCS_TEMP_DIR)
     except OSError as err:
-        logger.error(err)
+        LOGGER.error(err)
 
-    g = on_git_clone(answer, repository_info, VCS_TEMP_DIR)
-    g.next()
-    asyncprocess("git clone https://github.com/cocaine/cocaine-flow.git %s --progress" % VCS_TEMP_DIR,
-                 g.send)
+    handle_repo_data = on_git_clone(answer, repository_info, VCS_TEMP_DIR)
+    handle_repo_data.next()
+    clone_command = "git clone %s %s --progress" % (repo_url,
+                                                    VCS_TEMP_DIR)
+    asyncprocess(clone_command, handle_repo_data.send)
 
 
 def on_git_clone(answer, repository_info, path):
@@ -239,7 +244,7 @@ def after_git_clone(answer, msg, path, repository_info):
 
     shutil.make_archive("%s/%s" % (path, app_id),
                         "gztar", root_dir=path,
-                        base_dir=path, logger=logger)
+                        base_dir=path, logger=LOGGER)
 
     # Store archive
     msg.append("Store archive\n")
@@ -249,9 +254,9 @@ def after_git_clone(answer, msg, path, repository_info):
         application_data = open("%s/%s.tar.gz" % (path, app_id), 'rb').read()
         yield Storage().write_app_data_future(app_id, application_data)
     except ServiceError as err:
-        logger.error(repr(err))
+        LOGGER.error(repr(err))
     except Exception as err:
-        logger.error(err)
+        LOGGER.error(err)
 
     try:
         msg.append("Store information about application\n")
@@ -265,6 +270,6 @@ def after_git_clone(answer, msg, path, repository_info):
                 "percentage": 100,
                 "message": ''.join(msg)})
     except ServiceError as err:
-        logger.error(repr(err))
+        LOGGER.error(repr(err))
     except Exception as err:
-        logger.error(err)
+        LOGGER.error(err)
