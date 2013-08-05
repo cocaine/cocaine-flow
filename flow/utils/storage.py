@@ -156,6 +156,12 @@ class Storage(object):
     def write_profile_future(self, name, data):
         return self._storage.write(FLOW_PROFILES, name, data, [FLOW_PROFILES_TAG])
 
+    def list_profile_future(self):
+        return self._storage.find(FLOW_PROFILES, [FLOW_PROFILES_TAG])
+
+    def delete_profile_future(self, name):
+        return self._storage.remove(FLOW_PROFILES, name)
+
 
 
     # actions: DEPRECATED

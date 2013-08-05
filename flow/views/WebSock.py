@@ -76,6 +76,16 @@ class WebSockInterface(SocketConnection):
 
     @event('find:users')
     def find_users(self, data, key):
+        '''
+        Returns information about the user.
+        If the request is passed password and it is valid,
+        it returns the full information about the user,
+        otherwise just login. Is used to check whether the
+        user when creating and validating passwords.
+
+        :param data: user data as JSON
+        :param key: name of emitted event to answer
+        '''
         user = data['username']
         password = data.get('password')
         APP_LOGGER.debug('Read user %s, key %s', user, key)
@@ -84,7 +94,13 @@ class WebSockInterface(SocketConnection):
                        user, password)])
 
     @event('all:apps')
-    def all_apps(self, data, key):
+    def all_apps(self, _, key):
+        '''
+        Return all contained applications from the storage.
+
+        :param _: unusable
+        :param key: name of emitted event to answer
+        '''
         Chain([partial(helpers.get_applications,
                        partial(self.emit, key))])
 
@@ -121,6 +137,12 @@ class WebSockInterface(SocketConnection):
 
     @event('id:profile')
     def id_profile(self, name, key):
+        '''
+        Return the contents of the requested profile
+
+        :param name: profile's name
+        :param key: name of emitted event to answer
+        '''
         APP_LOGGER.info("Get profile")
         Chain([partial(helpers.get_profile,
                        partial(self.emit, key),
@@ -128,9 +150,15 @@ class WebSockInterface(SocketConnection):
 
     @event('create:profile')
     def create_profile(self, data, key):
+        '''
+        Store profile in the storage.
+
+        :param name: JSON, which contains profile body as value
+        for key 'profile'
+        :param key: name of emitted event to answer
+        '''
         APP_LOGGER.info("Store profile")
         profile = data['profile']
-        print profile
         Chain([partial(helpers.store_profile,
                        partial(self.emit, key),
                        profile['name'],
@@ -138,6 +166,12 @@ class WebSockInterface(SocketConnection):
 
     @event('update:profile')
     def update_profile(self, profile, key):
+        '''
+        Update profile in the storage.
+
+        :param name: body of profile as JSON
+        :param key: name of emitted event to answer
+        '''
         APP_LOGGER.info("Put profile")
         Chain([partial(helpers.store_profile,
                        partial(self.emit, key),
@@ -145,26 +179,29 @@ class WebSockInterface(SocketConnection):
                        profile)])
 
     @event('delete:profile')
-    def delete_profile(self, name, key):
-        APP_LOGGER.error('Not implemented delete:profile')
-        self.emit(key, {})
+    def delete_profile(self, profile, key):
+        '''
+        Remove profile from the storage.
+
+        :param name: body of profile as JSON
+        :param key: name of emitted event to answer
+        '''
+        APP_LOGGER.warning('Call delete:profile')
+        name = profile['name']
+        Chain([partial(helpers.delete_profile,
+                       partial(self.emit, key),
+                       name)])
 
     @event('all:profiles')
-    def all_profiles(self, name, key):
-        APP_LOGGER.error('Mock all:profiles')
-        self.emit(key, {"profiles": [{
-                               "id": 1,
-                               "name": "default",
-                               "heartbeatTimeout": 21,
-                               "idleTimeout": 1,
-                               "startupTimeout": 2,
-                               "terminationTimeout": 0,
-                               "concurrency": 4,
-                               "crashlogLimit": 10,
-                               "growThreshold": 40,
-                               "poolLimit": 30,
-                               "queueLimit": 20,
-                               "logOutput": False}]})
+    def all_profiles(self, _, key):
+        '''
+        Return all contained profiles from the storage.
+
+        :param _: unusable
+        :param key: name of emitted event to answer
+        '''
+        Chain([partial(helpers.list_profiles,
+                       partial(self.emit, key))])
 
     @event('all:clusters')
     def all_clusters(self, _, key):

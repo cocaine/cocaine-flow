@@ -131,7 +131,36 @@ def get_profile(answer, name):
         profile = yield Storage().read_profile_future(name)
     except ServiceError as err:
         logger.error(str(err))
+        answer({"profile": {}})
     except Exception:
         logger.exception(err)
     else:
         answer({"profile": json.loads(profile)})
+
+def delete_profile(answer, name):
+    try:
+        yield Storage().delete_profile_future(name)
+    except ServiceError as err:
+        logger.error(str(err))
+    else:
+        answer({})
+
+def list_profiles(answer):
+    try:
+        items = yield Storage().list_profile_future()
+    except ServiceError as err:
+        logger.error(str(err))
+    except Exception:
+        logger.exception()
+    res = []
+    for item in items:
+        tmp = yield Storage().read_profile_future(item)
+        try:
+            res.append(json.loads(tmp))
+        except ServiceError as err:
+            logger.error(str(err))
+        except Exception:
+            logger.exception()
+    answer({"profiles": res})
+
+
