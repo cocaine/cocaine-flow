@@ -27,6 +27,7 @@ import msgpack
 from flow.utils.storage import Storage
 from flow.utils.requesthandler import CocaineRequestHandler
 from flow.utils.route import Route
+from flow.utils import helpers
 
 from cocaine.tools.actions import profile as ProfileTool
 
@@ -38,19 +39,15 @@ from cocaine.futures.chain import Chain
 __all__ = ["Profiles"]
 
 
-@Route(r'/profiles/([^/]*)/?')
+@Route(r'/profiles/?')
 class Profiles(CocaineRequestHandler):
 
-    @web.addslash
     @web.asynchronous
-    def get(self, name=None):
-        if name is None or len(name) == 0:
-            self.log.info("Request all profiles")
-            Chain([partial(do_profiles_view, self)])
-        else:
-            self.log.info("Request profile %s" % name)
-            ProfileTool.View(Storage().backend, name=name).execute()\
-                .then(partial(do_view, self, name))
+    def get(self, *args, **kwargs):
+        name = self.get_argument('name')
+        Chain([partial(helpers.get_profile,
+                       self.finish,
+                       name)])
 
     @web.asynchronous
     def delete(self, name):  # TBD add name's check
@@ -60,7 +57,11 @@ class Profiles(CocaineRequestHandler):
 
     @web.asynchronous
     def post(self, *args):  # Need ability to upload from raw json profile
-        self.finish("pass")
+        profile = self.request.body
+        Chain([partial(helpers.store_profile,
+                       self.finish,
+                       profile['name'],
+                       profile)])
 
     @web.asynchronous
     def put(self, *args):

@@ -18,46 +18,7 @@ from cocaine.futures.chain import Chain
 APP_LOGGER = logging.getLogger()
 
 
-# EVENT: apps
-def apps_get(self, *args):
-    Chain([partial(helpers.get_applications,
-                   partial(self.emit, "apps"))])
-
-
-# EVENT: users
-def users_get(self, data, *args, **kwargs):
-    '''
-    on login and check username
-    '''
-    user = data['username']
-    password = data.get('password')
-    key = data['meta']['query']
-    APP_LOGGER.debug('Read user %s, key %s', user, key)
-    Chain([partial(helpers.get_user,
-                   partial(self.emit, 'users/%s' % key),
-                   user, password)])
-
-
 # EVENT: user
-def user_get(self, data, *args, **kwargs):
-    ''' Analog of user/me '''
-    # Check cookies here
-    print self.connection_info  # Extract cookie!
-    user = False
-    if not user:
-        self.emit("user/me",
-                  {"user": {
-                  "id": "me",
-                  "username": "arkel",
-                  "status": "OK",
-                  "ACL": {}
-                  }})
-    else:
-        self.emit("user/me", {"user": {
-                              "id": "me"}})
-    return
-
-
 def user_post(self, data, *args, **kwargs):
     try:
         user_info = data['user']
@@ -77,34 +38,6 @@ def user_post(self, data, *args, **kwargs):
                    password, name=name)])
 
 
-# EVENT: profile
-def profile_post(self, data, *args, **kwargs):
-    APP_LOGGER.info("Store profile")
-    key = data['meta']['query']
-    profile = data['profile']
-    print profile
-    Chain([partial(helpers.store_profile,
-                   partial(self.emit, "profiles/%s" % key),
-                   profile['name'],
-                   profile)])
-
-
-def profile_get(self, name, *args, **kwargs):
-    APP_LOGGER.info("Get profile")
-    Chain([partial(helpers.get_profile,
-                   partial(self.emit, 'profile/%s' % name),
-                   name)])
-
-
-def profile_put(self, profile, *args, **kwargs):
-    APP_LOGGER.info("Put profile")
-    key = profile['id']
-    Chain([partial(helpers.store_profile,
-                   partial(self.emit, "profiles/%s" % key),
-                   profile['name'],
-                   profile)])
-
-
 class WebSockInterface(SocketConnection):
 
     def __init__(self, *args, **kwargs):
@@ -119,30 +52,107 @@ class WebSockInterface(SocketConnection):
     def on_close(self):
         print 'Client disconnected'
 
-    @event('users')
-    @dispatch(get=users_get)
-    def users(self, method, *args, **kwargs):
-        """implemetns in decorator"""
-        APP_LOGGER.error("Not implemented method %s", method)
-        raise NotImplementedError("Not implemented method %s" % method)
+    @event('logout')
+    def logout(self):
+        APP_LOGGER.warning('There is no handler for LOGOUT')
 
-    @event('user')
-    @dispatch(get=user_get, post=user_post)
-    def user(self, method, data):
-        APP_LOGGER.error("Not implemented method %s", method)
-        raise NotImplementedError("Not implemented method %s" % method)
+    @event('id:user')
+    def id_user(self, data, key):
+        ''' Analog of user/me '''
+        # Check cookies here
+        print self.connection_info  # Extract cookie!
+        user = False
+        if not user:
+            self.emit(key,
+                      {"user": {
+                      "id": "me",
+                      "username": "arkel",
+                      "status": "OK",
+                      "ACL": {}
+                      }})
+        else:
+            self.emit(key, {"user": {"id": "me"}})
+        return
 
-    @event('apps')
-    @dispatch(get=apps_get)
-    def apps(self, method, *args):
-        """implemetns in decorator"""
-        APP_LOGGER.error("Not implemented method %s", method)
-        raise NotImplementedError("Not implemented method %s" % method)
+    @event('find:users')
+    def find_users(self, data, key):
+        user = data['username']
+        password = data.get('password')
+        APP_LOGGER.debug('Read user %s, key %s', user, key)
+        Chain([partial(helpers.get_user,
+                       partial(self.emit, str(key)),
+                       user, password)])
 
-    @event('profiles')
-    def profiles(self, *args):
-        print "profiles", args
-        self.emit("profiles", {"profiles": [{
+    @event('all:apps')
+    def all_apps(self, data, key):
+        Chain([partial(helpers.get_applications,
+                       partial(self.emit, key))])
+
+    @event('id:app')
+    def id_app(self, name, key):
+        APP_LOGGER.error('Mock id_app')
+        def wr(obj):
+            try:
+                data = yield Storage().read_app_future(name)
+                obj.emit(key, {"app": json.loads(data), "commits": {
+                        "id": 1,
+                        "summary": 1,
+                        "app": name,
+                        "page": 1,
+                        "hash": "c43733",
+                        "link": "https://github.com/...",
+                        "date": 1368486236487,
+                        "message": "TTTT",
+                        "author": "Oleg <markelog@gmail.com>",
+                        "active": True,
+                        "last": False
+                }})
+            except Exception as err:
+                print err
+        Chain([partial(wr, self)])
+
+    @event('upload:app')
+    def upload_app(self, data, key):
+        APP_LOGGER.error('Not implemented upload:app')
+
+    @event('cancel-upload')
+    def cancel_upload(self, *args):
+        APP_LOGGER.error('Not implemented cancel-upload')
+
+    @event('id:profile')
+    def id_profile(self, name, key):
+        APP_LOGGER.info("Get profile")
+        Chain([partial(helpers.get_profile,
+                       partial(self.emit, key),
+                       name)])
+
+    @event('create:profile')
+    def create_profile(self, data, key):
+        APP_LOGGER.info("Store profile")
+        profile = data['profile']
+        print profile
+        Chain([partial(helpers.store_profile,
+                       partial(self.emit, key),
+                       profile['name'],
+                       profile)])
+
+    @event('update:profile')
+    def update_profile(self, profile, key):
+        APP_LOGGER.info("Put profile")
+        Chain([partial(helpers.store_profile,
+                       partial(self.emit, key),
+                       profile['name'],
+                       profile)])
+
+    @event('delete:profile')
+    def delete_profile(self, name, key):
+        APP_LOGGER.error('Not implemented delete:profile')
+        self.emit(key, {})
+
+    @event('all:profiles')
+    def all_profiles(self, name, key):
+        APP_LOGGER.error('Mock all:profiles')
+        self.emit(key, {"profiles": [{
                                "id": 1,
                                "name": "default",
                                "heartbeatTimeout": 21,
@@ -156,52 +166,16 @@ class WebSockInterface(SocketConnection):
                                "queueLimit": 20,
                                "logOutput": False}]})
 
-    @event('profile')
-    @dispatch(get=profile_get, post=profile_post, put=profile_put)
-    def profile(self, method, *args, **kwargs):
-        APP_LOGGER.error("Not implemented method %s", method)
-        raise NotImplementedError("Not implemented method %s" % method)
-
-    @event('clusters')
-    def clusters(self, *args):
-        print "clusters", args
-        self.emit("clusters", {"clusters": [{
-                "id": 1,
-                "name": "default"
-            }, {
-                "id": 2,
-                "name": "favorite"
-            }, {
-                "id": 3,
-                "name": "heavy"
-            }]})
-
-    @event("app")
-    def app(self, method, app_id, **kwargs):
-        print "ZZZ", app_id
-        if method == "get":
-            def wr(obj):
-                try:
-                    data = yield Storage().read_app_future(app_id)
-                    obj.emit("app/%s" % app_id, {"app": json.loads(data), "commits": {
-                            "id": 1,
-                            "summary": 1,
-                            "app": app_id,
-                            "page": 1,
-                            "hash": "c43733",
-                            "link": "https://github.com/...",
-                            "date": 1368486236487,
-                            "message": "TTTT",
-                            "author": "Oleg <markelog@gmail.com>",
-                            "active": True,
-                            "last": False
-                    }})
-                except Exception as err:
-                    print err
-            Chain([partial(wr, self)])
-            print "TTTT"
-        else:
-            print "app update", method, app_id
+    @event('all:clusters')
+    def all_clusters(self, _, key):
+        APP_LOGGER.error('Mock all:clusters')
+        self.emit(key, {"clusters": [
+            {"id": 1,
+             "name": "default"},
+            {"id": 2,
+             "name": "favorite"},
+            {"id": 3,
+             "name": "heavy"}]})
 
     @event('upload')
     def upload(self, data):
@@ -242,14 +216,13 @@ class WebSockInterface(SocketConnection):
                             "app": app_id,
                             "page": 1,
                             "hash": "c43733",
-                            "link": "https://github.com/...", 
-                            "date": 1368486236487, 
+                            "link": "https://github.com/...",
+                            "date": 1368486236487,
                             "message": "TTTT",
                             "author": "Oleg <markelog@gmail.com>",
                             "active": True,
                             "last": False
-                    }}
-            )
+                    }})
 
     @event('commits')
     def commits(self, method, args, *t, **kwargs):
@@ -267,29 +240,6 @@ class WebSockInterface(SocketConnection):
                                "author": "Oleg <markelog@gmail.com>",
                                "active": False,
                                "last": True}]})
-
-    @event('graphs')
-    def graphs(self, method, *args, **kwargs):
-        print args
-
-    @event('deploy')
-    def deploy(self, method, app_id, *args, **kwargs):
-        APP_LOGGER.info("deploy, %s", app_id)
-        import time
-        if method == "post":
-            self.emit("deploy/%s" % app_id, {"message": "A",
-                                             "percentage": 20})
-            time.sleep(0.5)
-            self.emit("deploy/%s" % app_id, {"message": "b",
-                                             "percentage": 40})
-            time.sleep(0.5)
-            self.emit("partial/app/%s" % app_id, {"app": {"status": "OK",
-                                                  "status-message": "normal",
-                                                  "id": app_id}})
-            self.emit("deploy/%s" % app_id, {"message": "c",
-                                             "percentage": 100,
-                                             "finished": True,
-                                             "id": app_id})  # Add arrayof cms
 
     @event('keepalive/deploy')
     def partial_deploy(self, method, app_id, *args):
