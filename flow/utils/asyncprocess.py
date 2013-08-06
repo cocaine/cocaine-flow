@@ -1,8 +1,6 @@
 import subprocess
-from multiprocessing import Process, Pipe
 
 from cocaine.futures.chain import *
-from cocaine.asio.ev import Loop
 
 from tornado.ioloop import IOLoop
 
@@ -21,20 +19,9 @@ def asyncprocess(cmd, callback):
 
         elif pipe.poll() is not None:
             ioloop.remove_handler(fd)
-            callback(None)
+            try:
+                callback(None)
+            except StopIteration:
+                pass
     # read handler
     ioloop.add_handler(fd, recv, ioloop.READ)
-
-
-class AsyncSubprocess(object):
-
-    def __init__(self, cmd, ioloop=None):
-        self.cmd = cmd
-        self.ioloop = ioloop or IOLoop.instance()
-        self.pipe = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     close_fds=True)
-
-    def stdout_read(self):
-        pass

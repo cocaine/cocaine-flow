@@ -34,6 +34,9 @@ FLOW_APPS_DATA_TAG = "flow_apps_data"
 FLOW_APPS = "cocaine_flow_apps"
 FLOW_APPS_TAG = "apps"
 
+FLOW_COMMITS = "cocaine_flow_commits"
+FLOW_COMMITS_TAG = "flow_commits"
+
 
 class Singleton(type):
 
@@ -47,6 +50,10 @@ class Singleton(type):
             return cls.__instance
         else:
             return cls.__instance
+
+
+def make_commit_name(appname):
+    return "COMMIT_%s" % appname if not appname.startswith("COMMIT_") else appname
 
 
 class Storage(object):
@@ -106,3 +113,17 @@ class Storage(object):
 
     def delete_profile_future(self, name):
         return self._storage.remove(FLOW_PROFILES, name)
+
+    #commits
+    def read_commit_future(self, appname):
+        return self._storage.read(FLOW_COMMITS, make_commit_name(appname))
+
+    def write_commit_future(self, appname, data):
+        return self._storage.write(FLOW_COMMITS, make_commit_name(appname),
+                                   data, [FLOW_COMMITS_TAG, appname])
+
+    def list_commit_future(self, appname=None):
+        tags = [FLOW_COMMITS_TAG]
+        if appname is not None:
+            tags.append(appname)
+        return self._storage.find(FLOW_COMMITS, tags)

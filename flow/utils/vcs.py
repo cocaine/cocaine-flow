@@ -38,9 +38,21 @@ LOGGER = logging.getLogger()
 
 VCS_TEMP_DIR = "/tmp/COCAINE_FLOW"
 
+COMMITS_PER_PAGE = 5
+
 
 def get_vcs(answer, repository_info):
     return GIT(answer, repository_info)
+
+
+def detect_app_name(repository_info):
+    url = repository_info['repository']
+    _, temp_name = url.rsplit('/', 1)
+    if temp_name.endswith('.git'):
+        temp_name = temp_name[:-4]
+    app_name = '_'.join((temp_name, repository_info['reference']))
+    LOGGER.info('Detect application name %s', app_name)
+    return app_name
 
 
 class GIT(object):
@@ -50,6 +62,7 @@ class GIT(object):
         self.answer = answer
         self.msg = None
         self.repo = None
+        self.app_id = None
 
     def run(self):
         repo_url = self.repository_info['repository']
@@ -102,12 +115,11 @@ class GIT(object):
     def _after_git_clone(self):
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
-        print self.repo
-        get_commits = self._extract_commits()
-        for i in get_commits:
-            LOGGER.info(i)
 
-        app_id = "MY_APP_ID" + hashlib.md5(str(ref)).hexdigest()
+        app_id = detect_app_name(self.repository_info)
+        self.app_id = app_id
+        LOGGER.error(app_id)
+        commits = [_ for _ in self._extract_commits()]
         app_info = {"name": app_id,
                     "id": app_id,
                     "reference": ref,
@@ -120,22 +132,35 @@ class GIT(object):
         self.answer({"message": ''.join(self.msg),
                      "percentage": 90})
 
-        shutil.make_archive("%s/%s" % (VCS_TEMP_DIR, app_id),
+        shutil.make_archive("%s/%s" % (VCS_TEMP_DIR,
+                                       hashlib.md5(app_id).hexdigest()),
                             "gztar", root_dir=VCS_TEMP_DIR,
                             base_dir=VCS_TEMP_DIR, logger=LOGGER)
 
         # Store archive
+        LOGGER.error("SAVE")
         self.msg.append("Store archive\n")
         self.answer({"message": ''.join(self.msg),
                      "percentage": 95})
         try:
-            application_data = open("%s/%s.tar.gz" % (VCS_TEMP_DIR, app_id),
+            LOGGER.debug('Save application %s data', app_id)
+            application_data = open("%s/%s.tar.gz" % (VCS_TEMP_DIR,
+                                                      hashlib.md5(app_id).hexdigest()),
                                     'rb').read()
             yield Storage().write_app_data_future(app_id, application_data)
         except ServiceError as err:
             LOGGER.error(repr(err))
         except Exception as err:
             LOGGER.error(err)
+
+        try:
+            LOGGER.debug('Save application %s commits', app_id)
+            yield Storage().write_commit_future(app_id,
+                                                json.dumps(commits))
+        except ServiceError as err:
+            LOGGER.error(str(err))
+        except Exception as err:
+            LOGGER.error(str(err))
 
         try:
             self.msg.append("Store information about application\n")
@@ -155,9 +180,13 @@ class GIT(object):
 
     def _extract_commits(self):
         head = self.repo.head.get_object()
-        for commit in self.repo.walk(head.oid, pygit2.GIT_SORT_TIME):
-            yield  {'hash': commit.hex,
+        for i, commit in enumerate(self.repo.walk(head.oid,
+                                                  pygit2.GIT_SORT_TIME)):
+            yield  {'id': commit.hex,
+                    'page': i / COMMITS_PER_PAGE + 1,
+                    'app': self.app_id,
+                    'hash': commit.hex,
                     'message': commit.message,
                     'commit_date': commit.commit_time,
-                    'author_name': commit.author.name,
-                    'author_email': commit.author.email}
+                    'author': '%s <%s>' % (commit.author.name,
+                                           commit.author.email)}

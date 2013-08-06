@@ -176,3 +176,22 @@ def list_profiles(answer):
 def vcs_clone(answer, repository_info):
     vcs_object = get_vcs(answer, repository_info)
     vcs_object.run()
+
+
+def get_commits(answer, appname=None):
+    try:
+        items = yield Storage().list_commit_future(appname)
+    except ServiceError as err:
+        LOGGER.exception()
+    except Exception:
+        LOGGER.exception()
+    res = []
+    for item in items:
+        tmp = yield Storage().read_commit_future(item)
+        try:
+            res.append(json.loads(tmp))
+        except ServiceError as err:
+            LOGGER.error(str(err))
+        except Exception:
+            LOGGER.exception()
+    answer({'commits': res})
