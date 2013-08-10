@@ -48,6 +48,21 @@ def get_applications(answer):
     answer({"apps": res})
 
 
+def update_application(answer, data):
+    try:
+        tmp = yield Storage().read_app_future(data['name'])
+        app_info = json.loads(tmp)
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    LOGGER.info(str(app_info))
+    try:
+        app_info.update(data)
+        yield Storage().write_app_future(data['name'], json.dumps(data))
+    except ServiceError as err:
+        LOGGER.error(err)
+    answer(data)
+
+
 def get_user(answer, name, password=None):
     item = None
     try:
@@ -129,7 +144,7 @@ def store_profile(answer, name, data):
     except Exception as err:
         LOGGER.exception(err)
     else:
-        answer({"profile": {"id": name}})
+        answer({"profile": data})
 
 
 def get_profile(answer, name):
@@ -195,3 +210,47 @@ def get_commits(answer, appname=None):
         except Exception:
             LOGGER.exception()
     answer({'commits': res})
+
+
+def get_summary(answer, summaryname):
+    try:
+        item = yield Storage().read_summary_future(summaryname)
+    except ServiceError:
+        LOGGER.exception()
+    except Exception:
+        LOGGER.exception()
+    res = json.loads(item)
+    try:
+        item = yield Storage().read_commit_future(summaryname)
+    except ServiceError:
+        LOGGER.exception()
+    except Exception:
+        LOGGER.exception()
+    commits = json.loads(item)
+    answer({'summary': res, 'commits': [item for item in commits
+                                        if item.get('page') == 1]})
+
+
+def get_commits_from_page(answer, summaryname, page):
+    try:
+        tmp = yield Storage().read_summary_future(summaryname)
+        summary = json.loads(tmp)
+    except ServiceError:
+        LOGGER.exception()
+    app_name = summary['app']
+    try:
+        items = yield Storage().list_commit_future(app_name)
+    except ServiceError:
+        LOGGER.exception()
+    res = []
+    for item in items:
+        tmp = yield Storage().read_commit_future(item)
+        try:
+            res.extend(json.loads(tmp))
+        except ServiceError as err:
+            LOGGER.error(str(err))
+        except Exception as err:
+            print err
+            LOGGER.exception()
+    answer({'commits': [item for item in res
+                        if item.get('page') == page]})

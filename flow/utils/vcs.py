@@ -40,6 +40,8 @@ VCS_TEMP_DIR = "/tmp/COCAINE_FLOW"
 
 COMMITS_PER_PAGE = 5
 
+MAX_COMMITS = 20
+
 
 def get_vcs(answer, repository_info):
     return GIT(answer, repository_info)
@@ -65,12 +67,15 @@ class GIT(object):
         self.app_id = None
 
     def run(self):
+        Chain([self.make_it])
+
+    def make_it(self):
         repo_url = self.repository_info['repository']
         LOGGER.info("Clone GIT repository  %s", repo_url)
         if self.repository_info['reference'] == '':
             self.repository_info['reference'] = 'HEAD'
 
-        LOGGER.info("Ref:  %s", self.repository_info['reference'])
+        LOGGER.info("Ref: %s", self.repository_info['reference'])
         self.answer({"message": "Clone repository", "percentage": 0})
         try:
             LOGGER.info('Clean temp folder %s', VCS_TEMP_DIR)
@@ -82,37 +87,9 @@ class GIT(object):
         handle_repo_data.next()
         clone_command = "git clone %s %s --progress" % (repo_url,
                                                         VCS_TEMP_DIR)
-        asyncprocess(clone_command, handle_repo_data.send)
+        ret_code = yield asyncprocess(clone_command, handle_repo_data.send)
+        LOGGER.error(ret_code)
 
-    def _on_git_clone(self):
-        '''
-        so bad
-        '''
-        self.msg = ["Cloning %s\r\n" % self.repository_info['repository'],
-                    "", "", "", ""]
-        while True:
-            data = yield
-            if data is not None:
-                for line in data.split('\r'):
-                    if "Counting objects" in line:
-                        self.msg[1] = line
-                        prog = 25
-                    elif "Compressing objects" in line:
-                        self.msg[2] = line
-                        prog = 40
-                    elif "Receiving objects:" in line:
-                        self.msg[3] = line
-                        prog = 60
-                    elif "Resolving deltas:" in line:
-                        self.msg[4] = line
-                        prog = 75
-                    self.answer({"message": ''.join(self.msg),
-                                 "percentage": prog})
-            else:
-                break
-        Chain([self._after_git_clone])
-
-    def _after_git_clone(self):
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
 
@@ -123,9 +100,18 @@ class GIT(object):
         app_info = {"name": app_id,
                     "id": app_id,
                     "reference": ref,
+                    "summary": app_id,
                     "status": "OK",
                     "profile": "default",
                     "status-message": "normal"}
+
+        summary = {"id": app_id,
+                   "app": app_id,
+                   "commits": [item.get('id') for item in commits],
+                   "repository": repo_url,
+                   "developers": "admin, tester",
+                   "dependencies": "sh==1.02, msgpack-python",
+                   "use-frequency": "often"}
 
         # Make tar.gz
         self.msg.append("Make tar.gz\n")
@@ -162,6 +148,18 @@ class GIT(object):
         except Exception as err:
             LOGGER.error(str(err))
 
+        ###
+        # ADD APPLICATION SUMMARY
+        try:
+            LOGGER.debug('Save application %s summary', app_id)
+            yield Storage().write_summary_future(app_id,
+                                                 json.dumps(summary))
+        except ServiceError as err:
+            LOGGER.error(str(err))
+        except Exception as err:
+            LOGGER.error(str(err))
+        ###
+
         try:
             self.msg.append("Store information about application\n")
             self.answer({"message": ''.join(self.msg),
@@ -178,14 +176,48 @@ class GIT(object):
         except Exception as err:
             LOGGER.error(err)
 
+    def _on_git_clone(self):
+        '''
+        so bad
+        '''
+        self.msg = ["Cloning %s\r\n" % self.repository_info['repository'],
+                    "", "", "", ""]
+        prog = 0
+        try:
+            while True:
+                data = yield
+                if data is not None:
+                    for line in data.split('\r'):
+                        if "Counting objects" in line:
+                            self.msg[1] = line.rstrip('[K')
+                            prog = 25
+                        elif "Compressing objects" in line:
+                            self.msg[2] = line.rstrip('[K')
+                            prog = 40
+                        elif "Receiving objects:" in line:
+                            self.msg[3] = line.rstrip('[K')
+                            prog = 60
+                        elif "Resolving deltas:" in line:
+                            self.msg[4] = line.rstrip('[K')
+                            prog = 75
+                        self.answer({"message": ''.join(self.msg),
+                                     "percentage": prog})
+                else:
+                    break
+        except Exception as err:
+            LOGGER.error(err)
+
     def _extract_commits(self):
         head = self.repo.head.get_object()
         for i, commit in enumerate(self.repo.walk(head.oid,
                                                   pygit2.GIT_SORT_TIME)):
-            yield  {'id': commit.hex,
+            if i > MAX_COMMITS:
+                break
+            yield  {'id': commit.hex + self.app_id,
                     'page': i / COMMITS_PER_PAGE + 1,
                     'app': self.app_id,
                     'hash': commit.hex,
+                    'last': i == MAX_COMMITS,
                     'message': commit.message,
                     'commit_date': commit.commit_time,
                     'author': '%s <%s>' % (commit.author.name,

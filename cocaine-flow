@@ -31,6 +31,10 @@ from flow.utils.options import actions
 from flow.views.SocketIO import Router
 from flow.views import *
 
+import logging
+
+chain = logging.getLogger("cocaine.futures.chain")
+chain.setLevel(logging.ERROR)
 
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,

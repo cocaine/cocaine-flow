@@ -37,6 +37,9 @@ FLOW_APPS_TAG = "apps"
 FLOW_COMMITS = "cocaine_flow_commits"
 FLOW_COMMITS_TAG = "flow_commits"
 
+FLOW_SUMMARIES = "cocaine_flow_summaries"
+FLOW_SUMMARIES_TAG = "flow_summaries"
+
 
 class Singleton(type):
 
@@ -65,7 +68,7 @@ class Storage(object):
     def __init__(self):
         self._storage = Service("storage")
         self.log.info("Initialize storage successfully: %s"
-                      % self._storage.service_endpoint)
+                      % str(self._storage.address))
 
     @property
     def connected(self):
@@ -127,3 +130,14 @@ class Storage(object):
         if appname is not None:
             tags.append(appname)
         return self._storage.find(FLOW_COMMITS, tags)
+
+    #summary
+    def read_summary_future(self, summary):
+        return self._storage.read(FLOW_SUMMARIES, summary)
+
+    def write_summary_future(self, summary, data):
+        return self._storage.write(FLOW_SUMMARIES, summary,
+                                   data, [FLOW_SUMMARIES_TAG])
+
+    def list_summaries_future(self):
+        return self._storage.find(FLOW_SUMMARIES, [FLOW_SUMMARIES_TAG])

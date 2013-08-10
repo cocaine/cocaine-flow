@@ -226,7 +226,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"clusters": [{"id": 1}]})
 
     @event('upload:app')
-    def upload(self, data, key):
+    def upload(self, data, key, *args):
         '''
         Fetch application from VCS
 
@@ -239,49 +239,29 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        repository_info)])
 
-    @event('summary')
-    def summary(self, method, app_id):
-        APP_LOGGER.error("Event summary, method %s, app_id %s" % (method, app_id))
-        self.emit("summary/%s" % app_id, {"summary": {
-                    "id": 1,
-                    "app": app_id,
-                    "commits": [1, 2],
-                    "repository": "git://github.yandex-team.ru/user/application.git",
-                    "address": "test",
-                    "developers": "admin, tester",
-                    "tracker": "some tracker",
-                    "dependencies": "sh==1.02, msgpack-python",
-                    "use-frequency": "often"},
-                    "commits": {
-                            "id": 1,
-                            "summary": 1,
-                            "app": app_id,
-                            "page": 1,
-                            "hash": "c43733",
-                            "link": "https://github.com/...",
-                            "date": 1368486236487,
-                            "message": "TTTT",
-                            "author": "Oleg <markelog@gmail.com>",
-                            "active": True,
-                            "last": False
-                    }})
+    @event('update:app')
+    def update_app(self, data, key):
+        APP_LOGGER.error(str(data))
+        Chain([partial(helpers.update_application,
+                       partial(self.emit, key),
+                       data)])
 
-    @event('commits')
-    def commits(self, method, args, *t, **kwargs):
-        print args
-        #print kwargs
-        self.emit(r"commits/%s" % (args['meta']['query']),
-                 {"commits": [{"id": 2,
-                               "summary": args['summary'],
-                               "app": "MY_APP_IDe15e216fc1c639f787b1231ecdfa1bf8",
-                               "page": 2,
-                               "hash": "a044a3",
-                               "link": "https://github.com/...",
-                               "date": 1366630011651,
-                               "message": "message",
-                               "author": "Oleg <markelog@gmail.com>",
-                               "active": False,
-                               "last": True}]})
+    @event('id:summary')
+    def id_summary(self, data, key):
+        APP_LOGGER.error('id:summary')
+        Chain([partial(helpers.get_summary,
+                       partial(self.emit, key),
+                       data)])
+
+    @event('find:commits')
+    def find_commits(self, data, key):
+        APP_LOGGER.error('find:commits')
+        page = data['page']
+        summary = data['summary']
+        Chain([partial(helpers.get_commits_from_page,
+                       partial(self.emit, key),
+                       summary, page)])
+
 
 # Create TornadIO2 router
 Router = TornadioRouter(WebSockInterface)
