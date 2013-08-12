@@ -36,3 +36,12 @@ class Apps(CocaineRequestHandler):
     def get(self):
         Chain([partial(get_applications,
                        self.finish)])
+
+
+@Route(r"/flowapi/authorization")
+class Sigin(CocaineRequestHandler):
+
+	def post(self, *args):
+		user = self.get_argument("user")
+		password = self.get_argument("password")
+		self.set_cookie("user", "test")

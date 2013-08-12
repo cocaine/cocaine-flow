@@ -84,12 +84,12 @@ def get_user(answer, name, password=None):
                 status = "OK"
             else:
                 status = "fail"
-            response = {"users": [{"id": user_info['id'],
+            response = {"users": [{"id": "me",
                                    "username": user_info['username'],
                                    "status": status}]}
         else:
             user_info.pop('uuid', None)
-            user_info.pop('password', None)
+            user_info['password'] = password
             response = {"users": [user_info]}
     answer(response)
 

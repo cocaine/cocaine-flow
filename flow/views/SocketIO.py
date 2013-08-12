@@ -40,10 +40,14 @@ class WebSockInterface(SocketConnection):
     def __init__(self, *args, **kwargs):
         super(WebSockInterface, self).__init__(*args, **kwargs)
         self.connection_info = None
+        self._cookie = False
 
     def on_open(self, info):
         APP_LOGGER.warning('Client connected')
         self.connection_info = info
+        self._cookie = info.get_cookie("user") or False
+        APP_LOGGER.info("%s", info.cookies)
+        APP_LOGGER.error(self._cookie)
 
     def on_close(self):
         APP_LOGGER.warning('Client disconnected')
@@ -57,18 +61,19 @@ class WebSockInterface(SocketConnection):
         ''' Analog of user/me '''
         # Check cookies here
         print self.connection_info  # Extract cookie!
-        user = False
-        if not user:
+        if self._cookie:
+            APP_LOGGER.info('Find cookies')
             self.emit(key,
                       {"user": {
                       "id": "me",
                       "username": "arkel",
                       "status": "OK",
-                      "ACL": {}
+                      "ACL": {},
+                      "name": "TEST"
                       }})
         else:
-            self.emit(key, {"user": {"id": "me"}})
-        return
+            APP_LOGGER.info("Give me cookies, I'm hungry")
+            self.emit(key, {"user": {"id": "me", "status": "fail"}})
 
     @event('create:user')
     def create_user(self, data, key):
@@ -106,12 +111,18 @@ class WebSockInterface(SocketConnection):
         :param data: user data as JSON
         :param key: name of emitted event to answer
         '''
+        APP_LOGGER.error(str(data))
         user = data['username']
         password = data.get('password')
         APP_LOGGER.debug('Read user %s, key %s', user, key)
-        Chain([partial(helpers.get_user,
-                       partial(self.emit, str(key)),
-                       user, password)])
+        if password is None:
+            Chain([partial(helpers.get_user,
+                           partial(self.emit, str(key)),
+                           user, password)])
+        else:
+            Chain([partial(helpers.get_user,
+                           partial(self.set_cookie, str(key)),
+                           user, password)])
 
     @event('all:apps')
     def all_apps(self, _, key):
@@ -262,6 +273,22 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        summary, page)])
 
+    #util
+    def set_cookie(self, key, data):
+        status = "fail"
+        try:
+            status = data['users'][0]['status']
+        except KeyError:
+            APP_LOGGER.error('Missing key')
+        except Exception:
+            APP_LOGGER.exception()
+        if status == "OK":
+            APP_LOGGER.info("Sign in succesfully")
+            self._cookie = True
+        else:
+            APP_LOGGER.error("Sign in fail")
+        self.emit(key, data)
+
 
 # Create TornadIO2 router
-Router = TornadioRouter(WebSockInterface)
+Router = TornadioRouter(WebSockInterface, namespace="flow/api/socket.io")

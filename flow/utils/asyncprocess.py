@@ -1,8 +1,6 @@
 import subprocess
-import logging
 
 from cocaine.futures.chain import Deferred
-from cocaine.futures import chain
 
 from tornado.ioloop import IOLoop
 
@@ -39,18 +37,3 @@ def asyncprocess(cmd, callback):
     ioloop.add_handler(fd_err, recv, ioloop.READ)
     return future
 
-
-if __name__ == "__main__":
-    @chain.source
-    def TEST(x):
-        try:
-            f = yield asyncprocess("uname -a", x)
-        except Exception as err:
-            print err
-        print(f)
-        IOLoop.instance().stop()
-
-    def x(*args):
-        print args
-    TEST(x)
-    IOLoop.instance().start()

@@ -24,6 +24,7 @@ import shutil
 import logging
 import hashlib
 import json
+import re
 
 import pygit2
 
@@ -38,9 +39,11 @@ LOGGER = logging.getLogger()
 
 VCS_TEMP_DIR = "/tmp/COCAINE_FLOW"
 
-COMMITS_PER_PAGE = 5
+COMMITS_PER_PAGE = 4
 
 MAX_COMMITS = 20
+
+regex = re.compile("\[K")
 
 
 def get_vcs(answer, repository_info):
@@ -93,10 +96,12 @@ class GIT(object):
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
 
+        active_commit_hex = self.repo.head.get_object().hex
+
         app_id = detect_app_name(self.repository_info)
         self.app_id = app_id
         LOGGER.error(app_id)
-        commits = [_ for _ in self._extract_commits()]
+        commits = [_ for _ in self._extract_commits(active_commit_hex)]
         app_info = {"name": app_id,
                     "id": app_id,
                     "reference": ref,
@@ -161,12 +166,11 @@ class GIT(object):
         ###
 
         try:
-            self.msg.append("Store information about application\n")
+            self.msg.append("Store information about application")
             self.answer({"message": ''.join(self.msg),
                          "percentage": 98})
 
             yield Storage().write_app_future(app_id, json.dumps(app_info))
-            self.msg.append("Done\n")
             self.answer({"finished": True,
                          "id": app_id,
                          "percentage": 100,
@@ -189,16 +193,16 @@ class GIT(object):
                 if data is not None:
                     for line in data.split('\r'):
                         if "Counting objects" in line:
-                            self.msg[1] = line.rstrip('[K')
+                            self.msg[1] = regex.sub(" ", line)
                             prog = 25
                         elif "Compressing objects" in line:
-                            self.msg[2] = line.rstrip('[K')
+                            self.msg[2] = regex.sub(" ", line)
                             prog = 40
                         elif "Receiving objects:" in line:
-                            self.msg[3] = line.rstrip('[K')
+                            self.msg[3] = regex.sub(" ", line)
                             prog = 60
                         elif "Resolving deltas:" in line:
-                            self.msg[4] = line.rstrip('[K')
+                            self.msg[4] = regex.sub(" ", line)
                             prog = 75
                         self.answer({"message": ''.join(self.msg),
                                      "percentage": prog})
@@ -207,18 +211,19 @@ class GIT(object):
         except Exception as err:
             LOGGER.error(err)
 
-    def _extract_commits(self):
+    def _extract_commits(self, active_commit_hex):
         head = self.repo.head.get_object()
         for i, commit in enumerate(self.repo.walk(head.oid,
                                                   pygit2.GIT_SORT_TIME)):
             if i > MAX_COMMITS:
                 break
-            yield  {'id': commit.hex + self.app_id,
+            yield  {'id': commit.hex[:7] + self.app_id,
                     'page': i / COMMITS_PER_PAGE + 1,
                     'app': self.app_id,
-                    'hash': commit.hex,
+                    'hash': commit.hex[:7],
                     'last': i == MAX_COMMITS,
                     'message': commit.message,
-                    'commit_date': commit.commit_time,
+                    'status': 'unactive' if active_commit_hex != commit.hex else "checkouted",
+                    'date': commit.commit_time * 1000,
                     'author': '%s <%s>' % (commit.author.name,
                                            commit.author.email)}
