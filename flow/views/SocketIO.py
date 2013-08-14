@@ -257,6 +257,25 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        data)])
 
+    @event('delete:app')
+    def delete_app(self, data, key):
+        APP_LOGGER.error("delete:app")
+        print data
+        print key
+
+    @event('deploy:app')
+    def deploy_app(self, data, key):
+        '''
+        Deploy application to the cloud
+
+        :param data: application name
+        :param key: name of emitted event to answer
+        '''
+        self.emit(key, {"message": 1, "percentage": 25})
+        self.emit(key, {"message": 2, "percentage": 50})
+        self.emit(key, {"message": 3, "percentage": 75})
+        self.emit(key, {"message": 4, "percentage": 100})
+
     @event('id:summary')
     def id_summary(self, data, key):
         APP_LOGGER.error('id:summary')
@@ -264,14 +283,30 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        data)])
 
+    @event('all:summaries')
+    def all_summaries(sefl, data, key):
+        print data
+        print key
+
     @event('find:commits')
     def find_commits(self, data, key):
         APP_LOGGER.error('find:commits')
         page = data['page']
         summary = data['summary']
-        Chain([partial(helpers.get_commits_from_page,
+        Chain([partial(helpers.find_commits,
                        partial(self.emit, key),
-                       summary, page)])
+                       summary, page=page)])
+
+    @event('update:commit')
+    def update_commit(self, commit, key):
+        APP_LOGGER.error('update:commits')
+        app_id = commit['id']
+        indexes = {"page": commit['page'],
+                   "last": commit['last'],
+                   "summary": commit['summary']}
+        Chain([partial(helpers.store_commit,
+                       partial(self.emit, key),
+                       app_id, commit, indexes)])
 
     #util
     def set_cookie(self, key, data):

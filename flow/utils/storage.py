@@ -59,6 +59,17 @@ def make_commit_name(appname):
     return "COMMIT_%s" % appname if not appname.startswith("COMMIT_") else appname
 
 
+def convert_tags(func):
+    def wrapper(*args, **kwargs):
+        tags = kwargs.get('exttags')
+        if tags:
+            exttags = ["%s@%s" % (k, v) for k, v in tags.iteritems()]
+            return func(*args, exttags=exttags)
+        else:
+            return func(*args, **kwargs)
+    return wrapper
+
+
 class Storage(object):
 
     __metaclass__ = Singleton
@@ -66,9 +77,12 @@ class Storage(object):
     log = logging.getLogger()
 
     def __init__(self):
-        self._storage = Service("storage")
-        self.log.info("Initialize storage successfully: %s"
+        try:
+            self._storage = Service("storage")
+            self.log.info("Initialize storage successfully: %s"
                       % str(self._storage.address))
+        except Exception as err:
+            print err
 
     @property
     def connected(self):
@@ -96,6 +110,9 @@ class Storage(object):
         return self._storage.write(FLOW_APPS_DATA, name,
                                    data, [FLOW_APPS_DATA_TAG])
 
+    def read_app_data_future(self, name):
+        return self._storage.read(FLOW_APPS_DATA, name)
+
     # user
     def read_user_future(self, name):
         return self._storage.read(FLOW_USERS, name)
@@ -117,18 +134,23 @@ class Storage(object):
     def delete_profile_future(self, name):
         return self._storage.remove(FLOW_PROFILES, name)
 
-    #commits
-    def read_commit_future(self, appname):
-        return self._storage.read(FLOW_COMMITS, make_commit_name(appname))
+    def read_commit_future(self, commitname):
+        return self._storage.read(FLOW_COMMITS, commitname)
 
-    def write_commit_future(self, appname, data):
-        return self._storage.write(FLOW_COMMITS, make_commit_name(appname),
-                                   data, [FLOW_COMMITS_TAG, appname])
-
-    def list_commit_future(self, appname=None):
+    @convert_tags
+    def write_commit_future(self, commitname, data, exttags=None):
         tags = [FLOW_COMMITS_TAG]
-        if appname is not None:
-            tags.append(appname)
+        if exttags:
+            tags.extend(exttags)
+        self.log.info("Write comit %s, with tags %s", commitname, str(tags))
+        return self._storage.write(FLOW_COMMITS, commitname, data, tags)
+
+    @convert_tags
+    def find_commit_future(self, exttags=None):
+        tags = [FLOW_COMMITS_TAG]
+        if exttags:
+            tags.extend(exttags)
+        self.log.info("Find commit with tags %s", str(tags))
         return self._storage.find(FLOW_COMMITS, tags)
 
     #summary

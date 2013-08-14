@@ -68,4 +68,7 @@ if __name__ == "__main__":
             print("start|stop|restart|status")
             exit(0)
     else:
-        main()
+        try:
+            main()
+        except Exception as err:
+            print err

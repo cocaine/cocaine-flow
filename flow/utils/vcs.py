@@ -144,14 +144,21 @@ class GIT(object):
         except Exception as err:
             LOGGER.error(err)
 
-        try:
-            LOGGER.debug('Save application %s commits', app_id)
-            yield Storage().write_commit_future(app_id,
-                                                json.dumps(commits))
-        except ServiceError as err:
-            LOGGER.error(str(err))
-        except Exception as err:
-            LOGGER.error(str(err))
+        LOGGER.debug('Save application %s commits', app_id)
+        for commit in commits:
+            try:
+                commit['summary'] = app_id
+                indexes = {"page": commit['page'],
+                           "app": commit['app'],
+                           "last": commit['last'],
+                           "summary": commit['summary']}
+                yield Storage().write_commit_future(commit['id'],
+                                                    json.dumps(commit),
+                                                    exttags=indexes)
+            except ServiceError as err:
+                LOGGER.error(str(err))
+            except Exception as err:
+                LOGGER.error(str(err))
 
         ###
         # ADD APPLICATION SUMMARY

@@ -63,6 +63,17 @@ def update_application(answer, data):
     answer(data)
 
 
+def deploy_application(answer, name):
+    try:
+        tmp = yield Storage().read_app_data_future(name)
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    except Exception as err:
+        LOGGER.error(str(err))
+    else:
+        print tmp
+
+
 def get_user(answer, name, password=None):
     item = None
     try:
@@ -213,6 +224,7 @@ def get_commits(answer, appname=None):
 
 
 def get_summary(answer, summaryname):
+    LOGGER.debug("Get summary")
     try:
         item = yield Storage().read_summary_future(summaryname)
     except ServiceError:
@@ -220,37 +232,57 @@ def get_summary(answer, summaryname):
     except Exception:
         LOGGER.exception()
     res = json.loads(item)
-    try:
-        item = yield Storage().read_commit_future(summaryname)
-    except ServiceError:
-        LOGGER.exception()
-    except Exception:
-        LOGGER.exception()
-    commits = json.loads(item)
-    answer({'summary': res, 'commits': [item for item in commits
-                                        if item.get('page') == 1]})
 
+    LOGGER.debug("Find commits")
+    try:
+        exttags = {"summary": summaryname, "page": 1}
+        commit_items = yield Storage().find_commit_future(exttags=exttags)
+        LOGGER.error(str(commit_items))
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    except Exception as err:
+        LOGGER.error(str(err))
 
-def get_commits_from_page(answer, summaryname, page):
-    try:
-        tmp = yield Storage().read_summary_future(summaryname)
-        summary = json.loads(tmp)
-    except ServiceError:
-        LOGGER.exception()
-    app_name = summary['app']
-    try:
-        items = yield Storage().list_commit_future(app_name)
-    except ServiceError:
-        LOGGER.exception()
-    res = []
-    for item in items:
-        tmp = yield Storage().read_commit_future(item)
+    LOGGER.debug("Read commits")
+    commits = list()
+    for commit in commit_items:
         try:
-            res.extend(json.loads(tmp))
+            item = yield Storage().read_commit_future(commit)
+            commits.append(json.loads(item))
         except ServiceError as err:
             LOGGER.error(str(err))
-        except Exception as err:
-            print err
-            LOGGER.exception()
-    answer({'commits': [item for item in res
-                        if item.get('page') == page]})
+
+    answer({'summary': res, 'commits': commits})
+
+
+def find_commits(answer, summaryname, **indexes):
+    LOGGER.debug("Find commits")
+    try:
+        exttags = {"summary": summaryname}
+        exttags.update(indexes)
+        commit_items = yield Storage().find_commit_future(exttags=exttags)
+        LOGGER.error(str(commit_items))
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    except Exception as err:
+        LOGGER.error(str(err))
+
+    LOGGER.debug("Read commits")
+    commits = list()
+    for commit in commit_items:
+        try:
+            item = yield Storage().read_commit_future(commit)
+            commits.append(json.loads(item))
+        except ServiceError as err:
+            LOGGER.error(str(err))
+    answer({'commits': sorted(commits, key=lambda x: x.get('time', 0))})
+
+
+def store_commit(answer, commitname, data, indexes):
+    try:
+        yield Storage().write_commit_future(commitname, json.dumps(data), exttags=indexes)
+    except Exception as err:
+        print data
+        LOGGER.error(str(data))
+        LOGGER.error(str(err))
+    answer({'commits': [data]})
