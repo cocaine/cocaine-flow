@@ -104,11 +104,18 @@ class Storage(object):
         return self._storage.read(FLOW_APPS, name)
 
     def write_app_future(self, name, data):
+        # TBD add indexes like in commits
         return self._storage.write(FLOW_APPS, name, data, [FLOW_APPS_TAG])
+
+    def delete_app_future(self, name):
+        return self._storage.remove(FLOW_APPS, name)
 
     def write_app_data_future(self, name, data):
         return self._storage.write(FLOW_APPS_DATA, name,
                                    data, [FLOW_APPS_DATA_TAG])
+
+    def delete_app_data_future(self, name):
+        return self._storage.remove(FLOW_APPS_DATA, name)
 
     def read_app_data_future(self, name):
         return self._storage.read(FLOW_APPS_DATA, name)
@@ -152,6 +159,9 @@ class Storage(object):
             tags.extend(exttags)
         self.log.info("Find commit with tags %s", str(tags))
         return self._storage.find(FLOW_COMMITS, tags)
+
+    def delete_commit_future(self, commit_id):
+        return self._storage.remove(FLOW_COMMITS, commit_id)
 
     #summary
     def read_summary_future(self, summary):

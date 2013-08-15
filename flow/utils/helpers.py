@@ -54,13 +54,48 @@ def update_application(answer, data):
         app_info = json.loads(tmp)
     except ServiceError as err:
         LOGGER.error(str(err))
-    LOGGER.info(str(app_info))
     try:
         app_info.update(data)
-        yield Storage().write_app_future(data['name'], json.dumps(data))
+        yield Storage().write_app_future(data['name'], json.dumps(app_info))
     except ServiceError as err:
         LOGGER.error(err)
-    answer(data)
+    answer({"app": data})
+
+
+def delete_application(answer, data):
+    name = data['id']
+    LOGGER.error("Remove %s", name)
+    try:
+        LOGGER.info('Removing application info')
+        yield Storage().delete_app_future(name)
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    else:
+        LOGGER.info('Delete application info succesfully')
+
+    try:
+        LOGGER.info('Removing application data')
+        yield Storage().delete_app_data_future(name)
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    else:
+        LOGGER.info('Delete application info succesfully')
+
+    try:
+        LOGGER.info("Find commits")
+        items = yield Storage().find_commit_future(exttags={"app": name})
+        LOGGER.debug("FIND %d, %s", len(items), str(items))
+    except ServiceError as err:
+        LOGGER.error(str(err))
+
+    LOGGER.info('Delete commits')
+    for item in items:
+        try:
+            LOGGER.debug("Delete commit %s", item)
+            yield Storage().delete_commit_future(item)
+        except Exception as err:
+            LOGGER.error(err)
+    answer({"apps": [name]})
 
 
 def deploy_application(answer, name):
@@ -100,6 +135,7 @@ def get_user(answer, name, password=None):
                                    "status": status}]}
         else:
             user_info.pop('uuid', None)
+
             user_info['password'] = password
             response = {"users": [user_info]}
     answer(response)
@@ -220,7 +256,7 @@ def get_commits(answer, appname=None):
             LOGGER.error(str(err))
         except Exception:
             LOGGER.exception()
-    answer({'commits': res})
+    answer({'commits': sorted(res, key=lambda x: x.get('time', 0))})
 
 
 def get_summary(answer, summaryname):
@@ -228,7 +264,7 @@ def get_summary(answer, summaryname):
     try:
         item = yield Storage().read_summary_future(summaryname)
     except ServiceError:
-        LOGGER.exception()
+        LOGGER.exception("AAAA")
     except Exception:
         LOGGER.exception()
     res = json.loads(item)
@@ -252,13 +288,32 @@ def get_summary(answer, summaryname):
         except ServiceError as err:
             LOGGER.error(str(err))
 
-    answer({'summary': res, 'commits': commits})
+    answer({'summary': res, 'commits': sorted(commits,
+                                              key=lambda x: x.get('time', 0))})
 
 
-def find_commits(answer, summaryname, **indexes):
+def update_summary(answer, data):
+    try:
+        tmp = yield Storage().read_summary_future(data['id'])
+        summary_info = json.loads(tmp)
+    except ServiceError as err:
+        LOGGER.error(str(err))
+    LOGGER.error("OLD %s", str(summary_info))
+    LOGGER.error("UPDATE %s", str(data))
+    try:
+        summary_info.update(data)
+        LOGGER.error("END %s", summary_info)
+        yield Storage().write_summary_future(data['id'],
+                                             json.dumps(summary_info))
+    except ServiceError as err:
+        LOGGER.error(err)
+    answer({"summary": summary_info})
+
+
+def find_commits(answer, **indexes):
     LOGGER.debug("Find commits")
     try:
-        exttags = {"summary": summaryname}
+        exttags = dict()
         exttags.update(indexes)
         commit_items = yield Storage().find_commit_future(exttags=exttags)
         LOGGER.error(str(commit_items))
@@ -278,11 +333,36 @@ def find_commits(answer, summaryname, **indexes):
     answer({'commits': sorted(commits, key=lambda x: x.get('time', 0))})
 
 
-def store_commit(answer, commitname, data, indexes):
+# def store_commit(answer, commitname, data, indexes):
+#     try:
+#         yield Storage().write_commit_future(commitname,
+#                                             json.dumps(data),
+#                                             exttags=indexes)
+#     except Exception as err:
+#         LOGGER.error(str(data))
+#         LOGGER.error(str(err))
+#     answer({'commits': [data]})
+
+
+def update_commit(answer, commit):
+    LOGGER.error(str(commit))
     try:
-        yield Storage().write_commit_future(commitname, json.dumps(data), exttags=indexes)
-    except Exception as err:
-        print data
-        LOGGER.error(str(data))
+        tmp = yield Storage().read_commit_future(commit['id'])
+        commit_info = json.loads(tmp)
+    except ServiceError as err:
         LOGGER.error(str(err))
-    answer({'commits': [data]})
+
+    try:
+        commit_info.update(commit)
+        indexes = {"page": commit_info['page'],
+                   "app": commit_info['app'],
+                   "last": commit_info['last'],
+                   "status": commit_info['status'],
+                   "summary": commit_info['summary']}
+        yield Storage().write_commit_future(commit_info['id'],
+                                            json.dumps(commit_info),
+                                            exttags=indexes)
+    except ServiceError as err:
+        LOGGER.error(err)
+    commit_info.pop('app')
+    answer({"commit": commit_info})

@@ -142,6 +142,7 @@ class WebSockInterface(SocketConnection):
         def wr(obj):
             try:
                 data = yield Storage().read_app_future(name)
+                APP_LOGGER.error("ID:APP %s", str(data))
                 obj.emit(key, {"app": json.loads(data), "commits": {
                         "id": 1,
                         "summary": 1,
@@ -244,7 +245,7 @@ class WebSockInterface(SocketConnection):
         :param data: information about repository
         :param key: name of emitted event to answer
         '''
-        APP_LOGGER.error(str(data))
+        APP_LOGGER.error("UPDATE APP")
         repository_info = dict((item['name'], item['value']) for item in data)
         Chain([partial(helpers.vcs_clone,
                        partial(self.emit, key),
@@ -260,8 +261,9 @@ class WebSockInterface(SocketConnection):
     @event('delete:app')
     def delete_app(self, data, key):
         APP_LOGGER.error("delete:app")
-        print data
-        print key
+        Chain([partial(helpers.delete_application,
+                       partial(self.emit, key),
+                       data)])
 
     @event('deploy:app')
     def deploy_app(self, data, key):
@@ -284,29 +286,30 @@ class WebSockInterface(SocketConnection):
                        data)])
 
     @event('all:summaries')
-    def all_summaries(sefl, data, key):
+    def all_summaries(self, data, key):
         print data
         print key
+    
+    @event('update:summary')
+    def update_summary(self, data, key):
+        APP_LOGGER.error("Update summary")
+        Chain([partial(helpers.update_summary,
+                       partial(self.emit, key),
+                       data)])
 
     @event('find:commits')
     def find_commits(self, data, key):
         APP_LOGGER.error('find:commits')
-        page = data['page']
-        summary = data['summary']
         Chain([partial(helpers.find_commits,
                        partial(self.emit, key),
-                       summary, page=page)])
+                       **data)])
 
     @event('update:commit')
     def update_commit(self, commit, key):
-        APP_LOGGER.error('update:commits')
-        app_id = commit['id']
-        indexes = {"page": commit['page'],
-                   "last": commit['last'],
-                   "summary": commit['summary']}
-        Chain([partial(helpers.store_commit,
+        APP_LOGGER.error('update:commit')
+        Chain([partial(helpers.update_commit,
                        partial(self.emit, key),
-                       app_id, commit, indexes)])
+                       commit)])
 
     #util
     def set_cookie(self, key, data):

@@ -113,6 +113,7 @@ class GIT(object):
         summary = {"id": app_id,
                    "app": app_id,
                    "commits": [item.get('id') for item in commits],
+                   "commit": active_commit_hex[:7],
                    "repository": repo_url,
                    "developers": "admin, tester",
                    "dependencies": "sh==1.02, msgpack-python",
@@ -151,6 +152,7 @@ class GIT(object):
                 indexes = {"page": commit['page'],
                            "app": commit['app'],
                            "last": commit['last'],
+                           "status": commit['status'],
                            "summary": commit['summary']}
                 yield Storage().write_commit_future(commit['id'],
                                                     json.dumps(commit),
