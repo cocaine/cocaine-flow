@@ -25,6 +25,7 @@ import logging
 import hashlib
 import json
 import re
+from functools import partial
 
 import pygit2
 
@@ -46,8 +47,8 @@ MAX_COMMITS = 20
 regex = re.compile("\[K")
 
 
-def get_vcs(answer, repository_info):
-    return GIT(answer, repository_info)
+def get_vcs(*args):
+    return GIT(*args)
 
 
 def detect_app_name(repository_info):
@@ -68,18 +69,32 @@ class GIT(object):
         self.msg = None
         self.repo = None
         self.app_id = None
+        self.upload_id = None
+        self._canceled = False
+        self.on_canceled = None
 
     def run(self):
         Chain([self.make_it])
 
+    def cancel(self):
+        self._canceled = True
+
     def make_it(self):
-        repo_url = self.repository_info['repository']
+        try:
+            repo_url = self.repository_info['repository']
+        except Exception as err:
+            LOGGER.error(str(err))
+            self.answer({"fail": "Repository key is missing",
+                         "percentage": 0,
+                         "message": "Code error"})
+            return
+
         LOGGER.info("Clone GIT repository  %s", repo_url)
         if self.repository_info['reference'] == '':
             self.repository_info['reference'] = 'HEAD'
 
         LOGGER.info("Ref: %s", self.repository_info['reference'])
-        self.answer({"message": "Clone repository", "percentage": 0})
+        self.answer({"message": "Clone repository", "percentage": 10})
         try:
             LOGGER.info('Clean temp folder %s', VCS_TEMP_DIR)
             shutil.rmtree(VCS_TEMP_DIR)
@@ -91,7 +106,17 @@ class GIT(object):
         clone_command = "git clone %s %s --progress" % (repo_url,
                                                         VCS_TEMP_DIR)
         ret_code = yield asyncprocess(clone_command, handle_repo_data.send)
+        LOGGER.error("Check discard %s", self._canceled)
+        if self._canceled:
+            raise StopIteration
+
         LOGGER.error(ret_code)
+        if ret_code != 0:
+            self.answer({"fail": "World had exploded, dude",
+                         "message": "Clone repository %s %s" % (repo_url,
+                                                                self.repository_info['reference']),
+                         "percentage": 10})
+            return
 
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
@@ -106,7 +131,7 @@ class GIT(object):
                     "id": app_id,
                     "reference": ref,
                     "summary": app_id,
-                    "status": "OK",
+                    "status": "uploaded",
                     "profile": "default",
                     "status-message": "normal"}
 
@@ -114,6 +139,7 @@ class GIT(object):
                    "app": app_id,
                    "commits": [item.get('id') for item in commits],
                    "commit": active_commit_hex[:7],
+                   "pages": len(commits) / COMMITS_PER_PAGE,
                    "repository": repo_url,
                    "developers": "admin, tester",
                    "dependencies": "sh==1.02, msgpack-python",
@@ -151,7 +177,6 @@ class GIT(object):
                 commit['summary'] = app_id
                 indexes = {"page": commit['page'],
                            "app": commit['app'],
-                           "last": commit['last'],
                            "status": commit['status'],
                            "summary": commit['summary']}
                 yield Storage().write_commit_future(commit['id'],
@@ -188,6 +213,9 @@ class GIT(object):
             LOGGER.error(repr(err))
         except Exception as err:
             LOGGER.error(err)
+        if self._canceled:
+            raise Exception("CANCELED")
+
 
     def _on_git_clone(self):
         '''
@@ -230,7 +258,6 @@ class GIT(object):
                     'page': i / COMMITS_PER_PAGE + 1,
                     'app': self.app_id,
                     'hash': commit.hex[:7],
-                    'last': i == MAX_COMMITS,
                     'message': commit.message,
                     'status': 'unactive' if active_commit_hex != commit.hex else "checkouted",
                     'date': commit.commit_time * 1000,

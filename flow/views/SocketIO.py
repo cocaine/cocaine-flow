@@ -20,6 +20,7 @@
 
 import logging
 import json
+import uuid
 from functools import partial
 
 from tornadio2 import SocketConnection
@@ -41,6 +42,7 @@ class WebSockInterface(SocketConnection):
         super(WebSockInterface, self).__init__(*args, **kwargs)
         self.connection_info = None
         self._cookie = False
+        self.vcs_objects = dict()
 
     def on_open(self, info):
         APP_LOGGER.warning('Client connected')
@@ -61,7 +63,7 @@ class WebSockInterface(SocketConnection):
         ''' Analog of user/me '''
         # Check cookies here
         print self.connection_info  # Extract cookie!
-        if self._cookie:
+        if True:#self._cookie:
             APP_LOGGER.info('Find cookies')
             self.emit(key,
                       {"user": {
@@ -160,10 +162,6 @@ class WebSockInterface(SocketConnection):
                 print err
         Chain([partial(wr, self)])
 
-    @event('cancel-upload')
-    def cancel_upload(self, *args):
-        APP_LOGGER.error('Not implemented cancel-upload')
-
     @event('id:profile')
     def id_profile(self, name, key):
         '''
@@ -245,10 +243,14 @@ class WebSockInterface(SocketConnection):
         :param data: information about repository
         :param key: name of emitted event to answer
         '''
-        APP_LOGGER.error("UPDATE APP")
+        APP_LOGGER.error("UPLOAD APP")
+        upload_id = uuid.uuid4()
+        self.emit(key, {"message": "start upload",
+                        "percentage": 0, "uploadId" : upload_id.hex})
         repository_info = dict((item['name'], item['value']) for item in data)
         Chain([partial(helpers.vcs_clone,
                        partial(self.emit, key),
+                       partial(self.store_uploader, upload_id.hex),
                        repository_info)])
 
     @event('update:app')
@@ -266,17 +268,56 @@ class WebSockInterface(SocketConnection):
                        data)])
 
     @event('deploy:app')
-    def deploy_app(self, data, key):
+    def deploy_app(self, app_id):
         '''
         Deploy application to the cloud
 
         :param data: application name
         :param key: name of emitted event to answer
         '''
-        self.emit(key, {"message": 1, "percentage": 25})
-        self.emit(key, {"message": 2, "percentage": 50})
-        self.emit(key, {"message": 3, "percentage": 75})
-        self.emit(key, {"message": 4, "percentage": 100})
+        Chain([partial(helpers.deploy_application, 
+                        self.emit,
+                        app_id)])
+
+    @event("refresh:app")
+    def refresh_app(self, app_id):
+        APP_LOGGER.info("refresh:app")
+        Chain([partial(helpers.refresh_application,
+                       self.emit, app_id)])
+
+    @event("search:apps")
+    def search_apps(self, query, key):
+        Chain([partial(helpers.search_application,
+                       partial(self.emit, key),
+                       query)])
+
+    @event("cancel:update")
+    def cancel_update(self, app_id):
+        APP_LOGGER.error("CANCEL UPDATE")
+        key = "keepalive:app/%s" % app_id
+        self.emit(key,  {
+                        "app": {
+                            "id": app_id,
+                            "status": "normal",
+                            "logs": None,
+                            "percentage": None,
+                            "action": None
+                        }
+                    })
+
+    @event('cancel:deploy')
+    def cancel_deploy(self, app_id):
+        APP_LOGGER.info("Cancel deploy")
+        key = "keepalive:app/%s" % app_id
+        self.emit(key,  {
+                        "app": {
+                            "id": app_id,
+                            "status": "uploaded",
+                            "logs": None,
+                            "percentage": None,
+                            "action": None
+                        }
+                    })
 
     @event('id:summary')
     def id_summary(self, data, key):
@@ -289,7 +330,7 @@ class WebSockInterface(SocketConnection):
     def all_summaries(self, data, key):
         print data
         print key
-    
+
     @event('update:summary')
     def update_summary(self, data, key):
         APP_LOGGER.error("Update summary")
@@ -311,6 +352,15 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        commit)])
 
+    @event('cancel:upload')
+    def cancel_upload(self, upload_id):
+        APP_LOGGER.error("CANCELED %s", str(upload_id))
+        vcs_object = self.vcs_objects.get(upload_id, None)
+        if vcs_object is not None:
+            vcs_object.cancel()
+        self.emit("Cancel")
+
+
     #util
     def set_cookie(self, key, data):
         status = "fail"
@@ -327,6 +377,10 @@ class WebSockInterface(SocketConnection):
             APP_LOGGER.error("Sign in fail")
         self.emit(key, data)
 
+    def store_uploader(self, upload_id, vcs_object):
+        APP_LOGGER.info("Register vcs object %s for id %s",
+                        vcs_object, upload_id)
+        self.vcs_objects[upload_id] = vcs_object
 
 # Create TornadIO2 router
 Router = TornadioRouter(WebSockInterface, namespace="flow/api/socket.io")
