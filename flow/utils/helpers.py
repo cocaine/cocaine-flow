@@ -4,6 +4,7 @@ import uuid
 import hmac
 import json
 import hashlib
+import os
 from functools import partial
 
 from flow.utils.storage import Storage
@@ -314,20 +315,21 @@ def deploy_application(answer, app_id):
         import shutil
         answer(key, {"app": {"id": app_id, "status": "deploy",
                              "logs": "Fetch archive", "percentage": 40}})
-        with open("/tmp/sample.tar.gz",'wb') as f:
+        with open("/tmp/%s.tar.gz" % app_id,'wb') as f:
             f.write(app_data)
         try:
-            shutil.rmtree("./tmp/COCAINE_FLOW")
+            shutil.rmtree("/tmp/%s" % app_id)
         except Exception as err:
             print err
-        tar = tarfile.open("/tmp/sample.tar.gz")
-        tar.extractall()
+        os.mkdir("/tmp/%s" % app_id)
+        tar = tarfile.open("/tmp/%s.tar.gz" % app_id)
+        tar.extractall(path="/tmp/%s" % app_id)
         tar.close()
         answer(key, {"app": {"id": app_id, "status": "deploy",
                              "logs": "Deploy application", "percentage": 60}})
         tools = sh.__getattr__("cocaine-tool")
         print "COCAINE_TOOLS", tools.app.upload("--name", app_id,
-                                                "./tmp/COCAINE_FLOW/")
+                                                "/tmp/%s/tmp/COCAINE_FLOW" % app_id)
         cmd = "--name %s --profile default" % app_id
         answer(key, {"app": {"id": app_id, "status": "deploy",
                              "logs": "Start application", "percentage": 80}})
