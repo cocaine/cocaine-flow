@@ -329,7 +329,7 @@ def deploy_application(answer, app_id):
                              "logs": "Deploy application", "percentage": 60}})
         tools = sh.__getattr__("cocaine-tool")
         print "COCAINE_TOOLS", tools.app.upload("--name", app_id,
-                                                "/tmp/%s/tmp/COCAINE_FLOW" % app_id)
+                                                "/tmp/%s" % app_id)
         cmd = "--name %s --profile default" % app_id
         answer(key, {"app": {"id": app_id, "status": "deploy",
                              "logs": "Start application", "percentage": 80}})
