@@ -160,7 +160,6 @@ class GIT(object):
         tar.add(VCS_TEMP_DIR, arcname='')
         tar.close()
         LOGGER.error('OK')
-        raw_input("WAIT")
         # Store archive
         LOGGER.error("SAVE")
         self.msg.append("Store archive\n")
