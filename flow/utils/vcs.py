@@ -150,11 +150,17 @@ class GIT(object):
         self.answer({"message": ''.join(self.msg),
                      "percentage": 90})
 
-        shutil.make_archive("%s/%s" % (VCS_TEMP_DIR,
-                                       hashlib.md5(app_id).hexdigest()),
-                            "gztar", root_dir=VCS_TEMP_DIR,
-                            base_dir=VCS_TEMP_DIR, logger=LOGGER)
-
+        # shutil.make_archive("%s/%s" % (VCS_TEMP_DIR,
+        #                                hashlib.md5(app_id).hexdigest()),
+        #                     "gztar", root_dir=VCS_TEMP_DIR,
+        #                     base_dir=VCS_TEMP_DIR, logger=LOGGER)
+        import tarfile, os
+        packagePath = os.path.join(VCS_TEMP_DIR, '%s.tar.gz' % hashlib.md5(app_id).hexdigest())
+        tar = tarfile.open(packagePath, mode='w:gz')
+        tar.add(VCS_TEMP_DIR, arcname='')
+        tar.close()
+        LOGGER.error('OK')
+        raw_input("WAIT")
         # Store archive
         LOGGER.error("SAVE")
         self.msg.append("Store archive\n")
