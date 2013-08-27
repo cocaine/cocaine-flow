@@ -320,7 +320,7 @@ def deploy_application(answer, app_id):
         try:
             shutil.rmtree("/tmp/%s" % app_id)
         except Exception as err:
-            print err
+            print "shutil", err
         os.mkdir("/tmp/%s" % app_id)
         tar = tarfile.open("/tmp/%s.tar.gz" % app_id)
         tar.extractall(path="/tmp/%s" % app_id)
@@ -329,7 +329,7 @@ def deploy_application(answer, app_id):
                              "logs": "Deploy application", "percentage": 60}})
         tools = sh.__getattr__("cocaine-tool")
         print "COCAINE_TOOLS", tools.app.upload("--name", app_id,
-                                                "/tmp/%s" % app_id)
+                                                "/tmp/%s" % app_id, "--timeout", "50")
         cmd = "--name %s --profile default" % app_id
         answer(key, {"app": {"id": app_id, "status": "deploy",
                              "logs": "Start application", "percentage": 80}})

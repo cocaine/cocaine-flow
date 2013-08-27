@@ -25,7 +25,8 @@ import logging
 import hashlib
 import json
 import re
-from functools import partial
+from os import path
+import sh
 
 import pygit2
 
@@ -118,6 +119,21 @@ class GIT(object):
                          "percentage": 10})
             return
 
+        # ====== Package.json
+        def f():
+            while True:
+                data = yield
+                self.msg.append(data)
+                print data
+                self.answer({"message": ''.join(self.msg),
+                     "percentage": 20})
+        if path.exists("%s/package.json" % VCS_TEMP_DIR):
+            LOGGER.error("Find package.json")
+            g= f()
+            g.next()
+            ret_code = yield asyncprocess("npm install", g.send, cwd=VCS_TEMP_DIR)
+            LOGGER.info("Ret code %d", ret_code)
+        # ===================
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
 

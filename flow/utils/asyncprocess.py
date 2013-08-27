@@ -14,14 +14,15 @@ def guard(func):
     return wrapper
 
 
-def asyncprocess(cmd, callback):
+def asyncprocess(cmd, callback, cwd=None):
     callback = guard(callback)
     ioloop = IOLoop.instance()
     pipe = subprocess.Popen(cmd, shell=True,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
-                            close_fds=True)
+                            close_fds=True,
+                            cwd=cwd)
     future = Deferred()
     fd_err = pipe.stderr.fileno()
     #fd_out = pipe.stdout.fileno()
