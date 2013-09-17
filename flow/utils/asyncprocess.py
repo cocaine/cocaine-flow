@@ -9,6 +9,8 @@ def guard(func):
     def wrapper(*args, **kwargs):
         try:
             func(*args, **kwargs)
+        except StopIteration:
+            pass
         except Exception:
             pass
     return wrapper
@@ -27,11 +29,11 @@ def asyncprocess(cmd, callback, cwd=None):
     fd_err = pipe.stderr.fileno()
     #fd_out = pipe.stdout.fileno()
 
-    def recv(*args):
+    def recv(*_):
         if pipe.poll() is not None:
             callback(pipe.stderr.readline())
             ioloop.remove_handler(fd_err)
-            future.ready(pipe.poll())
+            future.trigger(pipe.poll())
         else:
             callback(pipe.stderr.readline())
     # read handler

@@ -19,7 +19,6 @@
 #
 
 import logging
-import json
 import uuid
 from functools import partial
 
@@ -28,7 +27,6 @@ from tornadio2 import TornadioRouter
 from tornadio2 import event
 
 
-from flow.utils.storage import Storage
 from flow.utils import helpers
 
 from cocaine.futures.chain import Chain
@@ -137,30 +135,30 @@ class WebSockInterface(SocketConnection):
         Chain([partial(helpers.get_applications,
                        partial(self.emit, key))])
 
-    @event('id:app')
-    def id_app(self, name, key):
-        APP_LOGGER.error('Mock id_app')
+    # @event('id:app')
+    # def id_app(self, name, key):
+    #     APP_LOGGER.error('Mock id_app')
 
-        def wr(obj):
-            try:
-                data = yield Storage().read_app_future(name)
-                APP_LOGGER.error("ID:APP %s", str(data))
-                obj.emit(key, {"app": json.loads(data), "commits": {
-                        "id": 1,
-                        "summary": 1,
-                        "app": name,
-                        "page": 1,
-                        "hash": "c43733",
-                        "link": "https://github.com/...",
-                        "date": 1368486236487,
-                        "message": "TTTT",
-                        "author": "Oleg <markelog@gmail.com>",
-                        "active": True,
-                        "last": False
-                }})
-            except Exception as err:
-                print err
-        Chain([partial(wr, self)])
+    #     def wr(obj):
+    #         try:
+    #             data = yield Storage().read_app_future(name)
+    #             APP_LOGGER.error("ID:APP %s", str(data))
+    #             obj.emit(key, {"app": json.loads(data), "commits": {
+    #                     "id": 1,
+    #                     "summary": 1,
+    #                     "app": name,
+    #                     "page": 1,
+    #                     "hash": "c43733",
+    #                     "link": "https://github.com/...",
+    #                     "date": 1368486236487,
+    #                     "message": "TTTT",
+    #                     "author": "Oleg <markelog@gmail.com>",
+    #                     "active": True,
+    #                     "last": False
+    #             }})
+    #         except Exception as err:
+    #             print err
+    #     Chain([partial(wr, self)])
 
     @event('id:profile')
     def id_profile(self, name, key):

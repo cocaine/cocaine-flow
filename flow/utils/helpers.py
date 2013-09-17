@@ -83,18 +83,14 @@ def update_application(answer, data):
     try:
         tmp = yield Storage().read_app_future(data['name'])
         app_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
-    try:
         app_info.update(data)
         yield Storage().write_app_future(data['name'], json.dumps(app_info))
     except ServiceError as err:
         LOGGER.error(err)
     except Exception as err:
         LOGGER.error(str(err))
-    answer({"app": data})
+    else:
+        answer({"app": data})
 
 def refresh_application(answer, app_id):
     LOGGER.info("Start refresh")
@@ -177,38 +173,29 @@ def refresh_application(answer, app_id):
 
 def delete_application(answer, data):
     name = data['id']
-    LOGGER.error("Remove %s", name)
     try:
-        LOGGER.info('Removing application info')
+        LOGGER.debug('Removing application info')
         yield Storage().delete_app_future(name)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    else:
-        LOGGER.info('Delete application info succesfully')
+        LOGGER.debug('Delete application info succesfully')
 
-    try:
-        LOGGER.info('Removing application data')
+        LOGGER.debug('Removing application data')
         yield Storage().delete_app_data_future(name)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    else:
-        LOGGER.info('Delete application info succesfully')
+        LOGGER.debug('Delete application data succesfully')
 
-    try:
-        LOGGER.info("Find commits")
+        LOGGER.debug("Find commits")
         items = yield Storage().find_commit_future(exttags={"app": name})
         LOGGER.debug("FIND %d, %s", len(items), str(items))
-    except ServiceError as err:
-        LOGGER.error(str(err))
 
-    LOGGER.info('Delete commits')
-    for item in items:
-        try:
+        LOGGER.debug('Delete commits')
+        for item in items:
             LOGGER.debug("Delete commit %s", item)
             yield Storage().delete_commit_future(item)
-        except Exception as err:
-            LOGGER.error(err)
-    answer({"apps": [name]})
+    except ServiceError as err:
+        LOGGER.error(err)
+    except Exception as err:
+        LOGGER.error(err)
+    else:
+        answer({"apps": [name]})
 
 
 

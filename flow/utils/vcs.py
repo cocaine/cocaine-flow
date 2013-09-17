@@ -26,11 +26,11 @@ import hashlib
 import json
 import re
 from os import path
-import sh
 
 import pygit2
 
 from cocaine.futures.chain import Chain
+from cocaine.futures.chain import concurrent
 from cocaine.exceptions import ServiceError
 
 from flow.utils.asyncprocess import asyncprocess
@@ -96,6 +96,7 @@ class GIT(object):
 
         LOGGER.info("Ref: %s", self.repository_info['reference'])
         self.answer({"message": "Clone repository", "percentage": 10})
+
         try:
             LOGGER.info('Clean temp folder %s', VCS_TEMP_DIR)
             shutil.rmtree(VCS_TEMP_DIR)
@@ -113,7 +114,7 @@ class GIT(object):
 
         LOGGER.error(ret_code)
         if ret_code != 0:
-            self.answer({"fail": "World had exploded, dude",
+            self.answer({"fail": "BLABLA",
                          "message": "Clone repository %s %s" % (repo_url,
                                                                 self.repository_info['reference']),
                          "percentage": 10})
@@ -127,12 +128,19 @@ class GIT(object):
                 print data
                 self.answer({"message": ''.join(self.msg),
                      "percentage": 20})
+
         if path.exists("%s/package.json" % VCS_TEMP_DIR):
             LOGGER.error("Find package.json")
-            g= f()
+            g = f()
             g.next()
             ret_code = yield asyncprocess("npm install", g.send, cwd=VCS_TEMP_DIR)
-            LOGGER.info("Ret code %d", ret_code)
+            if ret_code == 0:
+                LOGGER.error("Ret code %d", ret_code)
+                self.answer({"fail": "World had exploded, dude",
+                             "message": "Clone repository %s %s" % (repo_url,
+                                                                    self.repository_info['reference']),
+                             "percentage": 10})
+                raise StopIteration
         # ===================
         ref = self.repository_info.get('reference', 'HEAD')
         self.repo = pygit2.Repository(VCS_TEMP_DIR)
@@ -166,21 +174,23 @@ class GIT(object):
         self.answer({"message": ''.join(self.msg),
                      "percentage": 90})
 
-        # shutil.make_archive("%s/%s" % (VCS_TEMP_DIR,
-        #                                hashlib.md5(app_id).hexdigest()),
-        #                     "gztar", root_dir=VCS_TEMP_DIR,
-        #                     base_dir=VCS_TEMP_DIR, logger=LOGGER)
-        import tarfile, os
-        packagePath = os.path.join(VCS_TEMP_DIR, '%s.tar.gz' % hashlib.md5(app_id).hexdigest())
-        tar = tarfile.open(packagePath, mode='w:gz')
-        tar.add(VCS_TEMP_DIR, arcname='')
-        tar.close()
+        @concurrent
+        def pack():
+            import tarfile, os
+            packagePath = os.path.join(VCS_TEMP_DIR, '%s.tar.gz' % hashlib.md5(app_id).hexdigest())
+            tar = tarfile.open(packagePath, mode='w:gz')
+            tar.add(VCS_TEMP_DIR, arcname='')
+            tar.close()
+
+        res = yield pack()
+        print res
         LOGGER.error('OK')
         # Store archive
         LOGGER.error("SAVE")
         self.msg.append("Store archive\n")
         self.answer({"message": ''.join(self.msg),
                      "percentage": 95})
+
         try:
             LOGGER.debug('Save application %s data', app_id)
             application_data = open("%s/%s.tar.gz" % (VCS_TEMP_DIR,
