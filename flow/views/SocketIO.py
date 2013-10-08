@@ -324,10 +324,10 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        data)])
 
-    @event('all:summaries')
-    def all_summaries(self, data, key):
-        print data
-        print key
+    # @event('all:summaries')
+    # def all_summaries(self, data, key):
+    #     print data
+    #     print key
 
     @event('update:summary')
     def update_summary(self, data, key):

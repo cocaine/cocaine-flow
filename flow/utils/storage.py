@@ -173,3 +173,39 @@ class Storage(object):
 
     def list_summaries_future(self):
         return self._storage.find(FLOW_SUMMARIES, [FLOW_SUMMARIES_TAG])
+
+
+from cocaine.futures.chain import PreparedFuture
+import json
+class Profile(object):
+
+    INDEXED_FIELDS = ["id"]
+
+    @staticmethod
+    def list():
+        items = yield Storage().list_profile_future()
+        res = []
+        for item in items:
+            tmp = yield Storage().read_profile_future(item)
+            res.append(json.loads(tmp))
+        yield PreparedFuture(res)
+
+    @staticmethod
+    def read(item):
+        def wrapper():
+            tmp = yield Storage().read_profile_future(item)
+            yield PreparedFuture(json.loads(tmp))
+        return wrapper
+
+    @staticmethod
+    def write(name, data):
+        def wrapper():
+            data['id'] = name
+            yield Storage().write_profile_future(name, json.dumps(data))
+        return wrapper
+
+    @staticmethod
+    def _tags(item):
+        return dict((k, v) for k, v in item.iteritems() if k in Profile.INDEXED_FIELDS)
+
+

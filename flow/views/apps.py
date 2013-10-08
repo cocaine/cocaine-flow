@@ -41,7 +41,20 @@ class Apps(CocaineRequestHandler):
 @Route(r"/flowapi/authorization")
 class Sigin(CocaineRequestHandler):
 
-	def post(self, *args):
-		user = self.get_argument("user")
-		password = self.get_argument("password")
-		self.set_cookie("user", "test")
+    def post(self, *args):
+        user = self.get_argument("user")
+        password = self.get_argument("password")
+        self.set_cookie("user", "test")
+
+
+@Route(r"/TEST")
+class Test(CocaineRequestHandler):
+
+    @web.asynchronous
+    def get(self):
+        from flow.utils.storage import Profile
+        Chain([Profile.list, self.send])
+
+    def send(self, res):
+        import json
+        self.finish(json.dumps(res.get()))

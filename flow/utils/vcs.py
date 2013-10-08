@@ -165,8 +165,8 @@ class GIT(object):
                    "commit": active_commit_hex[:7],
                    "pages": len(commits) / COMMITS_PER_PAGE,
                    "repository": repo_url,
-                   "developers": "admin, tester",
-                   "dependencies": "sh==1.02, msgpack-python",
+                   "developers": "",
+                   "dependencies": "",
                    "use-frequency": "often"}
 
         # Make tar.gz

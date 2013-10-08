@@ -1,4 +1,3 @@
-
 import logging
 import uuid
 import hmac
@@ -275,7 +274,6 @@ def deploy_application(answer, app_id):
         yield Chain([lambda: update_commit(lambda x: None, checkouted_commit)])
     except Exception as err:
         print err
-    print checkouted_commit
 
     active_commit = None
     if active_commit_id:
@@ -362,6 +360,7 @@ def get_user(answer, name, password=None):
         LOGGER.error(str(err))
     except Exception as err:
         LOGGER.exception(str(err))
+
     if item is None:
         response = {"users": [{}]}
     else:
