@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+
+from cocaine.services import Service
+
+print(Service("flow-app").enqueue("get", "").get())

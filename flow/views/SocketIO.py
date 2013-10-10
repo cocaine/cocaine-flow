@@ -29,6 +29,7 @@ from tornadio2 import event
 
 from flow.utils import helpers
 
+from cocaine.services import Service
 from cocaine.futures.chain import Chain
 
 APP_LOGGER = logging.getLogger()
@@ -132,33 +133,8 @@ class WebSockInterface(SocketConnection):
         :param _: unusable
         :param key: name of emitted event to answer
         '''
-        Chain([partial(helpers.get_applications,
-                       partial(self.emit, key))])
-
-    # @event('id:app')
-    # def id_app(self, name, key):
-    #     APP_LOGGER.error('Mock id_app')
-
-    #     def wr(obj):
-    #         try:
-    #             data = yield Storage().read_app_future(name)
-    #             APP_LOGGER.error("ID:APP %s", str(data))
-    #             obj.emit(key, {"app": json.loads(data), "commits": {
-    #                     "id": 1,
-    #                     "summary": 1,
-    #                     "app": name,
-    #                     "page": 1,
-    #                     "hash": "c43733",
-    #                     "link": "https://github.com/...",
-    #                     "date": 1368486236487,
-    #                     "message": "TTTT",
-    #                     "author": "Oleg <markelog@gmail.com>",
-    #                     "active": True,
-    #                     "last": False
-    #             }})
-    #         except Exception as err:
-    #             print err
-    #     Chain([partial(wr, self)])
+        res = Service("flow-app").enqueue("get", "").get()
+        self.emit(key, {"apps": res})
 
     @event('id:profile')
     def id_profile(self, name, key):
@@ -169,9 +145,8 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.info("Get profile")
-        Chain([partial(helpers.get_profile,
-                       partial(self.emit, key),
-                       name)])
+        res = Service("flow-profile").enqueue("get", name).get()
+        self.emit(key, {"profile": res})
 
     @event('create:profile')
     def create_profile(self, data, key):
@@ -323,11 +298,6 @@ class WebSockInterface(SocketConnection):
         Chain([partial(helpers.get_summary,
                        partial(self.emit, key),
                        data)])
-
-    # @event('all:summaries')
-    # def all_summaries(self, data, key):
-    #     print data
-    #     print key
 
     @event('update:summary')
     def update_summary(self, data, key):

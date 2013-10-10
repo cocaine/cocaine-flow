@@ -1,0 +1,17 @@
+Source: cocaine-flow
+Section: misc
+Priority: extra
+Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.3
+Homepage: https://github.com/cocaine/cocaine-flow
+
+Package: cocaine-flow
+Architecture: all
+Depends: ${shlibs:Depends}, 
+ ${misc:Depends}, 
+ cocaine-tools, 
+ cocaine-framework-python,
+ python-pip
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>

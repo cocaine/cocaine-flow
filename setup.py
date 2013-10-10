@@ -35,8 +35,11 @@ setup(
     packages=[
         "flow",
         "flow.views",
-        "flow.utils",
-        "flow.mock"  # temp
+        "flow.utils"
+    ],
+    data_files = [
+        ('/usr/lib/flow/Application', ['app/Application/app.py', 'app/Application/manifest.json', 'app/Application/__init__.py']),
+        ('/usr/lib/flow/Profile', ['app/Profile/profile.py', 'app/Profile/manifest.json', 'app/Profile/__init__.py']),
     ],
     install_requires=["msgpack_python", "tornado", "pygit2", "tornadio2"],
     scripts=["cocaine-flow"]

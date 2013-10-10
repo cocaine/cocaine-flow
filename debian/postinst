@@ -1,0 +1,9 @@
+#!/bin/sh
+
+PATH="/usr/lib/flow/"
+pip install tornadio2
+pip install pygit2
+
+cocaine-tool app upload 
+
+#DEBHELPER#
