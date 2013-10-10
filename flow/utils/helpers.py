@@ -33,7 +33,7 @@ def verify_password(password, user_info):
     return result
 
 
-def get_applications(answer):
+def get_applications(answer): #DONE
     try:
         items = yield Storage().list_app_future()
     except ServiceError as err:
