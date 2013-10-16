@@ -417,57 +417,57 @@ def store_user(answer, username, password, **kwargs):
                          'username': data['username']}})
 
 
-def store_profile(answer, name, data):
-    try:
-        data['id'] = name
-        yield Storage().write_profile_future(name, json.dumps(data))
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.exception(err)
-    else:
-        answer({"profile": data})
+# def store_profile(answer, name, data):
+#     try:
+#         data['id'] = name
+#         yield Storage().write_profile_future(name, json.dumps(data))
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.exception(err)
+#     else:
+#         answer({"profile": data})
 
 
-def get_profile(answer, name):
-    profile = None
-    try:
-        profile = yield Storage().read_profile_future(name)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-        answer({"profile": {}})
-    except Exception:
-        LOGGER.exception(err)
-    else:
-        answer({"profile": json.loads(profile)})
+# def get_profile(answer, name):
+#     profile = None
+#     try:
+#         profile = yield Storage().read_profile_future(name)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#         answer({"profile": {}})
+#     except Exception:
+#         LOGGER.exception(err)
+#     else:
+#         answer({"profile": json.loads(profile)})
 
 
-def delete_profile(answer, name):
-    try:
-        yield Storage().delete_profile_future(name)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    else:
-        answer({})
+# def delete_profile(answer, name):
+#     try:
+#         yield Storage().delete_profile_future(name)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     else:
+#         answer({})
 
 
-def list_profiles(answer):
-    try:
-        items = yield Storage().list_profile_future()
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception:
-        LOGGER.exception()
-    res = []
-    for item in items:
-        tmp = yield Storage().read_profile_future(item)
-        try:
-            res.append(json.loads(tmp))
-        except ServiceError as err:
-            LOGGER.error(str(err))
-        except Exception:
-            LOGGER.exception()
-    answer({"profiles": res})
+# def list_profiles(answer):
+#     try:
+#         items = yield Storage().list_profile_future()
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception:
+#         LOGGER.exception()
+#     res = []
+#     for item in items:
+#         tmp = yield Storage().read_profile_future(item)
+#         try:
+#             res.append(json.loads(tmp))
+#         except ServiceError as err:
+#             LOGGER.error(str(err))
+#         except Exception:
+#             LOGGER.exception()
+#     answer({"profiles": res})
 
 
 def vcs_clone(answer, register_vcs, repository_info):

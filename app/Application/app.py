@@ -26,4 +26,5 @@ def get(request, response):
             LOGGER.error(str(err))
     response.write(res)
     response.close()
+    
 

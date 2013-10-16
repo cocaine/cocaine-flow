@@ -22,10 +22,10 @@ import logging
 import uuid
 from functools import partial
 
+import msgpack
 from tornadio2 import SocketConnection
 from tornadio2 import TornadioRouter
 from tornadio2 import event
-
 
 from flow.utils import helpers
 
@@ -146,6 +146,7 @@ class WebSockInterface(SocketConnection):
         '''
         APP_LOGGER.info("Get profile")
         res = Service("flow-profile").enqueue("get", name).get()
+        print res
         self.emit(key, {"profile": res})
 
     @event('create:profile')
@@ -159,10 +160,11 @@ class WebSockInterface(SocketConnection):
         '''
         APP_LOGGER.info("Store profile")
         profile = data['profile']
-        Chain([partial(helpers.store_profile,
-                       partial(self.emit, key),
-                       profile['name'],
-                       profile)])
+        res = Service("flow-profile").enqueue("store",
+                                              msgpack.packb([profile['name'],
+                                                             profile])).get()
+        self.emit(key, res)
+
 
     @event('update:profile')
     def update_profile(self, profile, key):
@@ -173,10 +175,14 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.info("Put profile")
-        Chain([partial(helpers.store_profile,
-                       partial(self.emit, key),
-                       profile['name'],
-                       profile)])
+        # Chain([partial(helpers.store_profile,
+        #                partial(self.emit, key),
+        #                profile['name'],
+        #                profile)])
+        res = Service("flow-profile").enqueue("store",
+                                          msgpack.packb([profile['name'],
+                                                         profile])).get()
+        self.emit(key, res)
 
     @event('delete:profile')
     def delete_profile(self, profile, key):
@@ -200,8 +206,8 @@ class WebSockInterface(SocketConnection):
         :param _: unusable
         :param key: name of emitted event to answer
         '''
-        Chain([partial(helpers.list_profiles,
-                       partial(self.emit, key))])
+        res = Service("flow-profile").enqueue("all", "").get()
+        self.emit(key, {"profiles": res})
 
     @event('all:clusters')
     def all_clusters(self, _, key):
