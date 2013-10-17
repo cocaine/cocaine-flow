@@ -4,7 +4,7 @@ import msgpack
 from cocaine.services import Service
 
 REPO_INFO = {
-	"repository": "https://github.com/tadatuta/bem-cocaine.git",
+	"repository": "https://github.com/noxiouz/flask-cocaine-pycon.git",
 	"reference": "",
 	"type": "git"
 }

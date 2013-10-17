@@ -66,7 +66,7 @@ def extract_commits(app, raw_data):
             'message': subject,
             'status': "unactive",
             "app": app,
-            'date': timestamp.partition(' ')[0],
+            'date': int(timestamp.partition(' ')[0])*1000,
             'author': author}
 
 
@@ -133,7 +133,7 @@ def upload_application(request, response):
                "app": app_id,
                "commits": [item.get('id') for item in commits],
                "commit": ref,
-               "pages": len(commits) / COMMITS_PER_PAGE,
+               "pages": (len(commits) + 0.5*COMMITS_PER_PAGE) / COMMITS_PER_PAGE,
                "repository": url,
                "developers": "",
                "dependencies": "",
@@ -142,26 +142,26 @@ def upload_application(request, response):
     # Store data
     response.write(info(percentage, "Store application data"))
     with open(clone_path + "/app.tar.gz", 'rb') as binary:
-        yield storage.write(FLOW_APPS_DATA, app_id, binary.read(), [FLOW_APPS_DATA_TAG])
+        yield storage.write(FLOW_APPS_DATA, app_id, 
+                            binary.read(), [FLOW_APPS_DATA_TAG])
 
     # Store summary
     response.write(info(percentage, "Store application summary"))
-    yield storage.write(FLOW_SUMMARIES, app_id, json.dumps(summary), [FLOW_SUMMARIES_TAG])
+    yield storage.write(FLOW_SUMMARIES, app_id, 
+                        json.dumps(summary), [FLOW_SUMMARIES_TAG])
 
     # Store commits
     response.write(info(percentage, "Store application commits"))
     for i, commit in enumerate(commits):
         commit['page'] = i / COMMITS_PER_PAGE + 1
+        LOGGER.error(commit['page'])
         commit['summary'] = app_id
-        tags = ["%s@%s" % (field, commit[field]) for field in COMMIT_INDEXES]
-        tags.append(FLOW_COMMITS_TAG)
-        response.write(str(tags))
-        yield storage.write(FLOW_COMMITS, commit['id'], 
-                            json.dumps(commit), tags)
+        yield Service("flow-commit").enqueue("store", msgpack.packb(commit))
 
     # Store app info
     response.write(info(percentage, "Store application info"))
-    yield storage.write(FLOW_APPS, app_id, json.dumps(app_info), [FLOW_APPS_TAG])
+    yield storage.write(FLOW_APPS, app_id,
+                        json.dumps(app_info), [FLOW_APPS_TAG])
 
     # Some cleaning
     response.close()

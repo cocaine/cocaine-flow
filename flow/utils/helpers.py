@@ -423,27 +423,27 @@ def update_summary(answer, data):
     answer({"summary": summary_info})
 
 
-def find_commits(answer, **indexes):
-    LOGGER.debug("Find commits")
-    try:
-        exttags = dict()
-        exttags.update(indexes)
-        commit_items = yield Storage().find_commit_future(exttags=exttags)
-        LOGGER.error(str(commit_items))
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+# def find_commits(answer, **indexes):
+#     LOGGER.debug("Find commits")
+#     try:
+#         exttags = dict()
+#         exttags.update(indexes)
+#         commit_items = yield Storage().find_commit_future(exttags=exttags)
+#         LOGGER.error(str(commit_items))
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
 
-    LOGGER.debug("Read commits")
-    commits = list()
-    for commit in commit_items:
-        try:
-            item = yield Storage().read_commit_future(commit)
-            commits.append(json.loads(item))
-        except ServiceError as err:
-            LOGGER.error(str(err))
-    answer({'commits': sorted(commits, key=lambda x: x.get('time', 0))})
+#     LOGGER.debug("Read commits")
+#     commits = list()
+#     for commit in commit_items:
+#         try:
+#             item = yield Storage().read_commit_future(commit)
+#             commits.append(json.loads(item))
+#         except ServiceError as err:
+#             LOGGER.error(str(err))
+#     answer({'commits': sorted(commits, key=lambda x: x.get('time', 0))})
 
 
 def update_commit(answer, commit):

@@ -35,6 +35,7 @@ from cocaine.futures.chain import Chain
 APP_LOGGER = logging.getLogger()
 
 
+from cocaine.futures.chain import source
 class WebSockInterface(SocketConnection):
 
     def __init__(self, *args, **kwargs):
@@ -220,12 +221,16 @@ class WebSockInterface(SocketConnection):
         APP_LOGGER.error("UPLOAD APP")
         upload_id = uuid.uuid4()
         self.emit(key, {"message": "start upload",
-                        "percentage": 0, "uploadId" : upload_id.hex})
-        repository_info = dict((item['name'], item['value']) for item in data)
-        Chain([partial(helpers.vcs_clone,
-                       partial(self.emit, key),
-                       partial(self.store_uploader, upload_id.hex),
-                       repository_info)])
+                        "percentage": 0,
+                        "uploadId" : upload_id.hex})
+        REPO_INFO = dict((item['name'], item['value']) for item in data)
+        message = ""
+        for i in Service("flow-app").enqueue("upload",
+                                             msgpack.packb(REPO_INFO)):
+            message = '\n'.join((message, i.get('message') or i.get('fail')))
+            i['message'] = message
+            self.emit(key, i)
+        self.emit(key, {"finished": True, 'message': message+'\nDone', "percentage": 100})
 
     @event('update:app')
     def update_app(self, data, key):
@@ -307,12 +312,16 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        data)])
 
+
     @event('find:commits')
+    @source
     def find_commits(self, data, key):
+        """ engine.asynch """
         APP_LOGGER.error('find:commits')
-        Chain([partial(helpers.find_commits,
-                       partial(self.emit, key),
-                       **data)])
+        res = yield Service("flow-commit").enqueue("find",
+                                              msgpack.packb(data))
+        print res
+        self.emit(key, {'commits': res})
 
     @event('update:commit')
     def update_commit(self, commit, key):
