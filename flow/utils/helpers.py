@@ -7,7 +7,6 @@ import os
 from functools import partial
 
 from flow.utils.storage import Storage
-from flow.utils.vcs import get_vcs
 
 from cocaine.futures.chain import Chain
 from cocaine.exceptions import ServiceError
@@ -57,18 +56,18 @@ def search_application(answer, regex):
             LOGGER.exception()
     answer({"apps": filter(partial(search_filter, regex), res)})
 
-def update_application(answer, data):
-    try:
-        tmp = yield Storage().read_app_future(data['name'])
-        app_info = json.loads(tmp)
-        app_info.update(data)
-        yield Storage().write_app_future(data['name'], json.dumps(app_info))
-    except ServiceError as err:
-        LOGGER.error(err)
-    except Exception as err:
-        LOGGER.error(str(err))
-    else:
-        answer({"app": data})
+# def update_application(answer, data):
+#     try:
+#         tmp = yield Storage().read_app_future(data['name'])
+#         app_info = json.loads(tmp)
+#         app_info.update(data)
+#         yield Storage().write_app_future(data['name'], json.dumps(app_info))
+#     except ServiceError as err:
+#         LOGGER.error(err)
+#     except Exception as err:
+#         LOGGER.error(str(err))
+#     else:
+#         answer({"app": data})
 
 def refresh_application(answer, app_id):
     LOGGER.info("Start refresh")
@@ -365,11 +364,11 @@ def store_user(answer, username, password, **kwargs):
                          'status': data['status'],
                          'username': data['username']}})
 
-def vcs_clone(answer, register_vcs, repository_info):
-    vcs_object = get_vcs(answer, repository_info)
-    register_vcs(vcs_object)
-    vcs_object.on_canceled = partial(delete_application, lambda x: None)
-    vcs_object.run()
+# def vcs_clone(answer, register_vcs, repository_info):
+#     vcs_object = get_vcs(answer, repository_info)
+#     register_vcs(vcs_object)
+#     vcs_object.on_canceled = partial(delete_application, lambda x: None)
+#     vcs_object.run()
 
 
 def get_summary(answer, summaryname):
@@ -446,24 +445,24 @@ def update_summary(answer, data):
 #     answer({'commits': sorted(commits, key=lambda x: x.get('time', 0))})
 
 
-def update_commit(answer, commit):
-    LOGGER.error(str(commit))
-    try:
-        tmp = yield Storage().read_commit_future(commit['id'])
-        commit_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
+# def update_commit(answer, commit):
+#     LOGGER.error(str(commit))
+#     try:
+#         tmp = yield Storage().read_commit_future(commit['id'])
+#         commit_info = json.loads(tmp)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
 
-    try:
-        commit_info.update(commit)
-        indexes = {"page": commit_info['page'],
-                   "app": commit_info['app'],
-                   "status": commit_info['status'],
-                   "summary": commit_info['summary']}
-        yield Storage().write_commit_future(commit_info['id'],
-                                            json.dumps(commit_info),
-                                            exttags=indexes)
-    except ServiceError as err:
-        LOGGER.error(err)
-    commit_info.pop('app')
-    answer({"commit": commit_info})
+#     try:
+#         commit_info.update(commit)
+#         indexes = {"page": commit_info['page'],
+#                    "app": commit_info['app'],
+#                    "status": commit_info['status'],
+#                    "summary": commit_info['summary']}
+#         yield Storage().write_commit_future(commit_info['id'],
+#                                             json.dumps(commit_info),
+#                                             exttags=indexes)
+#     except ServiceError as err:
+#         LOGGER.error(err)
+#     commit_info.pop('app')
+#     answer({"commit": commit_info})

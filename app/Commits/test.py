@@ -12,10 +12,10 @@ COMMIT = {
 }
 
 
-print(Service('flow-commit').enqueue('store', msgpack.packb(COMMIT)).get())
-print(Service('flow-commit').enqueue('find', msgpack.packb(COMMIT)).get())
+print(Service('flow-commit').enqueue('store_commit', msgpack.packb(COMMIT)).get())
+print(Service('flow-commit').enqueue('find_commit', msgpack.packb(COMMIT)).get())
 
 COMMIT['status'] = 'checkouted'
-print(Service('flow-commit').enqueue('update', msgpack.packb(COMMIT)).get())
+print(Service('flow-commit').enqueue('update_commit', msgpack.packb(COMMIT)).get())
 COMMIT['status'] = 'ok'
-print(Service('flow-commit').enqueue('find', msgpack.packb(COMMIT)).get())
+print(Service('flow-commit').enqueue('find_commit', msgpack.packb(COMMIT)).get())

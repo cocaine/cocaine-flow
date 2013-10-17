@@ -33,6 +33,7 @@ COMMIT_INDEXES = ("page", "status", "summary", "app")
 
 git = sh.git
 
+
 def get_applications_info(request, response):
     yield request.read()
     items = yield storage.find(FLOW_APPS, [FLOW_APPS_TAG])
@@ -49,15 +50,23 @@ def get_applications_info(request, response):
 
 def update_application_info(request, response):
     raw_data = yield request.read()
-    response.write("OK")
-    response.close() 
+    data = msgpack.unpackb(raw_data)
+    tmp = yield storage.read(FLOW_APPS, data['id'])
+    app_info = json.loads(tmp)
+    app_info.update(data)
+    yield storage.write(FLOW_APPS, app_info['id'],
+                        json.dumps(app_info), [FLOW_APPS_TAG])
+    response.write(data)
+    response.close()
 
 
 def info(percentage, message):
     return {"percentage": percentage, "message": message}
 
+
 def error(percentage, message):
     return {"percentage": percentage, "fail": message}
+
 
 def extract_commits(app, raw_data):
     hash_, author, timestamp, subject = raw_data.strip("\"").split("@@")
@@ -76,7 +85,7 @@ def upload_application(request, response):
     2. Git checkout
     3. Extract commits
     4. Pack tar.gz
-    5. Store tar.gz 
+    5. Store tar.gz
     6. Store commits
     7. Store summary
     8. Store app info
@@ -105,7 +114,7 @@ def upload_application(request, response):
 
         response.write(info(percentage, "Checkout commit %s" % ref))
         res = git.checkout(ref, _cwd=clone_path)
-        res = sh.git("--no-pager", "log", "-n", "20", 
+        res = sh.git("--no-pager", "log", "-n", "20",
                      pretty="format:\"%h@@%an <%ae>@@%ad@@%s\"",
                      date="raw", _cwd=clone_path)
 
@@ -120,7 +129,6 @@ def upload_application(request, response):
         response.write(error(percentage, str(err)))
         shutil.rmtree(clone_path, ignore_errors=True)
         raise StopIteration
-    
     app_info = {"name": app_name,
                 "id": app_id,
                 "reference": ref,
@@ -129,11 +137,12 @@ def upload_application(request, response):
                 "profile": "default",
                 "status-message": "normal"}
 
+    pages = (len(commits) + 0.5 * COMMITS_PER_PAGE) / COMMITS_PER_PAGE
     summary = {"id": app_id,
                "app": app_id,
                "commits": [item.get('id') for item in commits],
                "commit": ref,
-               "pages": (len(commits) + 0.5*COMMITS_PER_PAGE) / COMMITS_PER_PAGE,
+               "pages": pages,
                "repository": url,
                "developers": "",
                "dependencies": "",
@@ -142,12 +151,12 @@ def upload_application(request, response):
     # Store data
     response.write(info(percentage, "Store application data"))
     with open(clone_path + "/app.tar.gz", 'rb') as binary:
-        yield storage.write(FLOW_APPS_DATA, app_id, 
+        yield storage.write(FLOW_APPS_DATA, app_id,
                             binary.read(), [FLOW_APPS_DATA_TAG])
 
     # Store summary
     response.write(info(percentage, "Store application summary"))
-    yield storage.write(FLOW_SUMMARIES, app_id, 
+    yield storage.write(FLOW_SUMMARIES, app_id,
                         json.dumps(summary), [FLOW_SUMMARIES_TAG])
 
     # Store commits
@@ -156,7 +165,8 @@ def upload_application(request, response):
         commit['page'] = i / COMMITS_PER_PAGE + 1
         LOGGER.error(commit['page'])
         commit['summary'] = app_id
-        yield Service("flow-commit").enqueue("store", msgpack.packb(commit))
+        yield Service("flow-commit").enqueue("store_commit",
+                                             msgpack.packb(commit))
 
     # Store app info
     response.write(info(percentage, "Store application info"))
@@ -188,6 +198,3 @@ def destroy(request, response):
         yield storage.remove(FLOW_COMMITS, item)
     response.write(name)
     response.close()
-
-    
-

@@ -30,12 +30,13 @@ from tornadio2 import event
 from flow.utils import helpers
 
 from cocaine.services import Service
+from cocaine.exceptions import ChokeEvent
 from cocaine.futures.chain import Chain
+from cocaine.futures.chain import source
 
 APP_LOGGER = logging.getLogger()
 
 
-from cocaine.futures.chain import source
 class WebSockInterface(SocketConnection):
 
     def __init__(self, *args, **kwargs):
@@ -63,16 +64,15 @@ class WebSockInterface(SocketConnection):
         ''' Analog of user/me '''
         # Check cookies here
         print self.connection_info  # Extract cookie!
-        if True:#self._cookie:
+        if True:  # self._cookie:
             APP_LOGGER.info('Find cookies')
             self.emit(key,
                       {"user": {
-                      "id": "me",
-                      "username": "arkel",
-                      "status": "OK",
-                      "ACL": {},
-                      "name": "TEST"
-                      }})
+                       "id": "me",
+                       "username": "arkel",
+                       "status": "OK",
+                       "ACL": {},
+                       "name": "TEST"}})
         else:
             APP_LOGGER.info("Give me cookies, I'm hungry")
             self.emit(key, {"user": {"id": "me", "status": "fail"}})
@@ -127,6 +127,7 @@ class WebSockInterface(SocketConnection):
                            user, password)])
 
     @event('all:apps')
+    @source
     def all_apps(self, _, key):
         '''
         Return all contained applications from the storage.
@@ -134,10 +135,11 @@ class WebSockInterface(SocketConnection):
         :param _: unusable
         :param key: name of emitted event to answer
         '''
-        res = Service("flow-app").enqueue("get", "").get()
+        res = yield Service("flow-app").enqueue("get", "")
         self.emit(key, {"apps": res})
 
     @event('id:profile')
+    @source
     def id_profile(self, name, key):
         '''
         Return the contents of the requested profile
@@ -146,11 +148,12 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.info("Get profile")
-        res = Service("flow-profile").enqueue("get", name).get()
+        res = yield Service("flow-profile").enqueue("get", name)
         print res
         self.emit(key, {"profile": res})
 
     @event('create:profile')
+    @source
     def create_profile(self, data, key):
         '''
         Store profile in the storage.
@@ -161,12 +164,12 @@ class WebSockInterface(SocketConnection):
         '''
         APP_LOGGER.info("Store profile")
         profile = data['profile']
-        res = Service("flow-profile").enqueue("store",
-                                              msgpack.packb([profile['name'],
-                                                             profile])).get()
+        task = msgpack.packb([profile['name'], profile])
+        res = yield Service("flow-profile").enqueue("store", task)
         self.emit(key, res)
 
     @event('update:profile')
+    @source
     def update_profile(self, profile, key):
         '''
         Update profile in the storage.
@@ -175,12 +178,12 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.info("Put profile")
-        res = Service("flow-profile").enqueue("store",
-                                          msgpack.packb([profile['name'],
-                                                         profile])).get()
+        task = msgpack.packb([profile['name'], profile])
+        res = yield Service("flow-profile").enqueue("store", task)
         self.emit(key, res)
 
     @event('delete:profile')
+    @source
     def delete_profile(self, profile, key):
         '''
         Remove profile from the storage.
@@ -189,12 +192,11 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.warning('Call delete:profile')
-        name = profile['name']
-        Chain([partial(helpers.delete_profile,
-                       partial(self.emit, key),
-                       name)])
+        res = yield Service("flow-profile").enqueue("delete", profile['name'])
+        self.emit(key, res)
 
     @event('all:profiles')
+    @source
     def all_profiles(self, _, key):
         '''
         Return all contained profiles from the storage.
@@ -202,15 +204,16 @@ class WebSockInterface(SocketConnection):
         :param _: unusable
         :param key: name of emitted event to answer
         '''
-        res = Service("flow-profile").enqueue("all", "").get()
+        res = yield Service("flow-profile").enqueue("all", "")
         self.emit(key, {"profiles": res})
 
-    @event('all:clusters')
-    def all_clusters(self, _, key):
-        APP_LOGGER.error('Mock all:clusters')
-        self.emit(key, {"clusters": [{"id": 1}]})
+    # @event('all:clusters')
+    # def all_clusters(self, _, key):
+    #     APP_LOGGER.error('Mock all:clusters')
+    #     self.emit(key, {"clusters": [{"id": 1}]})
 
     @event('upload:app')
+    @source
     def upload(self, data, key, *args):
         '''
         Fetch application from VCS
@@ -220,29 +223,49 @@ class WebSockInterface(SocketConnection):
         '''
         APP_LOGGER.error("UPLOAD APP")
         upload_id = uuid.uuid4()
-        self.emit(key, {"message": "start upload",
+        message = "Start uploading"
+        self.emit(key, {"message": message,
                         "percentage": 0,
-                        "uploadId" : upload_id.hex})
-        REPO_INFO = dict((item['name'], item['value']) for item in data)
-        message = ""
-        for i in Service("flow-app").enqueue("upload",
-                                             msgpack.packb(REPO_INFO)):
-            message = '\n'.join((message, i.get('message') or i.get('fail')))
-            i['message'] = message
-            self.emit(key, i)
-        self.emit(key, {"finished": True, 'message': message+'\nDone', "percentage": 100})
+                        "uploadId": upload_id.hex})
+
+        repo_info = dict((item['name'], item['value']) for item in data)
+
+        i = yield Service("flow-app").enqueue("upload",
+                                              msgpack.packb(repo_info))
+        message = '\n'.join((message, i.get('message') or i.get('fail')))
+        try:
+            while True:
+                i = yield
+                message = '\n'.join((message, i.get('message')
+                                     or i.get('fail')))
+                i['message'] = message
+                self.emit(key, i)
+        except ChokeEvent:
+            pass
+
+        self.emit(key, {"finished": True,
+                        "message": message + '\nDone',
+                        "percentage": 100})
 
     @event('update:app')
+    @source
     def update_app(self, data, key):
+        '''
+        Update fields of app structure
+        '''
         APP_LOGGER.error(str(data))
-        Chain([partial(helpers.update_application,
-                       partial(self.emit, key),
-                       data)])
+        res = yield Service("flow-app").enqueue("update", msgpack.packb(data))
+        print res
+        self.emit(key, {"app": data})
 
     @event('delete:app')
+    @source
     def delete_app(self, data, key):
+        '''
+        Delete all information about application
+        '''
         APP_LOGGER.error("delete:app")
-        res = Service("flow-app").enqueue("destroy", msgpack.packb(data)).get()
+        res = yield Service("flow-app").enqueue("destroy", msgpack.packb(data))
         print res
         self.emit(key, {"apps": [res]})
 
@@ -254,9 +277,9 @@ class WebSockInterface(SocketConnection):
         :param data: application name
         :param key: name of emitted event to answer
         '''
-        Chain([partial(helpers.deploy_application, 
-                        self.emit,
-                        app_id)])
+        Chain([partial(helpers.deploy_application,
+                       self.emit,
+                       app_id)])
 
     @event("refresh:app")
     def refresh_app(self, app_id):
@@ -274,29 +297,21 @@ class WebSockInterface(SocketConnection):
     def cancel_update(self, app_id):
         APP_LOGGER.error("CANCEL UPDATE")
         key = "keepalive:app/%s" % app_id
-        self.emit(key,  {
-                        "app": {
-                            "id": app_id,
-                            "status": "normal",
-                            "logs": None,
-                            "percentage": None,
-                            "action": None
-                        }
-                    })
+        self.emit(key,  {"app": {"id": app_id,
+                                 "status": "normal",
+                                 "logs": None,
+                                 "percentage": None,
+                                 "action": None}})
 
     @event('cancel:deploy')
     def cancel_deploy(self, app_id):
         APP_LOGGER.info("Cancel deploy")
         key = "keepalive:app/%s" % app_id
-        self.emit(key,  {
-                        "app": {
-                            "id": app_id,
-                            "status": "uploaded",
-                            "logs": None,
-                            "percentage": None,
-                            "action": None
-                        }
-                    })
+        self.emit(key,  {"app": {"id": app_id,
+                                 "status": "uploaded",
+                                 "logs": None,
+                                 "percentage": None,
+                                 "action": None}})
 
     @event('id:summary')
     def id_summary(self, data, key):
@@ -312,32 +327,33 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        data)])
 
-
     @event('find:commits')
     @source
     def find_commits(self, data, key):
         """ engine.asynch """
         APP_LOGGER.error('find:commits')
-        res = yield Service("flow-commit").enqueue("find",
-                                              msgpack.packb(data))
+        res = yield Service("flow-commit").enqueue("find_commit",
+                                                   msgpack.packb(data))
         print res
         self.emit(key, {'commits': res})
 
     @event('update:commit')
+    @source
     def update_commit(self, commit, key):
+        """ Update fields of commit structure """
         APP_LOGGER.error('update:commit')
-        Chain([partial(helpers.update_commit,
-                       partial(self.emit, key),
-                       commit)])
+        res = yield Service("flow-commit").enqueue("update_commit",
+                                                   msgpack.packb(commit))
+        print res
+        self.emit(key, {'commit': res})
 
-    @event('cancel:upload')
-    def cancel_upload(self, upload_id):
-        APP_LOGGER.error("CANCELED %s", str(upload_id))
-        vcs_object = self.vcs_objects.get(upload_id, None)
-        if vcs_object is not None:
-            vcs_object.cancel()
-        self.emit("Cancel")
-
+    # @event('cancel:upload')
+    # def cancel_upload(self, upload_id):
+    #     APP_LOGGER.error("CANCELED %s", str(upload_id))
+    #     vcs_object = self.vcs_objects.get(upload_id, None)
+    #     if vcs_object is not None:
+    #         vcs_object.cancel()
+    #     self.emit("Cancel")
 
     #util
     def set_cookie(self, key, data):
@@ -355,10 +371,10 @@ class WebSockInterface(SocketConnection):
             APP_LOGGER.error("Sign in fail")
         self.emit(key, data)
 
-    def store_uploader(self, upload_id, vcs_object):
-        APP_LOGGER.info("Register vcs object %s for id %s",
-                        vcs_object, upload_id)
-        self.vcs_objects[upload_id] = vcs_object
+    # def store_uploader(self, upload_id, vcs_object):
+    #     APP_LOGGER.info("Register vcs object %s for id %s",
+    #                     vcs_object, upload_id)
+    #     self.vcs_objects[upload_id] = vcs_object
 
 # Create TornadIO2 router
 Router = TornadioRouter(WebSockInterface, namespace="flow/api/socket.io")

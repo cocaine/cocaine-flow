@@ -5,6 +5,6 @@ from commit import *
 
 W = Worker()
 
-W.run({"find": find,
-	   "update": update,
-	   "store": store})
+W.run({"find_commit": commit_find,
+	   "update_commit": commit_update,
+	   "store_commit": commit_store})
