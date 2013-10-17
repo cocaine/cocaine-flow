@@ -32,32 +32,12 @@ def verify_password(password, user_info):
     LOGGER.info("verify result %s", result)
     return result
 
-
-def get_applications(answer): #DONE
-    try:
-        items = yield Storage().list_app_future()
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception:
-        LOGGER.exception()
-    res = []
-    for item in items:
-        tmp = yield Storage().read_app_future(item)
-        try:
-            res.append(json.loads(tmp))
-        except ServiceError as err:
-            LOGGER.error(str(err))
-        except Exception:
-            LOGGER.exception()
-    answer({"apps": res})
-
 def search_filter(regex, data):
     import re
     LOGGER.error("REGEX %s", regex)
     RX = re.compile(regex)
     res = RX.match(data["name"]) or RX.match(data["reference"]) or RX.match(data["status"])
     return res is not None
-
 
 def search_application(answer, regex):
     try:
@@ -76,7 +56,6 @@ def search_application(answer, regex):
         except Exception:
             LOGGER.exception()
     answer({"apps": filter(partial(search_filter, regex), res)})
-
 
 def update_application(answer, data):
     try:
@@ -169,34 +148,6 @@ def refresh_application(answer, app_id):
                     "status": "normal",
                     "logs": None,
                     "percentage": 100}})
-
-def delete_application(answer, data):
-    name = data['id']
-    try:
-        LOGGER.debug('Removing application info')
-        yield Storage().delete_app_future(name)
-        LOGGER.debug('Delete application info succesfully')
-
-        LOGGER.debug('Removing application data')
-        yield Storage().delete_app_data_future(name)
-        LOGGER.debug('Delete application data succesfully')
-
-        LOGGER.debug("Find commits")
-        items = yield Storage().find_commit_future(exttags={"app": name})
-        LOGGER.debug("FIND %d, %s", len(items), str(items))
-
-        LOGGER.debug('Delete commits')
-        for item in items:
-            LOGGER.debug("Delete commit %s", item)
-            yield Storage().delete_commit_future(item)
-    except ServiceError as err:
-        LOGGER.error(err)
-    except Exception as err:
-        LOGGER.error(err)
-    else:
-        answer({"apps": [name]})
-
-
 
 def deploy_application(answer, app_id):
     logmessage = "Start"
@@ -351,7 +302,6 @@ def deploy_application(answer, app_id):
     answer("keepalive:app/%s" % app_id,
            {"app": app_info})
 
-
 def get_user(answer, name, password=None):
     item = None
     try:
@@ -384,7 +334,6 @@ def get_user(answer, name, password=None):
             response = {"users": [user_info]}
     answer(response)
 
-
 def store_user(answer, username, password, **kwargs):
     try:
         yield Storage().read_user_future(username)
@@ -415,60 +364,6 @@ def store_user(answer, username, password, **kwargs):
                          'ACL': data['ACL'],
                          'status': data['status'],
                          'username': data['username']}})
-
-
-# def store_profile(answer, name, data):
-#     try:
-#         data['id'] = name
-#         yield Storage().write_profile_future(name, json.dumps(data))
-#     except ServiceError as err:
-#         LOGGER.error(str(err))
-#     except Exception as err:
-#         LOGGER.exception(err)
-#     else:
-#         answer({"profile": data})
-
-
-# def get_profile(answer, name):
-#     profile = None
-#     try:
-#         profile = yield Storage().read_profile_future(name)
-#     except ServiceError as err:
-#         LOGGER.error(str(err))
-#         answer({"profile": {}})
-#     except Exception:
-#         LOGGER.exception(err)
-#     else:
-#         answer({"profile": json.loads(profile)})
-
-
-# def delete_profile(answer, name):
-#     try:
-#         yield Storage().delete_profile_future(name)
-#     except ServiceError as err:
-#         LOGGER.error(str(err))
-#     else:
-#         answer({})
-
-
-# def list_profiles(answer):
-#     try:
-#         items = yield Storage().list_profile_future()
-#     except ServiceError as err:
-#         LOGGER.error(str(err))
-#     except Exception:
-#         LOGGER.exception()
-#     res = []
-#     for item in items:
-#         tmp = yield Storage().read_profile_future(item)
-#         try:
-#             res.append(json.loads(tmp))
-#         except ServiceError as err:
-#             LOGGER.error(str(err))
-#         except Exception:
-#             LOGGER.exception()
-#     answer({"profiles": res})
-
 
 def vcs_clone(answer, register_vcs, repository_info):
     vcs_object = get_vcs(answer, repository_info)

@@ -58,7 +58,6 @@ class Singleton(type):
 def make_commit_name(appname):
     return "COMMIT_%s" % appname if not appname.startswith("COMMIT_") else appname
 
-
 def convert_tags(func):
     def wrapper(*args, **kwargs):
         tags = kwargs.get('exttags')

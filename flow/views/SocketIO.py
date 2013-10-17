@@ -165,7 +165,6 @@ class WebSockInterface(SocketConnection):
                                                              profile])).get()
         self.emit(key, res)
 
-
     @event('update:profile')
     def update_profile(self, profile, key):
         '''
@@ -175,10 +174,6 @@ class WebSockInterface(SocketConnection):
         :param key: name of emitted event to answer
         '''
         APP_LOGGER.info("Put profile")
-        # Chain([partial(helpers.store_profile,
-        #                partial(self.emit, key),
-        #                profile['name'],
-        #                profile)])
         res = Service("flow-profile").enqueue("store",
                                           msgpack.packb([profile['name'],
                                                          profile])).get()
@@ -242,9 +237,9 @@ class WebSockInterface(SocketConnection):
     @event('delete:app')
     def delete_app(self, data, key):
         APP_LOGGER.error("delete:app")
-        Chain([partial(helpers.delete_application,
-                       partial(self.emit, key),
-                       data)])
+        res = Service("flow-app").enqueue("destroy", msgpack.packb(data)).get()
+        print res
+        self.emit(key, {"apps": [res]})
 
     @event('deploy:app')
     def deploy_app(self, app_id):
