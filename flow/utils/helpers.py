@@ -371,55 +371,55 @@ def store_user(answer, username, password, **kwargs):
 #     vcs_object.run()
 
 
-def get_summary(answer, summaryname):
-    LOGGER.debug("Get summary")
-    try:
-        item = yield Storage().read_summary_future(summaryname)
-    except ServiceError:
-        LOGGER.exception("AAAA")
-    except Exception:
-        LOGGER.exception()
-    res = json.loads(item)
+# def get_summary(answer, summaryname):
+#     LOGGER.debug("Get summary")
+#     try:
+#         item = yield Storage().read_summary_future(summaryname)
+#     except ServiceError:
+#         LOGGER.exception("AAAA")
+#     except Exception:
+#         LOGGER.exception()
+#     res = json.loads(item)
 
-    LOGGER.debug("Find commits")
-    try:
-        exttags = {"summary": summaryname, "page": 1}
-        commit_items = yield Storage().find_commit_future(exttags=exttags)
-        LOGGER.error(str(commit_items))
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+#     LOGGER.debug("Find commits")
+#     try:
+#         exttags = {"summary": summaryname, "page": 1}
+#         commit_items = yield Storage().find_commit_future(exttags=exttags)
+#         LOGGER.error(str(commit_items))
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
 
-    LOGGER.debug("Read commits")
-    commits = list()
-    for commit in commit_items:
-        try:
-            item = yield Storage().read_commit_future(commit)
-            commits.append(json.loads(item))
-        except ServiceError as err:
-            LOGGER.error(str(err))
+#     LOGGER.debug("Read commits")
+#     commits = list()
+#     for commit in commit_items:
+#         try:
+#             item = yield Storage().read_commit_future(commit)
+#             commits.append(json.loads(item))
+#         except ServiceError as err:
+#             LOGGER.error(str(err))
 
-    answer({'summary': res, 'commits': sorted(commits,
-                                              key=lambda x: x.get('time', 0))})
+#     answer({'summary': res, 'commits': sorted(commits,
+#                                               key=lambda x: x.get('time', 0))})
 
 
-def update_summary(answer, data):
-    try:
-        tmp = yield Storage().read_summary_future(data['id'])
-        summary_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    LOGGER.error("OLD %s", str(summary_info))
-    LOGGER.error("UPDATE %s", str(data))
-    try:
-        summary_info.update(data)
-        LOGGER.error("END %s", summary_info)
-        yield Storage().write_summary_future(data['id'],
-                                             json.dumps(summary_info))
-    except ServiceError as err:
-        LOGGER.error(err)
-    answer({"summary": summary_info})
+# def update_summary(answer, data):
+#     try:
+#         tmp = yield Storage().read_summary_future(data['id'])
+#         summary_info = json.loads(tmp)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     LOGGER.error("OLD %s", str(summary_info))
+#     LOGGER.error("UPDATE %s", str(data))
+#     try:
+#         summary_info.update(data)
+#         LOGGER.error("END %s", summary_info)
+#         yield Storage().write_summary_future(data['id'],
+#                                              json.dumps(summary_info))
+#     except ServiceError as err:
+#         LOGGER.error(err)
+#     answer({"summary": summary_info})
 
 
 # def find_commits(answer, **indexes):

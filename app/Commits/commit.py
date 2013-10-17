@@ -10,6 +10,9 @@ from cocaine.exceptions import ServiceError
 FLOW_COMMITS = "cocaine_flow_commits"
 FLOW_COMMITS_TAG = "flow_commits"
 
+FLOW_SUMMARIES = "cocaine_flow_summaries"
+FLOW_SUMMARIES_TAG = "flow_summaries"
+
 COMMIT_INDEXES = ("page", "status", "summary", "app")
 
 Log = Logger()
@@ -34,7 +37,7 @@ def unpacker(func):
 
 @unpacker
 def commit_store(commit, response):
-    yield storage.write(FLOW_COMMITS, commit['id'], 
+    yield storage.write(FLOW_COMMITS, commit['id'],
                         json.dumps(commit), gen_tags(commit))
     response.write("ok")
     response.close()
@@ -62,7 +65,25 @@ def commit_update(commit, response):
     tmp = yield storage.read(FLOW_COMMITS, commit['id'])
     commit_old = json.loads(tmp)
     commit_old.update(commit)
-    yield storage.write(FLOW_COMMITS, commit_old['id'], 
+    yield storage.write(FLOW_COMMITS, commit_old['id'],
                         json.dumps(commit), gen_tags(commit_old))
     response.write("ok")
+    response.close()
+
+
+def summary_get(request, response):
+    name = yield request.read()
+    raw_summary = yield storage.read(FLOW_SUMMARIES, name)
+    summary = json.loads(raw_summary)
+    response.write(summary)
+    response.close()
+
+
+@unpacker
+def summary_update(data, response):
+    tmp = yield storage.read(FLOW_SUMMARIES, data['id'])
+    summary = json.loads(tmp)
+    summary.update(data)
+    yield storage.write(FLOW_SUMMARIES, summary['id'], json.dumps(summary), [FLOW_SUMMARIES_TAG])
+    response.write(summary)
     response.close()

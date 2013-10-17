@@ -293,39 +293,49 @@ class WebSockInterface(SocketConnection):
                        partial(self.emit, key),
                        query)])
 
-    @event("cancel:update")
-    def cancel_update(self, app_id):
-        APP_LOGGER.error("CANCEL UPDATE")
-        key = "keepalive:app/%s" % app_id
-        self.emit(key,  {"app": {"id": app_id,
-                                 "status": "normal",
-                                 "logs": None,
-                                 "percentage": None,
-                                 "action": None}})
+    # @event("cancel:update")
+    # def cancel_update(self, app_id):
+    #     APP_LOGGER.error("CANCEL UPDATE")
+    #     key = "keepalive:app/%s" % app_id
+    #     self.emit(key,  {"app": {"id": app_id,
+    #                              "status": "normal",
+    #                              "logs": None,
+    #                              "percentage": None,
+    #                              "action": None}})
 
-    @event('cancel:deploy')
-    def cancel_deploy(self, app_id):
-        APP_LOGGER.info("Cancel deploy")
-        key = "keepalive:app/%s" % app_id
-        self.emit(key,  {"app": {"id": app_id,
-                                 "status": "uploaded",
-                                 "logs": None,
-                                 "percentage": None,
-                                 "action": None}})
+    # @event('cancel:deploy')
+    # def cancel_deploy(self, app_id):
+    #     APP_LOGGER.info("Cancel deploy")
+    #     key = "keepalive:app/%s" % app_id
+    #     self.emit(key,  {"app": {"id": app_id,
+    #                              "status": "uploaded",
+    #                              "logs": None,
+    #                              "percentage": None,
+    #                              "action": None}})
 
     @event('id:summary')
-    def id_summary(self, data, key):
-        APP_LOGGER.error('id:summary')
-        Chain([partial(helpers.get_summary,
-                       partial(self.emit, key),
-                       data)])
+    @source
+    def id_summary(self, name, key):
+        '''
+        Get summary and commits with name 'name'
+        '''
+        APP_LOGGER.error('id:summary %s', name)
+        s = Service('flow-commit')
+        summary = yield s.enqueue('get_summary', name)
+        tags = msgpack.packb({"page": 1, "summary": name})
+        commits = yield s.enqueue('find_commit', tags)
+        self.emit(key, {"summary": summary, "commits": commits})
 
     @event('update:summary')
+    @source
     def update_summary(self, data, key):
+        '''
+        Update summary structure
+        '''
         APP_LOGGER.error("Update summary")
-        Chain([partial(helpers.update_summary,
-                       partial(self.emit, key),
-                       data)])
+        task = msgpack.packb(data)
+        res = yield Service('flow-commit').enqueue('update_summary', task)
+        self.emit(key, {"summary": res})
 
     @event('find:commits')
     @source
