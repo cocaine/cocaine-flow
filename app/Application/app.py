@@ -28,6 +28,8 @@ COMMITS_PER_PAGE = 4
 storage = Service("storage")
 LOGGER = Logger()
 
+COMMIT_INDEXES = ("page", "status", "summary", "app")
+
 
 git = sh.git
 
@@ -83,6 +85,7 @@ def upload_application(request, response):
     repo_info = msgpack.unpackb(raw_data)
     url = repo_info['repository']
     ref = repo_info.get('reference', '').strip() or 'HEAD'
+
     app_name = url.rpartition('/')[2]
     if app_name.endswith('.git'):
         app_name = app_name[:-4]
@@ -92,23 +95,30 @@ def upload_application(request, response):
     clone_path = tempfile.mkdtemp()
     LOGGER.info("Create tmp dir: %s" % clone_path)
     response.write(info(percentage, "Clone %s" % url))
+
     LOGGER.info("Clone %s" % url)
     percentage += 20
     try:
         res = git.clone(url, clone_path, "--progress")
         ref = git('rev-parse', '--short', ref, _cwd=clone_path).strip()
         app_id = "%s_%s" % (app_name, ref)
+
         response.write(info(percentage, "Checkout commit %s" % ref))
         res = git.checkout(ref, _cwd=clone_path)
         res = sh.git("--no-pager", "log", "-n", "20", 
                      pretty="format:\"%h@@%an <%ae>@@%ad@@%s\"",
                      date="raw", _cwd=clone_path)
-        commits = map(partial(extract_commits, "A"), res.splitlines())
+
+        commits = map(partial(extract_commits, app_id), res.splitlines())
         commits[0]['status'] = 'checkouted'
-        response.write(commits)
+
+        sh.git("archive", ref, "--worktree-attributes",
+               format="tar", o="app.tar", _cwd=clone_path)
+        sh.gzip("app.tar", _cwd=clone_path)
     except sh.ErrorReturnCode as err:
         LOGGER.error(str(err))
         response.write(error(percentage, str(err)))
+        shutil.rmtree(clone_path, ignore_errors=True)
         raise StopIteration
     
     app_info = {"name": app_name,
@@ -128,11 +138,34 @@ def upload_application(request, response):
                "developers": "",
                "dependencies": "",
                "use-frequency": "often"}
-    response.write(app_info)
-    response.write(summary)
-    response.write("ok")
-    shutil.rmtree(clone_path, ignore_errors=True)
+
+    # Store data
+    response.write(info(percentage, "Store application data"))
+    with open(clone_path + "/app.tar.gz", 'rb') as binary:
+        yield storage.write(FLOW_APPS_DATA, app_id, binary.read(), [FLOW_APPS_DATA_TAG])
+
+    # Store summary
+    response.write(info(percentage, "Store application summary"))
+    yield storage.write(FLOW_SUMMARIES, app_id, json.dumps(summary), [FLOW_SUMMARIES_TAG])
+
+    # Store commits
+    response.write(info(percentage, "Store application commits"))
+    for i, commit in enumerate(commits):
+        commit['page'] = i / COMMITS_PER_PAGE + 1
+        commit['summary'] = app_id
+        tags = ["%s@%s" % (field, commit[field]) for field in COMMIT_INDEXES]
+        tags.append(FLOW_COMMITS_TAG)
+        response.write(str(tags))
+        yield storage.write(FLOW_COMMITS, commit['id'], 
+                            json.dumps(commit), tags)
+
+    # Store app info
+    response.write(info(percentage, "Store application info"))
+    yield storage.write(FLOW_APPS, app_id, json.dumps(app_info), [FLOW_APPS_TAG])
+
+    # Some cleaning
     response.close()
+    shutil.rmtree(clone_path, ignore_errors=True)
 
 
 def destroy(request, response):
