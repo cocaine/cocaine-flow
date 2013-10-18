@@ -10,6 +10,9 @@ import sh
 from cocaine.services import Service
 from cocaine.logging import Logger
 from cocaine.exceptions import ServiceError
+from cocaine.futures.chain import source
+from cocaine.tools.actions import app
+from cocaine.tools.actions import runlist
 
 FLOW_APPS_DATA = "cocaine_flow_apps_data"
 FLOW_APPS_DATA_TAG = "flow_apps_data"
@@ -23,15 +26,18 @@ FLOW_COMMITS_TAG = "flow_commits"
 FLOW_SUMMARIES = "cocaine_flow_summaries"
 FLOW_SUMMARIES_TAG = "flow_summaries"
 
+FLOW_HOSTS = "cocaine_flow_hosts"
+FLOW_HOSTS_TAG = "cocaine_flow_hosts_tag"
+
 COMMITS_PER_PAGE = 4
+COMMIT_INDEXES = ("page", "status", "summary", "app")
+CLOUD_RUNLIST = "appengine"
 
 storage = Service("storage")
 LOGGER = Logger()
 
-COMMIT_INDEXES = ("page", "status", "summary", "app")
-
-
 git = sh.git
+TOOLS = sh.__getattr__("cocaine-tool")
 
 
 def get_applications_info(request, response):
@@ -178,6 +184,120 @@ def upload_application(request, response):
     shutil.rmtree(clone_path, ignore_errors=True)
 
 
+def deploy_info(app_id, percentage, message):
+    return {"id": app_id,
+            "percentage": percentage,
+            "logs": message}
+
+
+@source
+def get_one_info(app_id):
+    tmp = yield storage.read(FLOW_APPS, app_id)
+    yield json.loads(tmp)
+
+
+def deploy_application(request, response):
+    """
+    1. Get targz
+    2. Unpack
+    3. cocaine-tool app upload
+    4. runlist add
+    5. node.start_app
+    """
+    app_id = yield request.read()
+    percentage = 0
+    d_info = partial(deploy_info, app_id)
+    flow_commit = Service('flow-commit')
+
+    response.write(d_info(percentage, "Deploing"))
+
+    # Get app info
+    app_info = yield get_one_info(app_id)
+    app_info['status'] = 'normal'
+    # summary = yield Service("flow-commit").enqueue('get_summary',
+    #                                                app_id)
+    profile = app_info['profile']
+
+    # Searching checkouted commit
+    response.write(d_info(percentage, "Searching checkouted commit"))
+    _task = msgpack.packb({"app": app_id, "status": "checkouted"})
+    commits = yield flow_commit.enqueue('find_commit', _task)
+    if len(commits) == 0:
+        raise Exception('No checkouted commit')
+    else:
+        checkouted = commits[0]
+        checkouted['status'] = "active"
+        response.write(d_info(percentage,
+                              "Checkouted commit %s" % checkouted['hash']))
+
+    # Searching active commit
+    active = None
+    response.write(d_info(percentage, "Searching active commit"))
+    _task = msgpack.packb({"app": app_id, "status": "active"})
+    commits = yield flow_commit.enqueue('find_commit', _task)
+    if len(commits) > 0:
+        active = commits[0]
+        active['status'] = "unactive"
+        response.write(d_info(percentage, "Active commit %s" % active['hash']))
+
+    # Get application archive
+    response.write(d_info(percentage, "Fetch application archive"))
+    blob = yield storage.read(FLOW_APPS_DATA, app_id)
+    try:
+        deploy_dir = tempfile.mkdtemp()
+        with open(deploy_dir + '/app.tar.gz', 'wb') as archive:
+            archive.write(blob)
+
+        # Extract data
+        response.write(d_info(percentage, "Extract data from archive"))
+        sh.tar("-xvf", "app.tar.gz", _cwd=deploy_dir)
+        sh.rm("app.tar.gz", _cwd=deploy_dir)
+
+        # Upload to cloud storage
+        response.write(d_info(percentage,
+                              "Deploy application to cloud storage"))
+        TOOLS.app("upload", name=app_id, timeout=100)
+
+        # Add to runlist
+        response.write(d_info(percentage,
+                              "Add application to runlist %s" % CLOUD_RUNLIST))
+        TOOLS.runlist("add-app", app=app_id,
+                      name=CLOUD_RUNLIST,
+                      profile=profile,
+                      force=True)
+    finally:
+        shutil.rmtree(deploy_dir, ignore_errors=True)
+
+    # Update commit informatiom
+    yield Service('flow-commit').enqueue('update_commit',
+                                         msgpack.packb(checkouted))
+    if active is not None:
+        yield Service('flow-commit').enqueue('update_commit',
+                                             msgpack.packb(checkouted))
+
+    # Fetch hosts
+    hosts = yield storage.find(FLOW_HOSTS, [FLOW_HOSTS_TAG])
+    total = len(hosts)
+    response.write(d_info(percentage,
+                          "Start application on %d hosts" % total))
+    started = 0
+    for i, host in enumerate(hosts):
+        i += 1
+        try:
+            response.write(d_info(percentage,
+                           "Start on host %d/%d" % (i, total)))
+            yield app.Start(Service("node", host=host),
+                            app_id, profile).execute()
+        except Exception:
+            pass
+        else:
+            started += 1
+    percentage = 100
+    response.write(d_info(percentage, "Started on %d/%d" % (started, total)))
+    yield Service("flow-app").enqueue("update", msgpack.packb(app_info))
+    response.close()
+
+
 def destroy(request, response):
     raw_data = yield request.read()
     data = msgpack.unpackb(raw_data)
@@ -196,5 +316,15 @@ def destroy(request, response):
     LOGGER.debug('Delete commits')
     for item in items:
         yield storage.remove(FLOW_COMMITS, item)
+    yield app.Stop(Service('node'), name).execute()
+    yield app.Remove(storage, name).execute()
+    try:
+        raw_rlist = yield runlist.View(storage, name=CLOUD_RUNLIST).execute()
+        rlist = msgpack.unpackb(raw_rlist)
+        rlist.pop(name, None)
+        yield runlist.Upload(storage, name=CLOUD_RUNLIST,
+                             runlist=rlist).execute()
+    except Exception as err:
+        LOGGER.error(str(err))
     response.write(name)
     response.close()

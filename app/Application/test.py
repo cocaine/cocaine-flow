@@ -10,6 +10,8 @@ REPO_INFO = {
 }
 
 print(Service("flow-app").enqueue("get", "").get())
-for i in Service("flow-app").enqueue("upload", msgpack.packb(REPO_INFO)):
-    print i
-#print(Service("flow-app").enqueue("delete", msgpack.packb({"id": "flask-cocaine-pycon_HEAD"})).get())
+# for i in Service("flow-app").enqueue("upload", msgpack.packb(REPO_INFO)):
+#     print i
+print "Deploy"
+for i in Service("flow-app").enqueue("deploy", "flask-cocaine-pycon_3a424b3"):
+	print i

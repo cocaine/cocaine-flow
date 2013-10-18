@@ -69,237 +69,237 @@ def search_application(answer, regex):
 #     else:
 #         answer({"app": data})
 
-def refresh_application(answer, app_id):
-    LOGGER.info("Start refresh")
-    logmessage = "Start refresh"
-    try:
-        key = "keepalive:app/%s" % app_id
-        answer(key, {"app": {"id": app_id,
-                         "status": "updating",
-                         "logs": logmessage,
-                         "percentage": 20}})
-    except Exception as err:
-        print err
-    import time
-    time.sleep(0.5)
+# def refresh_application(answer, app_id):
+#     LOGGER.info("Start refresh")
+#     logmessage = "Start refresh"
+#     try:
+#         key = "keepalive:app/%s" % app_id
+#         answer(key, {"app": {"id": app_id,
+#                          "status": "updating",
+#                          "logs": logmessage,
+#                          "percentage": 20}})
+#     except Exception as err:
+#         print err
+#     import time
+#     time.sleep(0.5)
 
-    try:
-        tmp = yield Storage().read_app_future(app_id)
-        app_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+#     try:
+#         tmp = yield Storage().read_app_future(app_id)
+#         app_info = json.loads(tmp)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
 
-    time.sleep(0.5)
-    logmessage += '\n Update app info'
-    answer(key, {"app": {"id": app_id,
-                         "status": "updating",
-                         "logs": logmessage,
-                         "percentage": 40}})
+#     time.sleep(0.5)
+#     logmessage += '\n Update app info'
+#     answer(key, {"app": {"id": app_id,
+#                          "status": "updating",
+#                          "logs": logmessage,
+#                          "percentage": 40}})
 
-    app_info['status'] = 'normal'
-    LOGGER.debug("Get summary")
-    try:
-        summaryname = app_info['summary']
-        item = yield Storage().read_summary_future(summaryname)
-    except ServiceError:
-        LOGGER.exception("AAAA")
-    except Exception as err:
-        LOGGER.exception("AAA")
-    res = json.loads(item)
-
-
-    try:
-        app_data = yield Storage().read_app_data_future(app_id)
-    except Exception as err:
-        LOGGER.error(str(err))
-    else:
-        # Unpack archive and deploy, and start - make it through tools
-        import tarfile
-        import shutil
-        with open("/tmp/sample.tar.gz",'wb') as f:
-            f.write(app_data)
-        try:
-            shutil.rmtree("./tmp/COCAINE_FLOW")
-        except Exception as err:
-            print err
-        tar = tarfile.open("/tmp/sample.tar.gz")
-        tar.extractall()
-        tar.close()
-    #=============================
+#     app_info['status'] = 'normal'
+#     LOGGER.debug("Get summary")
+#     try:
+#         summaryname = app_info['summary']
+#         item = yield Storage().read_summary_future(summaryname)
+#     except ServiceError:
+#         LOGGER.exception("AAAA")
+#     except Exception as err:
+#         LOGGER.exception("AAA")
+#     res = json.loads(item)
 
 
-    try:
-        yield Storage().write_app_future(app_id, json.dumps(app_info))
-    except ServiceError as err:
-        LOGGER.error(err)
-    except Exception as err:
-        LOGGER.error(str(err))
-    time.sleep(0.5)
-    answer(key, {"app": {"id": app_id,
-                         "status": "updating",
-                         "logs": logmessage + "\nDONE",
-                         "percentage": 100}})
-    time.sleep(0.5)
-    answer("keepalive:app/%s" % app_id,
-           {"app": {"id": app_id,
-                    "status": "normal",
-                    "logs": None,
-                    "percentage": 100}})
+#     try:
+#         app_data = yield Storage().read_app_data_future(app_id)
+#     except Exception as err:
+#         LOGGER.error(str(err))
+#     else:
+#         # Unpack archive and deploy, and start - make it through tools
+#         import tarfile
+#         import shutil
+#         with open("/tmp/sample.tar.gz",'wb') as f:
+#             f.write(app_data)
+#         try:
+#             shutil.rmtree("./tmp/COCAINE_FLOW")
+#         except Exception as err:
+#             print err
+#         tar = tarfile.open("/tmp/sample.tar.gz")
+#         tar.extractall()
+#         tar.close()
+#     #=============================
 
-def deploy_application(answer, app_id):
-    logmessage = "Start"
-    key = "keepalive:app/%s" % app_id
 
-    answer(key, {"app": {"id": app_id,
-                         "status": "deploy",
-                         "logs": logmessage,
-                         "percentage": 20}})
-    try:
-        tmp = yield Storage().read_app_future(app_id)
-        app_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        print err
+#     try:
+#         yield Storage().write_app_future(app_id, json.dumps(app_info))
+#     except ServiceError as err:
+#         LOGGER.error(err)
+#     except Exception as err:
+#         LOGGER.error(str(err))
+#     time.sleep(0.5)
+#     answer(key, {"app": {"id": app_id,
+#                          "status": "updating",
+#                          "logs": logmessage + "\nDONE",
+#                          "percentage": 100}})
+#     time.sleep(0.5)
+#     answer("keepalive:app/%s" % app_id,
+#            {"app": {"id": app_id,
+#                     "status": "normal",
+#                     "logs": None,
+#                     "percentage": 100}})
 
-    app_info['status'] = 'normal'
+# def deploy_application(answer, app_id):
+#     logmessage = "Start"
+#     key = "keepalive:app/%s" % app_id
 
-    LOGGER.debug("Get summary")
-    try:
-        item = yield Storage().read_summary_future(app_id)
-    except ServiceError:
-        LOGGER.exception("AAAA")
-    except Exception:
-        LOGGER.exception()
-    res = json.loads(item)
-    print res
+#     answer(key, {"app": {"id": app_id,
+#                          "status": "deploy",
+#                          "logs": logmessage,
+#                          "percentage": 20}})
+#     try:
+#         tmp = yield Storage().read_app_future(app_id)
+#         app_info = json.loads(tmp)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         print err
 
-    LOGGER.debug("Find checkouted commit")
-    try:
-        exttags = {"app": app_id, "status": "checkouted"}
-        commit_items = yield Storage().find_commit_future(exttags=exttags)
-        LOGGER.error(str(commit_items))
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+#     app_info['status'] = 'normal'
 
-    checkouted_commit_id = None
-    if len(commit_items) > 0:
-        checkouted_commit_id = commit_items[0]
-    else:
-        LOGGER.error("There is no checkouted commit")
-        import time
-        time.sleep(0.5)
-        answer("keepalive:app/%s" % app_id,
-           {"app": {"id": app_id,
-                    "status": "normal",
-                    "logs": "There is no checkouted commit",
-                    "percentage": 100}})
-        raise StopIteration
+#     LOGGER.debug("Get summary")
+#     try:
+#         item = yield Storage().read_summary_future(app_id)
+#     except ServiceError:
+#         LOGGER.exception("AAAA")
+#     except Exception:
+#         LOGGER.exception()
+#     res = json.loads(item)
+#     print res
+
+#     LOGGER.debug("Find checkouted commit")
+#     try:
+#         exttags = {"app": app_id, "status": "checkouted"}
+#         commit_items = yield Storage().find_commit_future(exttags=exttags)
+#         LOGGER.error(str(commit_items))
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
+
+#     checkouted_commit_id = None
+#     if len(commit_items) > 0:
+#         checkouted_commit_id = commit_items[0]
+#     else:
+#         LOGGER.error("There is no checkouted commit")
+#         import time
+#         time.sleep(0.5)
+#         answer("keepalive:app/%s" % app_id,
+#            {"app": {"id": app_id,
+#                     "status": "normal",
+#                     "logs": "There is no checkouted commit",
+#                     "percentage": 100}})
+#         raise StopIteration
      
-    LOGGER.debug("Find active commit")
-    try:
-        exttags = {"app": app_id, "status": "active"}
-        commit_items = yield Storage().find_commit_future(exttags=exttags)
-        LOGGER.error(str(commit_items))
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+#     LOGGER.debug("Find active commit")
+#     try:
+#         exttags = {"app": app_id, "status": "active"}
+#         commit_items = yield Storage().find_commit_future(exttags=exttags)
+#         LOGGER.error(str(commit_items))
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
 
-    active_commit_id = None
-    if len(commit_items) > 0:
-        active_commit_id = commit_items[0]
+#     active_commit_id = None
+#     if len(commit_items) > 0:
+#         active_commit_id = commit_items[0]
 
-    try:
-        item = yield Storage().read_commit_future(checkouted_commit_id)
-        checkouted_commit = json.loads(item)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    checkouted_commit['status'] = "active"
-    try:
-        yield Chain([lambda: update_commit(lambda x: None, checkouted_commit)])
-    except Exception as err:
-        print err
+#     try:
+#         item = yield Storage().read_commit_future(checkouted_commit_id)
+#         checkouted_commit = json.loads(item)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     checkouted_commit['status'] = "active"
+#     try:
+#         yield Chain([lambda: update_commit(lambda x: None, checkouted_commit)])
+#     except Exception as err:
+#         print err
 
-    active_commit = None
-    if active_commit_id:
-        try:
-            item = yield Storage().read_commit_future(active_commit_id)
-            active_commit = json.loads(item)
-        except ServiceError as err:
-            LOGGER.error(str(err))
-        active_commit['status'] = "unactive"
-        try:
-            yield Chain([lambda: update_commit(lambda x: None, active_commit)])
-        except Exception as err:
-            print err
+#     active_commit = None
+#     if active_commit_id:
+#         try:
+#             item = yield Storage().read_commit_future(active_commit_id)
+#             active_commit = json.loads(item)
+#         except ServiceError as err:
+#             LOGGER.error(str(err))
+#         active_commit['status'] = "unactive"
+#         try:
+#             yield Chain([lambda: update_commit(lambda x: None, active_commit)])
+#         except Exception as err:
+#             print err
 
-    #=============================
-    try:
-        app_data = yield Storage().read_app_data_future(app_id)
-    except Exception as err:
-        LOGGER.error(str(err))
-    else:
-        # Unpack archive and deploy, and start - make it through tools
-        import tarfile
-        import sh
-        import shutil
-        answer(key, {"app": {"id": app_id, "status": "deploy",
-                             "logs": "Fetch archive", "percentage": 40}})
-        with open("/tmp/%s.tar.gz" % app_id,'wb') as f:
-            f.write(app_data)
-        try:
-            shutil.rmtree("/tmp/%s" % app_id)
-        except Exception as err:
-            print "shutil", err
-        os.mkdir("/tmp/%s" % app_id)
-        tar = tarfile.open("/tmp/%s.tar.gz" % app_id)
-        tar.extractall(path="/tmp/%s" % app_id)
-        tar.close()
-        answer(key, {"app": {"id": app_id, "status": "deploy",
-                             "logs": "Deploy application", "percentage": 60}})
-        tools = sh.__getattr__("cocaine-tool")
-        print "COCAINE_TOOLS", tools.app.upload("--name", app_id,
-                                                "/tmp/%s" % app_id, "--timeout", "50")
-        cmd = "--name %s --profile default" % app_id
-        answer(key, {"app": {"id": app_id, "status": "deploy",
-                             "logs": "Start application", "percentage": 80}})
-        tools.app.start(cmd.split(" "))
+#     #=============================
+#     try:
+#         app_data = yield Storage().read_app_data_future(app_id)
+#     except Exception as err:
+#         LOGGER.error(str(err))
+#     else:
+#         # Unpack archive and deploy, and start - make it through tools
+#         import tarfile
+#         import sh
+#         import shutil
+#         answer(key, {"app": {"id": app_id, "status": "deploy",
+#                              "logs": "Fetch archive", "percentage": 40}})
+#         with open("/tmp/%s.tar.gz" % app_id,'wb') as f:
+#             f.write(app_data)
+#         try:
+#             shutil.rmtree("/tmp/%s" % app_id)
+#         except Exception as err:
+#             print "shutil", err
+#         os.mkdir("/tmp/%s" % app_id)
+#         tar = tarfile.open("/tmp/%s.tar.gz" % app_id)
+#         tar.extractall(path="/tmp/%s" % app_id)
+#         tar.close()
+#         answer(key, {"app": {"id": app_id, "status": "deploy",
+#                              "logs": "Deploy application", "percentage": 60}})
+#         tools = sh.__getattr__("cocaine-tool")
+#         print "COCAINE_TOOLS", tools.app.upload("--name", app_id,
+#                                                 "/tmp/%s" % app_id, "--timeout", "50")
+#         cmd = "--name %s --profile default" % app_id
+#         answer(key, {"app": {"id": app_id, "status": "deploy",
+#                              "logs": "Start application", "percentage": 80}})
+#         tools.app.start(cmd.split(" "))
 
-    #=============================
-    try:
-        yield Chain([lambda: update_application(lambda y: None, app_info)])
-    except ServiceError as err:
-        print err
-    except Exception as err:
-        LOGGER.error(repr(err))
-    answer("keepalive:app/%s" % app_id,
-           {"app": {"id": app_id,
-                    "status": "normal",
-                    "logs": None,
-                    "percentage": 100}})
-    tmp = [i for i in [active_commit, checkouted_commit] if i is not None]
-    if len(tmp) > 0:
-        answer("keepalive:summary/%s" % app_id, 
-               {"summary": {
-                "id": app_id,
-                "commit": None},
-                "commits": tmp,
-               })
-    try:
-        tmp = yield Storage().read_app_future(app_id)
-        app_info = json.loads(tmp)
-    except ServiceError as err:
-        LOGGER.error(str(err))
-    except Exception as err:
-        LOGGER.error(str(err))
+#     #=============================
+#     try:
+#         yield Chain([lambda: update_application(lambda y: None, app_info)])
+#     except ServiceError as err:
+#         print err
+#     except Exception as err:
+#         LOGGER.error(repr(err))
+#     answer("keepalive:app/%s" % app_id,
+#            {"app": {"id": app_id,
+#                     "status": "normal",
+#                     "logs": None,
+#                     "percentage": 100}})
+#     tmp = [i for i in [active_commit, checkouted_commit] if i is not None]
+#     if len(tmp) > 0:
+#         answer("keepalive:summary/%s" % app_id, 
+#                {"summary": {
+#                 "id": app_id,
+#                 "commit": None},
+#                 "commits": tmp,
+#                })
+#     try:
+#         tmp = yield Storage().read_app_future(app_id)
+#         app_info = json.loads(tmp)
+#     except ServiceError as err:
+#         LOGGER.error(str(err))
+#     except Exception as err:
+#         LOGGER.error(str(err))
 
-    answer("keepalive:app/%s" % app_id,
-           {"app": app_info})
+#     answer("keepalive:app/%s" % app_id,
+#            {"app": app_info})
 
 def get_user(answer, name, password=None):
     item = None

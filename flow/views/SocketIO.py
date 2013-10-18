@@ -270,6 +270,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"apps": [res]})
 
     @event('deploy:app')
+    @source
     def deploy_app(self, app_id):
         '''
         Deploy application to the cloud
@@ -277,15 +278,30 @@ class WebSockInterface(SocketConnection):
         :param data: application name
         :param key: name of emitted event to answer
         '''
-        Chain([partial(helpers.deploy_application,
-                       self.emit,
-                       app_id)])
+        print(app_id)
+        key = "keepalive:app/%s" % app_id
+        logs = "Deploy"
+        # Chain([partial(helpers.deploy_application,
+        #                self.emit,
+        #                app_id)])
+        msg = yield Service("flow-app").enqueue("deploy", app_id)
+        print msg
+        try:
+            while True:
+                msg = yield
+                print msg
+                msg['status'] = "deploy"
+                self.emit(key, msg)
+        except ChokeEvent:
+            pass
+        self.emit(key, {"app": {"status": "normal", "id": app_id}})
+        # {'percentage': 0, 'id': 'flask-cocaine-pycon_3a424b3', 'logs': 'Deploing'}
 
-    @event("refresh:app")
-    def refresh_app(self, app_id):
-        APP_LOGGER.info("refresh:app")
-        Chain([partial(helpers.refresh_application,
-                       self.emit, app_id)])
+    # @event("refresh:app")
+    # def refresh_app(self, app_id):
+    #     APP_LOGGER.info("refresh:app")
+    #     Chain([partial(helpers.refresh_application,
+    #                    self.emit, app_id)])
 
     @event("search:apps")
     def search_apps(self, query, key):
