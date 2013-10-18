@@ -18,14 +18,23 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
+
 from tornado.options import define
+from tornado.options import options
 from tornado.options import parse_config_file
 from tornado.options import parse_command_line
 
 define("SECRET_KEY")
-define("port", default=8001, type=int, help="listening port number")
+define("port", default=8080, type=int, help="listening port number")
 define("daemon", default=False, type=bool, help="daemonize")
 define("pidfile", default="/var/run/tornado", type=str, help="pidfile")
-#define("user", default=DEFAULT_USER, type=str, help="Set process's username")
-parse_config_file("./config")
+define("config", default="/etc/cocaine-flow/config.yaml", 
+       type=str, help="configuration file")
+
 actions = parse_command_line()
+try:
+    parse_config_file(options.config)
+except IOError:
+    sys.stderr.write("Unable to read config %s\n" % options.config)
+    sys.exit(1)

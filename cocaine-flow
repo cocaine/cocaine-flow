@@ -46,7 +46,7 @@ def main():
     Storage()
     app = web.Application(
         Router.apply_routes(Route.routes()),
-        socket_io_port=8080,
+        socket_io_port=options.port,
         **SETTINGS)
     SocketServer(app)
 
