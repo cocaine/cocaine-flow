@@ -38,9 +38,13 @@ setup(
         "flow.utils"
     ],
     data_files = [
-        ('/usr/lib/flow/Application', ['app/Application/app.py', 'app/Application/manifest.json', 'app/Application/__init__.py']),
-        ('/usr/lib/flow/Profile', ['app/Profile/profile.py', 'app/Profile/manifest.json', 'app/Profile/__init__.py']),
+        ('/usr/share/flow/Application', ['app/Application/app.py', 'app/Application/manifest.json', 'app/Application/__init__.py']),
+        ('/usr/share/flow/Profile', ['app/Profile/profile.py', 'app/Profile/manifest.json', 'app/Profile/__init__.py']),
+        ('/usr/share/flow/Commits', ['app/Commits/commit.py', 'app/Commits/manifest.json', 'app/Commits/__init__.py']),
+        ('/usr/share/flow/', ['deploy.sh']),
+        ('/etc/cocaine-flow/', ['config-default.cfg']),
+        ('/etc/init/', ['upstart/cocaine-flow.conf']),
     ],
-    install_requires=["msgpack_python", "tornado", "pygit2", "tornadio2"],
+    install_requires=["msgpack_python", "tornado", "tornadio2"],
     scripts=["cocaine-flow"]
 )

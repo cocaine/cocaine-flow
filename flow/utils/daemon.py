@@ -18,6 +18,7 @@ class Daemon(object):
 
     def daemonize(self):
         """Double-fork magic"""
+        sys.stderr.write("Daemonize. Pid %s" % self.pidfile)
         if self.userid:
             uid = pwd.getpwnam(self.userid).pw_uid
             os.seteuid(uid)

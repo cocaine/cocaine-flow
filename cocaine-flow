@@ -19,6 +19,8 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import sys
+
 from tornado import web
 from tornado.options import options
 from tornadio2 import SocketServer
@@ -53,7 +55,7 @@ def main():
 
 if __name__ == "__main__":
     if options.daemon:
-        d = Daemon(options.pidfile)
+        d = Daemon(options.pidfile, options.user)
         if "start" in actions:
             d.run = main
             d.start()
@@ -71,4 +73,4 @@ if __name__ == "__main__":
         try:
             main()
         except Exception as err:
-            print err
+            sys.stderr.write(str(err))

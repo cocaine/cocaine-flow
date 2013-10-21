@@ -1,9 +1,10 @@
 #!/bin/sh
 
-PATH="/usr/lib/flow/"
+ln -fs /lib/init/upstart-job /etc/init.d/cocaine-flow
+
+echo "Install tornadio2 from PyPI:"
 pip install tornadio2
-pip install pygit2
 
-cocaine-tool app upload 
-
+echo "Deploy applications"
+/usr/share/flow/deploy.sh
 #DEBHELPER#

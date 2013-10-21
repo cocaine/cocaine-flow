@@ -2,16 +2,19 @@ Source: cocaine-flow
 Section: misc
 Priority: extra
 Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
-Build-Depends: debhelper (>= 7)
-Standards-Version: 3.8.3
+Build-Depends: debhelper (>= 7), cdbs, python-support, python (>= 2.6)
+Standards-Version: 3.9.1
 Homepage: https://github.com/cocaine/cocaine-flow
 
 Package: cocaine-flow
 Architecture: all
 Depends: ${shlibs:Depends}, 
  ${misc:Depends}, 
+ python (>= 2.6),
  cocaine-tools, 
- cocaine-framework-python,
+ cocaine-framework-python (>= 0.10.6),
  python-pip
+XB-Python-Version: >= 2.6
 Description: <insert up to 60 chars description>
  <insert long description, indented with spaces>
+

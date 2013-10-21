@@ -27,9 +27,10 @@ from tornado.options import parse_command_line
 
 define("SECRET_KEY")
 define("port", default=8080, type=int, help="listening port number")
+define("user", default=None, help="listening port number")
 define("daemon", default=False, type=bool, help="daemonize")
 define("pidfile", default="/var/run/tornado", type=str, help="pidfile")
-define("config", default="/etc/cocaine-flow/config.yaml", 
+define("config", default="/etc/cocaine-flow/config.cfg",
        type=str, help="configuration file")
 
 actions = parse_command_line()
@@ -38,3 +39,4 @@ try:
 except IOError:
     sys.stderr.write("Unable to read config %s\n" % options.config)
     sys.exit(1)
+actions = parse_command_line()
