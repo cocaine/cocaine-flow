@@ -42,7 +42,7 @@ STATIC_PATH = "/usr/share/cocainoom/"
 
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
-    "debug": True,
+    #"debug": True,
     "login_url": "/login"}
 
 
@@ -58,7 +58,7 @@ static =  [
     (r"/(css/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
     (r"/(img/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
     (r"/(font/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
-    (r"/", MainHandler),
+    (r"/.*", MainHandler),
 ]
 
 def main():
