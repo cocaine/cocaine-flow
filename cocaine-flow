@@ -38,16 +38,33 @@ import logging
 chain = logging.getLogger("cocaine.futures.chain")
 chain.setLevel(logging.ERROR)
 
+STATIC_PATH = "/usr/share/cocainoom/"
+
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
     "debug": True,
     "login_url": "/login"}
 
 
+
+import tornado.template
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        loader = tornado.template.Loader(STATIC_PATH)
+        self.write(loader.load("index.html").generate())
+
+static =  [
+    (r"/(js/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
+    (r"/(css/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
+    (r"/(img/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
+    (r"/(font/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
+    (r"/", MainHandler),
+]
+
 def main():
     Storage()
     app = web.Application(
-        Router.apply_routes(Route.routes()),
+        Router.apply_routes(Route.routes()) + static,
         socket_io_port=options.port,
         **SETTINGS)
     SocketServer(app)
