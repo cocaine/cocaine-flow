@@ -20,6 +20,7 @@
 
 import logging
 import uuid
+import json
 from functools import partial
 
 import msgpack
@@ -36,6 +37,18 @@ from cocaine.futures.chain import source
 
 APP_LOGGER = logging.getLogger()
 
+UNAUTHORIZED = {"user": {"id": "me", "status": "fail"}}
+
+
+def authorization_required(func):
+    def wrapper(self, *args):
+        if self.authorized:
+            return func(self, *args)
+        else:
+            APP_LOGGER.info("Give me cookies, I'm hungry")
+            self.emit("keepalive:user/me", UNAUTHORIZED)
+    return wrapper
+
 
 class WebSockInterface(SocketConnection):
 
@@ -43,27 +56,35 @@ class WebSockInterface(SocketConnection):
         super(WebSockInterface, self).__init__(*args, **kwargs)
         self.connection_info = None
         self._cookie = False
-        self.vcs_objects = dict()
+        self.authorized = False
+        self.username = ""
+        #self.vcs_objects = dict()
 
     def on_open(self, info):
         APP_LOGGER.warning('Client connected')
         self.connection_info = info
         self._cookie = info.get_cookie("user") or False
-        APP_LOGGER.info("%s", info.cookies)
-        APP_LOGGER.error(self._cookie)
+        #APP_LOGGER.info("%s", info.cookies)
+        #APP_LOGGER.error(self._cookie)
 
     def on_close(self):
         APP_LOGGER.warning('Client disconnected')
 
-    @event('logout')
-    def logout(self):
-        APP_LOGGER.warning('There is no handler for LOGOUT')
+    def setup_authorization(self, future):
+        info = json.loads(future.get())
+        if info['status'] == "OK":
+            self.authorized = True
+            self.username = info["username"]
+
+    # @event('logout')
+    # def logout(self):
+    #     APP_LOGGER.warning('There is no handler for LOGOUT')
 
     @event('id:user')
     def id_user(self, data, key):
         ''' Analog of user/me '''
         # Check cookies here
-        print self.connection_info  # Extract cookie!
+        #print self.connection_info  # Extract cookie!
         if True:  # self._cookie:
             APP_LOGGER.info('Find cookies')
             self.emit(key,
@@ -124,9 +145,10 @@ class WebSockInterface(SocketConnection):
         else:
             Chain([partial(helpers.get_user,
                            partial(self.set_cookie, str(key)),
-                           user, password)])
+                           user, password)]).then(self.setup_authorization)
 
     @event('all:apps')
+    @authorization_required
     @source
     def all_apps(self, _, key):
         '''
@@ -139,6 +161,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"apps": res})
 
     @event('id:profile')
+    @authorization_required
     @source
     def id_profile(self, name, key):
         '''
@@ -153,6 +176,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"profile": res})
 
     @event('create:profile')
+    @authorization_required
     @source
     def create_profile(self, data, key):
         '''
@@ -169,6 +193,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, res)
 
     @event('update:profile')
+    @authorization_required
     @source
     def update_profile(self, profile, key):
         '''
@@ -183,6 +208,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, res)
 
     @event('delete:profile')
+    @authorization_required
     @source
     def delete_profile(self, profile, key):
         '''
@@ -196,6 +222,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, res)
 
     @event('all:profiles')
+    @authorization_required
     @source
     def all_profiles(self, _, key):
         '''
@@ -213,6 +240,7 @@ class WebSockInterface(SocketConnection):
     #     self.emit(key, {"clusters": [{"id": 1}]})
 
     @event('upload:app')
+    @authorization_required
     @source
     def upload(self, data, key, *args):
         '''
@@ -248,17 +276,18 @@ class WebSockInterface(SocketConnection):
                         "percentage": 100})
 
     @event('update:app')
+    @authorization_required
     @source
     def update_app(self, data, key):
         '''
         Update fields of app structure
         '''
         APP_LOGGER.error(str(data))
-        res = yield Service("flow-app").enqueue("update", msgpack.packb(data))
-        print res
+        yield Service("flow-app").enqueue("update", msgpack.packb(data))
         self.emit(key, {"app": data})
 
     @event('delete:app')
+    @authorization_required
     @source
     def delete_app(self, data, key):
         '''
@@ -266,10 +295,10 @@ class WebSockInterface(SocketConnection):
         '''
         APP_LOGGER.error("delete:app")
         res = yield Service("flow-app").enqueue("destroy", msgpack.packb(data))
-        print res
         self.emit(key, {"apps": [res]})
 
     @event('deploy:app')
+    @authorization_required
     @source
     def deploy_app(self, app_id):
         '''
@@ -278,14 +307,8 @@ class WebSockInterface(SocketConnection):
         :param data: application name
         :param key: name of emitted event to answer
         '''
-        print(app_id)
         key = "keepalive:app/%s" % app_id
-        logs = "Deploy"
-        # Chain([partial(helpers.deploy_application,
-        #                self.emit,
-        #                app_id)])
         msg = yield Service("flow-app").enqueue("deploy", app_id)
-        print msg
         try:
             while True:
                 msg = yield
@@ -295,7 +318,6 @@ class WebSockInterface(SocketConnection):
         except ChokeEvent:
             pass
         self.emit(key, {"app": {"status": "normal", "id": app_id}})
-        # {'percentage': 0, 'id': 'flask-cocaine-pycon_3a424b3', 'logs': 'Deploing'}
 
     # @event("refresh:app")
     # def refresh_app(self, app_id):
@@ -304,6 +326,7 @@ class WebSockInterface(SocketConnection):
     #                    self.emit, app_id)])
 
     @event("search:apps")
+    @authorization_required
     def search_apps(self, query, key):
         Chain([partial(helpers.search_application,
                        partial(self.emit, key),
@@ -330,6 +353,7 @@ class WebSockInterface(SocketConnection):
     #                              "action": None}})
 
     @event('id:summary')
+    @authorization_required
     @source
     def id_summary(self, name, key):
         '''
@@ -343,6 +367,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"summary": summary, "commits": commits})
 
     @event('update:summary')
+    @authorization_required
     @source
     def update_summary(self, data, key):
         '''
@@ -354,6 +379,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {"summary": res})
 
     @event('find:commits')
+    @authorization_required
     @source
     def find_commits(self, data, key):
         """ engine.asynch """
@@ -364,6 +390,7 @@ class WebSockInterface(SocketConnection):
         self.emit(key, {'commits': res})
 
     @event('update:commit')
+    @authorization_required
     @source
     def update_commit(self, commit, key):
         """ Update fields of commit structure """

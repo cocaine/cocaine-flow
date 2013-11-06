@@ -42,7 +42,7 @@ STATIC_PATH = "/usr/share/cocainoom/"
 
 SETTINGS = {
     "cookie_secret": options.SECRET_KEY,
-    #"debug": True,
+    "debug": True,
     "login_url": "/login"}
 
 
