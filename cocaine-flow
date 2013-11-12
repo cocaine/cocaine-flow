@@ -19,9 +19,11 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+import logging
 import sys
 
 from tornado import web
+import tornado.template
 from tornado.options import options
 from tornadio2 import SocketServer
 
@@ -29,11 +31,11 @@ from flow.utils.route import Route
 from flow.utils.storage import Storage
 from flow.utils.daemon import Daemon
 from flow.utils.options import actions
+from flow.utils.pinger import start_pinger
 
 from flow.views.SocketIO import Router
 from flow.views import *
 
-import logging
 
 chain = logging.getLogger("cocaine.futures.chain")
 chain.setLevel(logging.ERROR)
@@ -46,14 +48,13 @@ SETTINGS = {
     "login_url": "/login"}
 
 
-
-import tornado.template
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         loader = tornado.template.Loader(STATIC_PATH)
         self.write(loader.load("index.html").generate())
 
-static =  [
+
+static = [
     (r"/(js/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
     (r"/(css/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
     (r"/(img/.*)", web.StaticFileHandler, {"path": STATIC_PATH}),
@@ -61,12 +62,14 @@ static =  [
     (r"/.*", MainHandler),
 ]
 
+
 def main():
     Storage()
     app = web.Application(
         Router.apply_routes(Route.routes()) + static,
         socket_io_port=options.port,
         **SETTINGS)
+    start_pinger(5)
     SocketServer(app)
 
 
