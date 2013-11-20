@@ -10,7 +10,7 @@ Package: cocaine-flow
 Architecture: all
 Depends: ${shlibs:Depends}, 
  ${misc:Depends}, 
- cocainoom,
+ cocaine-flow-static,
  python (>= 2.6),
  cocaine-tools, 
  cocaine-framework-python (>= 0.10.6),

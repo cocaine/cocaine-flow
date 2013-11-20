@@ -1,3 +1,9 @@
+cocaine-flow (0.11-6) lucid; urgency=low
+
+  * Update deps: rename cocainoom -> cocaine-flow-static 
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 21 Nov 2013 00:56:47 +0400
+
 cocaine-flow (0.11-5) unstable; urgency=low
 
   * Ping and try to start backend applications periodically.
