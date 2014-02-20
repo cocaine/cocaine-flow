@@ -1,9 +1,11 @@
 package main
 
 import (
+	_ "bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -20,6 +22,10 @@ func AssertStatus(method string, urlStr string, status int, body io.Reader, t *t
 }
 
 func TestServer(t *testing.T) {
+	uv := url.Values{}
+	uv.Set("name", testUser)
+	uv.Set("password", testUserPasswd)
+
 	ts := httptest.NewServer(ConstructHandler())
 	defer ts.Close()
 	t.Logf("Test server is runing on %s", ts.URL)
@@ -43,4 +49,16 @@ func TestServer(t *testing.T) {
 	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST/APP", 200, nil, t)
 	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
 	AssertStatus("POST", ts.URL+"/flow/v1/groupsrefresh/", 200, nil, t)
+
+	if r, err := http.PostForm(ts.URL+"/flow/v1/users/signup", uv); err != nil || r.StatusCode != 200 {
+		t.Fatal(r, err)
+	}
+
+	if r, err := http.PostForm(ts.URL+"/flow/v1/users/signin", uv); err != nil || r.StatusCode != 200 {
+		t.Fatal(r, err)
+	}
+
+	if r, err := http.PostForm(ts.URL+"/flow/v1/users/token", uv); err != nil || r.StatusCode != 200 {
+		t.Fatal(r, err)
+	}
 }

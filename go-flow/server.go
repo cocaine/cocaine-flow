@@ -17,8 +17,10 @@ const pathPrefix = "/flow/v1"
 const sessionName = "flow-session"
 
 var (
-	cocs  Cocaine
-	store = sessions.NewCookieStore([]byte("something-very-secret"))
+	// TBD: Read it from file
+	secretkey = []byte("something-very-secretkeysddsddsd")
+	cocs      Cocaine
+	store     = sessions.NewCookieStore(secretkey)
 )
 
 var jsonOK = map[string]string{
@@ -29,9 +31,12 @@ var jsonOK = map[string]string{
 	Utils
 */
 
-func SendError(w http.ResponseWriter, err error, code int) {
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, err)
+func ExtractToken(r *http.Request) (token string) {
+	tokens, ok := r.URL.Query()["token"]
+	if ok {
+		token = tokens[len(tokens)-1]
+	}
+	return
 }
 
 func SendJson(w http.ResponseWriter, data interface{}) (err error) {
@@ -42,6 +47,20 @@ func SendJson(w http.ResponseWriter, data interface{}) (err error) {
 
 func Ping(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
+}
+
+func AuthRequired(fn func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//Check token auth
+		token := ExtractToken(r)
+		_, err := cocs.ValidateToken(token)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		fn(w, r)
+	}
+
 }
 
 func Test(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +83,7 @@ func ConstructHandler() http.Handler {
 
 	//main router
 	router := mux.NewRouter()
-	router.HandleFunc("/ping", Ping)
+	router.HandleFunc("/ping", AuthRequired(Ping))
 	router.HandleFunc("/test", Test)
 
 	//flow router
@@ -99,6 +118,12 @@ func ConstructHandler() http.Handler {
 	rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
 	rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
 
+	//auth router
+	authRouter := rootRouter.PathPrefix("/users").Subrouter()
+	authRouter.HandleFunc("/token", GenToken).Methods("POST")
+	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
+	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
+
 	return handlers.LoggingHandler(os.Stdout, router)
 }
 
@@ -110,7 +135,7 @@ func ProfileList(w http.ResponseWriter, r *http.Request) {
 	profiles, err := cocs.ProfileList()
 
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +146,7 @@ func ProfileRead(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	profile, err := cocs.ProfileRead(name)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -135,7 +160,7 @@ func ProfileRead(w http.ResponseWriter, r *http.Request) {
 func HostList(w http.ResponseWriter, r *http.Request) {
 	hosts, err := cocs.HostList()
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -146,7 +171,7 @@ func HostAdd(w http.ResponseWriter, r *http.Request) {
 	host := mux.Vars(r)["host"]
 	err := cocs.HostAdd(host)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -157,7 +182,7 @@ func HostRemove(w http.ResponseWriter, r *http.Request) {
 	host := mux.Vars(r)["host"]
 	err := cocs.HostRemove(host)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -171,7 +196,7 @@ func HostRemove(w http.ResponseWriter, r *http.Request) {
 func RunlistList(w http.ResponseWriter, r *http.Request) {
 	runlists, err := cocs.RunlistList()
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -182,7 +207,7 @@ func RunlistRead(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	runlist, err := cocs.RunlistRead(name)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -196,7 +221,7 @@ func RunlistRead(w http.ResponseWriter, r *http.Request) {
 func GroupList(w http.ResponseWriter, r *http.Request) {
 	runlists, err := cocs.GroupList()
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -207,7 +232,7 @@ func GroupView(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	group, err := cocs.GroupView(name)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	SendJson(w, group)
@@ -217,7 +242,7 @@ func GroupCreate(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	err := cocs.GroupCreate(name)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(w, "OK")
@@ -227,7 +252,7 @@ func GroupRemove(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	err := cocs.GroupRemove(name)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(w, "OK")
@@ -240,19 +265,19 @@ func GroupPushApp(w http.ResponseWriter, r *http.Request) {
 	app := vars["app"]
 	weights, ok := r.URL.Query()["weight"]
 	if !ok || len(weights) == 0 {
-		SendError(w, fmt.Errorf("weight argument is absent"), http.StatusBadRequest)
+		http.Error(w, "weight argument is absent", http.StatusBadRequest)
 		return
 	}
 
 	weight, err := strconv.Atoi(weights[0])
 	if err != nil {
-		SendError(w, fmt.Errorf("weight must be an integer value"), http.StatusBadRequest)
+		http.Error(w, "weight must be an integer value", http.StatusBadRequest)
 		return
 	}
 
 	err = cocs.GroupPushApp(name, app, weight)
 	if err != nil {
-		SendError(w, err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	fmt.Fprint(w, "OK")
@@ -265,7 +290,7 @@ func GroupPopApp(w http.ResponseWriter, r *http.Request) {
 
 	err := cocs.GroupPopApp(name, app)
 	if err != nil {
-		SendError(w, err, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	fmt.Fprint(w, "OK")
@@ -276,10 +301,47 @@ func GroupRefresh(w http.ResponseWriter, r *http.Request) {
 
 	err := cocs.GroupRefresh(name)
 	if err != nil {
-		SendError(w, err, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	fmt.Fprint(w, "OK")
+}
+
+/*
+	Auth
+*/
+
+func UserSignup(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	password := r.FormValue("password")
+	if err := cocs.UserSignup(name, password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprint(w, "OK")
+}
+
+func UserSignin(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	password := r.FormValue("password")
+	if _, err := cocs.UserSignin(name, password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprint(w, "OK")
+}
+
+func GenToken(w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	password := r.FormValue("password")
+	token, err := cocs.GenToken(name, password)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Fprint(w, token)
 }
 
 func main() {

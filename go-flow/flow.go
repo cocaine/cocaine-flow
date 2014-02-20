@@ -1,7 +1,14 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/ugorji/go/codec"
 
@@ -9,6 +16,7 @@ import (
 )
 
 const null_arg = 0
+const token_lifetime = 3600 // sec
 
 var (
 	mh codec.MsgpackHandle
@@ -46,6 +54,70 @@ func (aW *appWrapper) Call(method string, args interface{}, result ...interface{
 	return
 }
 
+type Tokenhandler interface {
+	Encrypt(*UserInfo) (string, error)
+	Decrypt(string) (UserInfo, error)
+}
+
+type Token struct {
+	block cipher.Block
+}
+
+type tokenWrapper struct {
+	UI       *UserInfo
+	Lifetime int64
+}
+
+func (t *Token) Encrypt(ui *UserInfo) (tok string, err error) {
+	elapsedTime := time.Now().Add(time.Second * token_lifetime).Unix()
+	value, err := json.Marshal(tokenWrapper{ui, elapsedTime})
+	if err != nil {
+		return
+	}
+
+	iv := make([]byte, t.block.BlockSize())
+	rand.Read(iv)
+
+	stream := cipher.NewCTR(t.block, iv)
+	stream.XORKeyStream(value, value)
+	tok = hex.EncodeToString(append(iv, value...))
+	return
+}
+
+func (t *Token) Decrypt(tok string) (ui UserInfo, err error) {
+
+	value, err := hex.DecodeString(tok)
+	if err != nil {
+		err = fmt.Errorf("Corrupted token")
+		return
+	}
+
+	if len(value) < t.block.BlockSize() {
+		err = fmt.Errorf("Too short to be decrypted, %d", len(value))
+		return
+	}
+
+	iv := value[:t.block.BlockSize()]
+	value = value[t.block.BlockSize():]
+	stream := cipher.NewCTR(t.block, iv)
+	stream.XORKeyStream(value, value)
+
+	var wui tokenWrapper
+	err = json.Unmarshal(value, &wui)
+	if err != nil {
+		return
+	}
+
+	elapsedTime := time.Unix(wui.Lifetime, 0)
+	if time.Now().After(elapsedTime) {
+		err = fmt.Errorf("Token has expired")
+		return
+	}
+
+	ui = *wui.UI
+	return
+}
+
 /*
 	Content interfaces
 */
@@ -77,15 +149,29 @@ type GroupController interface {
 	GroupRefresh(name ...string) error
 }
 
+type AuthController interface {
+	UserSignin(name, password string) (UserInfo, error)
+	UserSignup(name, password string) error
+	UserRemove(name string) error
+	GenToken(name, password string) (string, error)
+	ValidateToken(token string) (UserInfo, error)
+}
+
+type UserInfo struct {
+	Name string `codec:"name"`
+}
+
 type Cocaine interface {
 	GroupController
 	HostController
 	ProfileController
 	RunlistController
+	AuthController
 }
 
 type backend struct {
-	app appWrapper
+	app     appWrapper
+	tokener Tokenhandler
 }
 
 /*
@@ -187,6 +273,47 @@ func (b *backend) GroupRefresh(name ...string) (err error) {
 	return
 }
 
+/*
+	AuthController impl
+*/
+
+func (b *backend) UserSignin(name, password string) (ui UserInfo, err error) {
+	task := map[string]string{
+		"name":     name,
+		"password": password,
+	}
+	err = b.app.Call("user-signin", task, &ui)
+	return
+}
+
+func (b *backend) UserSignup(name, password string) (err error) {
+	task := map[string]string{
+		"name":     name,
+		"password": password,
+	}
+	err = b.app.Call("user-signup", task)
+	return
+}
+
+func (b *backend) UserRemove(name string) (err error) {
+	err = b.app.Call("user-remove", name)
+	return
+}
+
+func (b *backend) GenToken(name, password string) (token string, err error) {
+	ui, err := b.UserSignin(name, password)
+	if err != nil {
+		return
+	}
+	token, err = b.tokener.Encrypt(&ui)
+	return
+}
+
+func (b *backend) ValidateToken(token string) (ui UserInfo, err error) {
+	ui, err = b.tokener.Decrypt(token)
+	return
+}
+
 func NewBackend() (c Cocaine, err error) {
 	app, err := cocaine.NewService("flow-tools")
 	if err != nil {
@@ -194,8 +321,15 @@ func NewBackend() (c Cocaine, err error) {
 		return
 	}
 
+	ciph, err := aes.NewCipher(secretkey)
+	if err != nil {
+		log.Printf("Error %s", err)
+		return
+	}
+
 	c = &backend{
-		app: appWrapper{app: app},
+		app:     appWrapper{app: app},
+		tokener: &Token{ciph},
 	}
 	return
 }

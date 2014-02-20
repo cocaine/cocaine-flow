@@ -4,11 +4,47 @@ import (
 	"testing"
 )
 
+const testUser = "noxiouz"
+const testUserPasswd = "qwerty"
+
 func TestMain(t *testing.T) {
 	// Create backend
 	b, err := NewBackend()
 	if err != nil {
 		t.Fatalf("Unable to create backend %s ", err)
+	}
+
+	//Pretest cleaning
+	_ = b.UserRemove(testUser)
+
+	//Auth
+	err = b.UserSignup(testUser, testUserPasswd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ui, err := b.UserSignin(testUser, testUserPasswd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	token, err := b.GenToken(testUser, testUserPasswd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("Token %s", token)
+
+	ui2, err := b.ValidateToken(token)
+	if err != nil || ui2.Name != ui.Name {
+		t.Logf("Bad token %s", err)
+	}
+
+	t.Log(ui)
+
+	err = b.UserRemove(testUser)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// List of profiles

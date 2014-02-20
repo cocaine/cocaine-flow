@@ -235,17 +235,14 @@ def group_refresh(name, response):
 @unpacker(msgpack.unpackb)
 @asynchronous
 def user_exists(name, response):
-    print name
     r = yield db.exists(name)
-    print r
     response.write(r)
     response.close()
 
 
 @unpacker(msgpack.unpackb)
 @asynchronous
-def user_create(info, response):
-    log.info(str(info))
+def user_signup(info, response):
     r = yield db.create(info)
     response.write(r)
     response.close()
@@ -253,12 +250,26 @@ def user_create(info, response):
 
 @unpacker(msgpack.unpackb)
 @asynchronous
-def user_login(info, response):
-    log.info(str(info))
+def user_signin(info, response):
     name = info['name']
     password = info['password']
     r = yield db.login(name, password)
     response.write(r)
+    response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_remove(name, response):
+    yield db.remove(name)
+    response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_list(_, response):
+    users = yield db.users()
+    response.write(users)
     response.close()
 
 
@@ -284,10 +295,22 @@ binds = {
     "group-refresh": group_refresh,
     # users
     "user-exists": user_exists,
-    "user-create": user_create,
-    "user-login": user_login,
+    "user-signup": user_signup,
+    "user-signin": user_signin,
+    "user-remove": user_remove,
+    "user-list": user_list,
 }
+
+API = {"Version": 1,
+       "Methods": binds.keys()}
+
+
+def api(request, response):
+    yield request.read()
+    response.write(API)
+    response.close()
 
 if __name__ == '__main__':
     W = Worker()
+    W.on("API", api)
     W.run(binds)

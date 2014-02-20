@@ -86,10 +86,22 @@ class UserDB(object):
             yield True
 
     @asynchronous
+    def remove(self, name):
+        yield self.storage.remove(self.namespace, name)
+
+    @asynchronous
     def login(self, name, password):
         user_info = yield self.get(name)
         self.logger.info(str(user_info))
         h = HMAC.new(user_info['uid'])
         h.update(password)
         self.logger.error("%s %s" % (h.hexdigest(), user_info['hash']))
-        yield (h.hexdigest() == user_info['hash'])
+        if (h.hexdigest() == user_info['hash']):
+            user_info.pop('uid')
+            yield user_info
+        else:
+            raise Exception("Invalid pair of login/password")
+
+    @asynchronous
+    def users(self):
+        yield self.storage.find(self.namespace, USER_TAG)
