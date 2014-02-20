@@ -95,16 +95,9 @@ func ConstructHandler() http.Handler {
 
 	groupsRouter.HandleFunc("/{name}/{app}", GroupPushApp).Methods("POST", "PUT")
 	groupsRouter.HandleFunc("/{name}/{app}", GroupPopApp).Methods("DELETE")
-	/*
-		GET groups - список групп
-		GET groups/<name> - посмотреть группу
-		POST groups/<name> - создать группу
-		DELETE groups/<name> - удалить группу
-		POST/PUT groups/<name>/<app>?weight=1 - добавить приложение app с весом 1
-		DELETE groups/<name>/<app>
-		POST groupsrefresh/ - обновить все роутинг группы
-		POST groupsrefresh/<group> - обновить роутинг группу
-	*/
+
+	rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
+	rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
 
 	return handlers.LoggingHandler(os.Stdout, router)
 }
@@ -242,12 +235,18 @@ func GroupRemove(w http.ResponseWriter, r *http.Request) {
 
 func GroupPushApp(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	name := vars["name"]
 	app := vars["app"]
-	fmt.Println(r.URL.Query())
-	weight, err := strconv.Atoi(vars["weight"])
+	weights, ok := r.URL.Query()["weight"]
+	if !ok || len(weights) == 0 {
+		SendError(w, fmt.Errorf("weight argument is absent"), http.StatusBadRequest)
+		return
+	}
+
+	weight, err := strconv.Atoi(weights[0])
 	if err != nil {
-		SendError(w, err, http.StatusBadRequest)
+		SendError(w, fmt.Errorf("weight must be an integer value"), http.StatusBadRequest)
 		return
 	}
 
@@ -265,6 +264,17 @@ func GroupPopApp(w http.ResponseWriter, r *http.Request) {
 	app := vars["app"]
 
 	err := cocs.GroupPopApp(name, app)
+	if err != nil {
+		SendError(w, err, http.StatusBadRequest)
+		return
+	}
+	fmt.Fprint(w, "OK")
+}
+
+func GroupRefresh(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+
+	err := cocs.GroupRefresh(name)
 	if err != nil {
 		SendError(w, err, http.StatusBadRequest)
 		return
