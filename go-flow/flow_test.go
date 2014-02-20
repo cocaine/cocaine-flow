@@ -88,6 +88,16 @@ func TestMain(t *testing.T) {
 		t.Logf("runlist %s: %v", groupName, group)
 	}
 
+	err = b.GroupPushApp("TESTGROUP", "TESTAPP", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = b.GroupPopApp("TESTGROUP", "TESTAPP")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = b.GroupRemove("TESTGROUP")
 	if err != nil {
 		t.Fatalf("Error %s", err)
@@ -99,4 +109,5 @@ func TestMain(t *testing.T) {
 	}
 
 	t.Logf("%v", groups)
+
 }

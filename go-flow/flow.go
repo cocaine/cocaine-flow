@@ -174,7 +174,7 @@ func (b *backend) GroupPopApp(name string, app string) (err error) {
 		"name": name,
 		"app":  app,
 	}
-	err = b.app.Call("group-pushapp", task)
+	err = b.app.Call("group-popapp", task)
 	return
 }
 

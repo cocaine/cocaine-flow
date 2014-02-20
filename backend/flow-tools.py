@@ -191,9 +191,11 @@ def group_remove(name, response):
 @unpacker(msgpack.unpackb)
 @asynchronous
 def group_pushapp(info, response):
+    log.info(str(info))
     name = info["name"]
     app = info["app"]
-    weight = info["weight"]
+    weight = int(info["weight"])
+    log.info(str(info))
     try:
         yield group.AddApplication(storage, name, app, weight).execute()
     except Exception as err:
