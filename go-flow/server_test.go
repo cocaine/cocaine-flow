@@ -34,4 +34,13 @@ func TestServer(t *testing.T) {
 
 	AssertStatus("GET", ts.URL+"/flow/v1/runlists/", 200, nil, t)
 	AssertStatus("GET", ts.URL+"/flow/v1/runlists/default", 200, nil, t)
+
+	AssertStatus("GET", ts.URL+"/flow/v1/groups/", 200, nil, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
+	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
+
+	AssertStatus("POST", ts.URL+"/flow/v1/groups/TEST/APP", 200, nil, t)
+	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST/APP", 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/groupsrefresh/", 200, nil, t)
 }

@@ -9,12 +9,15 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 const pathPrefix = "/flow/v1"
+const sessionName = "flow-session"
 
 var (
-	cocs Cocaine
+	cocs  Cocaine
+	store = sessions.NewCookieStore([]byte("something-very-secret"))
 )
 
 var jsonOK = map[string]string{
@@ -40,6 +43,17 @@ func Ping(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
+func Test(w http.ResponseWriter, r *http.Request) {
+	session, ok := store.Get(r, "flow-session")
+	fmt.Println(session, ok)
+	// Set some session values.
+	session.Values["foo"] = "bar"
+	session.Values[42] = 43
+	// Save it.
+	session.Save(r, w)
+	fmt.Fprintln(w, "OK")
+}
+
 func ConstructHandler() http.Handler {
 	var err error
 	cocs, err = NewBackend()
@@ -50,6 +64,7 @@ func ConstructHandler() http.Handler {
 	//main router
 	router := mux.NewRouter()
 	router.HandleFunc("/ping", Ping)
+	router.HandleFunc("/test", Test)
 
 	//flow router
 	rootRouter := router.PathPrefix(pathPrefix).Subrouter()
@@ -69,6 +84,9 @@ func ConstructHandler() http.Handler {
 	runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
 	runlistsRouter.HandleFunc("/", RunlistList).Methods("GET")
 	runlistsRouter.HandleFunc("/{name}", RunlistRead).Methods("GET")
+
+	//routing groups
+
 	return handlers.LoggingHandler(os.Stdout, router)
 }
 

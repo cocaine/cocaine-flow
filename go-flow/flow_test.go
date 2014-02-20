@@ -64,4 +64,39 @@ func TestMain(t *testing.T) {
 		t.Logf("runlist %s: %v", runlistName, runlist)
 	}
 
+	//Groups
+	err = b.GroupCreate("TESTGROUP")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	groups, err := b.GroupList()
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	t.Logf("Groups count %v", groups)
+	if len(groups) == 0 {
+		t.Logf("Invalid group count %d", len(groups))
+	}
+
+	for _, groupName := range groups {
+		group, err := b.GroupView(groupName)
+		if err != nil {
+			t.Fatalf("Unable to read group %s %s", group, err)
+		}
+		t.Logf("runlist %s: %v", groupName, group)
+	}
+
+	err = b.GroupRemove("TESTGROUP")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	groups, err = b.GroupList()
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	t.Logf("%v", groups)
 }

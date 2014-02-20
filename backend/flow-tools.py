@@ -3,11 +3,14 @@
 import msgpack
 
 from cocaine.services import Service
+from cocaine.asio.service import Locator
 from cocaine.worker import Worker
 from cocaine.asio.engine import asynchronous
 from cocaine.logging import Logger
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
+from cocaine.tools.actions import group
+
 
 from userdb import UserDB
 
@@ -15,6 +18,7 @@ ITEM_IS_ABSENT = -100
 
 log = Logger()
 storage = Service("storage")
+locator = Locator()
 
 
 db = UserDB(storage, "KEY", "TEST")
@@ -133,6 +137,98 @@ def host_remove(name, response):
         response.close()
 
 
+# groups
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_list(_, response):
+    try:
+        groups = yield group.List(storage).execute()
+        response.write(groups)
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to read groups")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_create(name, response):
+    try:
+        yield group.Create(storage, name).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to read groups")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_read(name, response):
+    try:
+        gcontent = yield group.View(storage, name).execute()
+        response.write(gcontent)
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to read groups")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_remove(name, response):
+    try:
+        yield group.Remove(storage, name).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to read groups")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_pushapp(info, response):
+    name = info["name"]
+    app = info["app"]
+    weight = info["weight"]
+    try:
+        yield group.AddApplication(storage, name, app, weight).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to push app %s" % name)
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_popapp(info, response):
+    name = info["name"]
+    app = info["app"]
+    try:
+        yield group.RemoveApplication(storage, name, app).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to pop app")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def group_refresh(name, response):
+    try:
+        yield group.Refresh(locator, storage, name)
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unable to refresh")
+    finally:
+        response.close()
+
+
 # Users
 @unpacker(msgpack.unpackb)
 @asynchronous
@@ -176,6 +272,14 @@ binds = {
     "host-add": host_add,
     "host-list": host_list,
     "host-remove": host_remove,
+    # groups
+    "group-list": group_list,
+    "group-create": group_create,
+    "group-read": group_read,
+    "group-remove": group_remove,
+    "group-pushapp": group_pushapp,
+    "group-popapp": group_popapp,
+    "group-refresh": group_refresh,
     # users
     "user-exists": user_exists,
     "user-create": user_create,

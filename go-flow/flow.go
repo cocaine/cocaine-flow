@@ -66,7 +66,19 @@ type RunlistController interface {
 	RunlistList() ([]string, error)
 }
 
+type GroupController interface {
+	GroupList() ([]string, error)
+	GroupView(name string) (map[string]interface{}, error)
+	GroupCreate(name string) error
+	GroupRemove(name string) error
+
+	GroupPushApp(name string, app string, weight int) error
+	GroupPopApp(name string, app string) error
+	GroupRefresh(name ...string) error
+}
+
 type Cocaine interface {
+	GroupController
 	HostController
 	ProfileController
 	RunlistController
@@ -124,8 +136,56 @@ func (b *backend) RunlistRead(name string) (runlist map[string]string, err error
 }
 
 /*
-	New
+	GroupController impl
 */
+
+func (b *backend) GroupList() (list []string, err error) {
+	err = b.app.Call("group-list", null_arg, &list)
+	return
+}
+
+func (b *backend) GroupCreate(name string) (err error) {
+	err = b.app.Call("group-create", name)
+	return
+}
+
+func (b *backend) GroupRemove(name string) (err error) {
+	err = b.app.Call("group-remove", name)
+	return
+}
+
+func (b *backend) GroupView(name string) (gr map[string]interface{}, err error) {
+	err = b.app.Call("group-read", name, &gr)
+	return
+}
+
+func (b *backend) GroupPushApp(name string, app string, weight int) (err error) {
+	task := map[string]interface{}{
+		"name":   name,
+		"app":    app,
+		"weight": weight,
+	}
+	err = b.app.Call("group-pushapp", task)
+	return
+}
+
+func (b *backend) GroupPopApp(name string, app string) (err error) {
+	task := map[string]interface{}{
+		"name": name,
+		"app":  app,
+	}
+	err = b.app.Call("group-pushapp", task)
+	return
+}
+
+func (b *backend) GroupRefresh(name ...string) (err error) {
+	var groupname string
+	if len(name) == 1 {
+		groupname = name[0]
+	}
+	err = b.app.Call("group-refresh", groupname)
+	return
+}
 
 func NewBackend() (c Cocaine, err error) {
 	app, err := cocaine.NewService("flow-tools")
