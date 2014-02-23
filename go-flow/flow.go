@@ -157,11 +157,17 @@ type AuthController interface {
 	ValidateToken(token string) (UserInfo, error)
 }
 
+type CrashlogController interface {
+	CrashlogList(name string) ([]string, error)
+	CrashlogView(name string, timestamp int) (string, error)
+}
+
 type UserInfo struct {
 	Name string `codec:"name"`
 }
 
 type Cocaine interface {
+	CrashlogController
 	GroupController
 	HostController
 	ProfileController
@@ -311,6 +317,24 @@ func (b *backend) GenToken(name, password string) (token string, err error) {
 
 func (b *backend) ValidateToken(token string) (ui UserInfo, err error) {
 	ui, err = b.tokener.Decrypt(token)
+	return
+}
+
+/*
+	Crashlog impl
+*/
+
+func (b *backend) CrashlogList(name string) (crashlogs []string, err error) {
+	err = b.app.Call("crashlog-list", name, &crashlogs)
+	return
+}
+
+func (b *backend) CrashlogView(name string, timestamp int) (crashlog string, err error) {
+	task := map[string]interface{}{
+		"name":      name,
+		"timestamp": timestamp,
+	}
+	err = b.app.Call("crashlog-view", task, &crashlog)
 	return
 }
 

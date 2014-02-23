@@ -118,6 +118,12 @@ func ConstructHandler() http.Handler {
 	rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
 	rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
 
+	//crashlog router
+	crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
+	crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
+	crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
+	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
+
 	//auth router
 	authRouter := rootRouter.PathPrefix("/users").Subrouter()
 	authRouter.HandleFunc("/token", GenToken).Methods("POST")
@@ -342,6 +348,34 @@ func GenToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, token)
+}
+
+func CrashlogList(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+
+	crashlogs, err := cocs.CrashlogList(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	SendJson(w, crashlogs)
+}
+
+func CrashlogView(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	timestamp, err := strconv.Atoi(vars["timestamp"])
+	if err != nil {
+		http.Error(w, "timestamp must be a number", http.StatusBadRequest)
+		return
+	}
+
+	crashlog, err := cocs.CrashlogView(name, timestamp)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Fprintf(w, crashlog)
 }
 
 func main() {

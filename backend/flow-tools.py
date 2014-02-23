@@ -10,6 +10,7 @@ from cocaine.logging import Logger
 from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
 from cocaine.tools.actions import group
+from cocaine.tools.actions import crashlog
 
 
 from userdb import UserDB
@@ -223,10 +224,41 @@ def group_popapp(info, response):
 @asynchronous
 def group_refresh(name, response):
     try:
-        yield group.Refresh(locator, storage, name)
+        yield group.Refresh(locator, storage, name).execute()
     except Exception as err:
         log.error(repr(err))
         response.error(-100, "Unable to refresh")
+    finally:
+        response.close()
+
+
+# crashlogs
+@unpacker(msgpack.unpackb)
+@asynchronous
+def crashlog_list(name, response):
+    try:
+        crashlogs = yield crashlog.List(storage, name).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unknown error")
+    else:
+        response.write(crashlogs)
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def crashlog_view(info, response):
+    try:
+        name = info['name']
+        timestamp = info['timestamp']
+        data = yield crashlog.View(storage, name, timestamp).execute()
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, "Unknown error")
+    else:
+        response.write(data)
     finally:
         response.close()
 
@@ -293,6 +325,9 @@ binds = {
     "group-pushapp": group_pushapp,
     "group-popapp": group_popapp,
     "group-refresh": group_refresh,
+    # crashlogs
+    "crashlog-list": crashlog_list,
+    "crashlog-view": crashlog_view,
     # users
     "user-exists": user_exists,
     "user-signup": user_signup,

@@ -147,3 +147,27 @@ func TestMain(t *testing.T) {
 	t.Logf("%v", groups)
 
 }
+
+func TestCrashlogs(t *testing.T) {
+	b, err := NewBackend()
+	if err != nil {
+		t.Fatalf("Unable to create backend %s ", err)
+	}
+
+	//crashlogs
+	crashlogs, err := b.CrashlogList("flow-tools")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Logf("There is/are %d crashlog", len(crashlogs))
+
+	if len(crashlogs) > 0 {
+		t.Log(crashlogs[0])
+		crash, err := b.CrashlogView(crashlogs[0], 1392638415086578)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(crash)
+	}
+}
