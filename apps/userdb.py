@@ -1,8 +1,12 @@
 import uuid
+import hashlib
 
 from Crypto.Hash import HMAC
 import msgpack
 
+
+# from cocaine.tools.actions.app import DockerUpload
+# from cocaine.futures.chain import concurrent
 from cocaine.asio.engine import asynchronous
 from cocaine.logging import Logger
 
@@ -35,6 +39,9 @@ class SecureStorage(object):
     def remove(self, namespace, key):
         yield self.storage.remove(namespace, key)
 
+    def raw_storage(self):
+        return self.storage
+
 
 class UserDB(object):
     def __init__(self, storage, key, namespace):
@@ -42,6 +49,7 @@ class UserDB(object):
         self.key = key
         self.logger = Logger()
         self.namespace = namespace_prefix + namespace
+        self.dbnamespace = namespace_prefix + "apps"
         self.logger.info("UserDB has been initialized. Use namespace %s"
                          % self.namespace)
 
@@ -105,3 +113,46 @@ class UserDB(object):
     @asynchronous
     def users(self):
         yield self.storage.find(self.namespace, USER_TAG)
+
+    @asynchronous
+    def upload_app(self, user, name, path):
+        self.logger.error("%s %s %s" % (user, name, path))
+        yield self.write_app_info(user, name)
+
+    @asynchronous
+    def write_app_info(self, user, name):
+        while True:
+            info = None
+            summ = ""
+            try:
+                info = yield self.storage.read(self.dbnamespace, user)
+                summ = hashlib.md5(info).hexdigest()
+            except Exception as err:
+                self.logger.error(repr(err))
+
+            apps = list()
+            if info is None:
+                apps = list()
+            else:
+                apps = msgpack.unpackb(info)
+
+            if name in apps:
+                self.logger.error("App %s has already existed" % name)
+                break
+            apps.append(name)
+
+            try:
+                info = yield self.storage.read(self.dbnamespace, user)
+            except Exception as err:
+                self.logger.error(repr(err))
+
+            if info is not None and summ != hashlib.md5(info).hexdigest():
+                self.logger.info("MD5 mismatchs. Continue")
+                continue
+
+            self.logger.info("MD5 is still valid. Do write")
+            yield self.storage.write(self.dbnamespace,
+                                     user,
+                                     msgpack.packb(apps),
+                                     USER_TAG)
+            break

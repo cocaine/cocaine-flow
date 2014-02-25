@@ -305,6 +305,23 @@ def user_list(_, response):
     response.close()
 
 
+# apps
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_upload(info, response):
+    try:
+        user = info["user"]
+        app = info["app"]
+        path = info["path"]
+        log.error(str(info))
+        yield db.upload_app(user, app, path)
+    except Exception as err:
+        log.error(repr(err))
+        response.error(-100, repr(err))
+    finally:
+        response.close()
+
+
 binds = {
     # profiles
     "profile-read": profile_read,
@@ -334,6 +351,7 @@ binds = {
     "user-signin": user_signin,
     "user-remove": user_remove,
     "user-list": user_list,
+    "user-upload": user_upload,
 }
 
 API = {"Version": 1,
