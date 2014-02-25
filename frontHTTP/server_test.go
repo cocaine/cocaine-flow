@@ -1,4 +1,4 @@
-package main
+package frontHTTP
 
 import (
 	_ "bytes"
@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"testing"
 )
+
+const testUser = "noxiouz"
+const testUserPasswd = "qwerty"
 
 func AssertStatus(method string, urlStr string, status int, body io.Reader, t *testing.T) {
 	cl := http.Client{}

@@ -38,10 +38,6 @@ type CrashlogController interface {
 	CrashlogView(name string, timestamp int) (string, error)
 }
 
-type UserInfo struct {
-	Name string `codec:"name"`
-}
-
 type Cocaine interface {
 	CrashlogController
 	GroupController

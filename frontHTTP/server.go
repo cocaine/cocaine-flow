@@ -1,7 +1,6 @@
-package main
+package frontHTTP
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+
+	"github.com/cocaine/cocaine-flow/backend"
 )
 
 const pathPrefix = "/flow/v1"
@@ -19,49 +20,9 @@ const sessionName = "flow-session"
 var (
 	// TBD: Read it from file
 	secretkey = []byte("something-very-secretkeysddsddsd")
-	cocs      Cocaine
+	cocs      backend.AuthCocaine
 	store     = sessions.NewCookieStore(secretkey)
 )
-
-var jsonOK = map[string]string{
-	"status": "OK",
-}
-
-/*
-	Utils
-*/
-
-func ExtractToken(r *http.Request) (token string) {
-	tokens, ok := r.URL.Query()["token"]
-	if ok {
-		token = tokens[len(tokens)-1]
-	}
-	return
-}
-
-func SendJson(w http.ResponseWriter, data interface{}) (err error) {
-	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(data)
-	return
-}
-
-func Ping(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "OK")
-}
-
-func AuthRequired(fn func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		//Check token auth
-		token := ExtractToken(r)
-		_, err := cocs.ValidateToken(token)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		fn(w, r)
-	}
-
-}
 
 func Test(w http.ResponseWriter, r *http.Request) {
 	session, ok := store.Get(r, "flow-session")
@@ -76,14 +37,14 @@ func Test(w http.ResponseWriter, r *http.Request) {
 
 func ConstructHandler() http.Handler {
 	var err error
-	cocs, err = NewBackend()
+	cocs, err = backend.NewBackend()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	//main router
 	router := mux.NewRouter()
-	router.HandleFunc("/ping", AuthRequired(Ping))
+	router.HandleFunc("/ping", Ping)
 	router.HandleFunc("/test", Test)
 
 	//flow router
@@ -91,38 +52,38 @@ func ConstructHandler() http.Handler {
 
 	//profiles router
 	profilesRouter := rootRouter.PathPrefix("/profiles").Subrouter()
-	profilesRouter.HandleFunc("/", ProfileList).Methods("GET")
-	profilesRouter.HandleFunc("/{name}", ProfileRead).Methods("GET")
+	profilesRouter.HandleFunc("/", Guest(ProfileList)).Methods("GET")
+	profilesRouter.HandleFunc("/{name}", Guest(ProfileRead)).Methods("GET")
 
 	//hosts router
-	hostsRouter := rootRouter.PathPrefix("/hosts").Subrouter()
-	hostsRouter.HandleFunc("/", HostList).Methods("GET")
-	hostsRouter.HandleFunc("/{host}", HostAdd).Methods("POST", "PUT")
-	hostsRouter.HandleFunc("/{host}", HostRemove).Methods("DELETE")
+	// hostsRouter := rootRouter.PathPrefix("/hosts").Subrouter()
+	// hostsRouter.HandleFunc("/", HostList).Methods("GET")
+	// hostsRouter.HandleFunc("/{host}", HostAdd).Methods("POST", "PUT")
+	// hostsRouter.HandleFunc("/{host}", HostRemove).Methods("DELETE")
 
-	//runlists router
-	runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
-	runlistsRouter.HandleFunc("/", RunlistList).Methods("GET")
-	runlistsRouter.HandleFunc("/{name}", RunlistRead).Methods("GET")
+	// //runlists router
+	// runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
+	// runlistsRouter.HandleFunc("/", RunlistList).Methods("GET")
+	// runlistsRouter.HandleFunc("/{name}", RunlistRead).Methods("GET")
 
-	//routing groups
-	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
-	groupsRouter.HandleFunc("/", GroupList).Methods("GET")
-	groupsRouter.HandleFunc("/{name}", GroupView).Methods("GET")
-	groupsRouter.HandleFunc("/{name}", GroupCreate).Methods("POST")
-	groupsRouter.HandleFunc("/{name}", GroupRemove).Methods("DELETE")
+	// //routing groups
+	// groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
+	// groupsRouter.HandleFunc("/", GroupList).Methods("GET")
+	// groupsRouter.HandleFunc("/{name}", GroupView).Methods("GET")
+	// groupsRouter.HandleFunc("/{name}", GroupCreate).Methods("POST")
+	// groupsRouter.HandleFunc("/{name}", GroupRemove).Methods("DELETE")
 
-	groupsRouter.HandleFunc("/{name}/{app}", GroupPushApp).Methods("POST", "PUT")
-	groupsRouter.HandleFunc("/{name}/{app}", GroupPopApp).Methods("DELETE")
+	// groupsRouter.HandleFunc("/{name}/{app}", GroupPushApp).Methods("POST", "PUT")
+	// groupsRouter.HandleFunc("/{name}/{app}", GroupPopApp).Methods("DELETE")
 
-	rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
-	rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
+	// rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
+	// rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
 
-	//crashlog router
-	crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
-	crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
-	crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
-	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
+	// //crashlog router
+	// crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
+	// crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
+	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
+	// // crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
 
 	//auth router
 	authRouter := rootRouter.PathPrefix("/users").Subrouter()
@@ -137,7 +98,7 @@ func ConstructHandler() http.Handler {
 	Profiles
 */
 
-func ProfileList(w http.ResponseWriter, r *http.Request) {
+func ProfileList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	profiles, err := cocs.ProfileList()
 
 	if err != nil {
@@ -148,7 +109,7 @@ func ProfileList(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, profiles)
 }
 
-func ProfileRead(w http.ResponseWriter, r *http.Request) {
+func ProfileRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	profile, err := cocs.ProfileRead(name)
 	if err != nil {
@@ -163,7 +124,7 @@ func ProfileRead(w http.ResponseWriter, r *http.Request) {
 	Hosts
 */
 
-func HostList(w http.ResponseWriter, r *http.Request) {
+func HostList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	hosts, err := cocs.HostList()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -173,7 +134,7 @@ func HostList(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, hosts)
 }
 
-func HostAdd(w http.ResponseWriter, r *http.Request) {
+func HostAdd(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	host := mux.Vars(r)["host"]
 	err := cocs.HostAdd(host)
 	if err != nil {
@@ -184,7 +145,7 @@ func HostAdd(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
-func HostRemove(w http.ResponseWriter, r *http.Request) {
+func HostRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	host := mux.Vars(r)["host"]
 	err := cocs.HostRemove(host)
 	if err != nil {
@@ -199,7 +160,7 @@ func HostRemove(w http.ResponseWriter, r *http.Request) {
 	Runlists
 */
 
-func RunlistList(w http.ResponseWriter, r *http.Request) {
+func RunlistList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	runlists, err := cocs.RunlistList()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -209,7 +170,7 @@ func RunlistList(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, runlists)
 }
 
-func RunlistRead(w http.ResponseWriter, r *http.Request) {
+func RunlistRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	runlist, err := cocs.RunlistRead(name)
 	if err != nil {
@@ -224,7 +185,7 @@ func RunlistRead(w http.ResponseWriter, r *http.Request) {
 	Groups
 */
 
-func GroupList(w http.ResponseWriter, r *http.Request) {
+func GroupList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	runlists, err := cocs.GroupList()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -234,7 +195,7 @@ func GroupList(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, runlists)
 }
 
-func GroupView(w http.ResponseWriter, r *http.Request) {
+func GroupView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	group, err := cocs.GroupView(name)
 	if err != nil {
@@ -244,7 +205,7 @@ func GroupView(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, group)
 }
 
-func GroupCreate(w http.ResponseWriter, r *http.Request) {
+func GroupCreate(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	err := cocs.GroupCreate(name)
 	if err != nil {
@@ -254,7 +215,7 @@ func GroupCreate(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
-func GroupRemove(w http.ResponseWriter, r *http.Request) {
+func GroupRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	err := cocs.GroupRemove(name)
 	if err != nil {
@@ -264,7 +225,7 @@ func GroupRemove(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
-func GroupPushApp(w http.ResponseWriter, r *http.Request) {
+func GroupPushApp(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	name := vars["name"]
@@ -289,7 +250,7 @@ func GroupPushApp(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
-func GroupPopApp(w http.ResponseWriter, r *http.Request) {
+func GroupPopApp(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	app := vars["app"]
@@ -302,7 +263,7 @@ func GroupPopApp(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
-func GroupRefresh(w http.ResponseWriter, r *http.Request) {
+func GroupRefresh(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 
 	err := cocs.GroupRefresh(name)
@@ -350,7 +311,7 @@ func GenToken(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, token)
 }
 
-func CrashlogList(w http.ResponseWriter, r *http.Request) {
+func CrashlogList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 
 	crashlogs, err := cocs.CrashlogList(name)
@@ -361,7 +322,7 @@ func CrashlogList(w http.ResponseWriter, r *http.Request) {
 	SendJson(w, crashlogs)
 }
 
-func CrashlogView(w http.ResponseWriter, r *http.Request) {
+func CrashlogView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
 	timestamp, err := strconv.Atoi(vars["timestamp"])

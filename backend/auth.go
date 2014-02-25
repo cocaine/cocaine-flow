@@ -13,6 +13,11 @@ type AuthController interface {
 	UserRemove(name string) error
 	GenToken(name, password string) (string, error)
 	ValidateToken(token string) (Cocaine, error)
+	GuestAccount() (Cocaine, error)
+}
+
+type UserInfo struct {
+	Name string `codec:"name"`
 }
 
 type AuthCocaine interface {
@@ -92,6 +97,15 @@ func (ac *authCocaine) ValidateToken(token string) (c Cocaine, err error) {
 	}
 
 	c = ac.getBackend(ui)
+	return
+}
+
+// Temp
+func (ac *authCocaine) GuestAccount() (c Cocaine, err error) {
+	c = &authBackend{
+		"GUEST",
+		cocainebackend{ac.app},
+	}
 	return
 }
 
