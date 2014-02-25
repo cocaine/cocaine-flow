@@ -11,6 +11,7 @@ from cocaine.tools.actions import profile
 from cocaine.tools.actions import runlist
 from cocaine.tools.actions import group
 from cocaine.tools.actions import crashlog
+from cocaine.tools.actions import app
 
 
 from userdb import UserDB
@@ -194,11 +195,11 @@ def group_remove(name, response):
 def group_pushapp(info, response):
     log.info(str(info))
     name = info["name"]
-    app = info["app"]
+    appname = info["app"]
     weight = int(info["weight"])
     log.info(str(info))
     try:
-        yield group.AddApplication(storage, name, app, weight).execute()
+        yield group.AddApplication(storage, name, appname, weight).execute()
     except Exception as err:
         log.error(repr(err))
         response.error(-100, "Unable to push app %s" % name)
@@ -210,9 +211,9 @@ def group_pushapp(info, response):
 @asynchronous
 def group_popapp(info, response):
     name = info["name"]
-    app = info["app"]
+    appname = info["app"]
     try:
-        yield group.RemoveApplication(storage, name, app).execute()
+        yield group.RemoveApplication(storage, name, appname).execute()
     except Exception as err:
         log.error(repr(err))
         response.error(-100, "Unable to pop app")
@@ -311,15 +312,40 @@ def user_list(_, response):
 def user_upload(info, response):
     try:
         user = info["user"]
-        app = info["app"]
+        appname = info["app"]
         path = info["path"]
-        log.error(str(info))
-        yield db.upload_app(user, app, path)
+        apps = yield app.List(storage).execute()
+        if appname in apps:
+            log.error("App %s has been already existed" % appname)
+            raise ValueError("App %s has been already existed" % appname)
+        yield db.upload_app(user, appname, path)
+    except KeyError as err:
+        response.error(-500, "Missing argument %s" % str(err))
     except Exception as err:
         log.error(repr(err))
         response.error(-100, repr(err))
     finally:
         response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_apps_list(username, response):
+    all_apps = yield app.List(storage).execute()
+    user_apps = yield db.user_apps(username)
+
+    set_all_apps = frozenset(all_apps)
+    set_user_apps = frozenset(user_apps)
+
+    if set_user_apps.issubset(set_all_apps):
+        response.write(user_apps)
+    else:
+        diff = set_user_apps.difference(set_all_apps)
+        log.error("Application info is inconsistent %s" % ' '.join(diff))
+
+        inter = set_user_apps.intersection(set_all_apps)
+        response.write(list(inter))
+    response.close()
 
 
 binds = {
@@ -352,6 +378,7 @@ binds = {
     "user-remove": user_remove,
     "user-list": user_list,
     "user-upload": user_upload,
+    "user-apps-list": user_apps_list,
 }
 
 API = {"Version": 1,

@@ -156,3 +156,14 @@ class UserDB(object):
                                      msgpack.packb(apps),
                                      USER_TAG)
             break
+
+    @asynchronous
+    def user_apps(self, user):
+        apps = list()
+        try:
+            raw_apps = yield self.storage.read(self.dbnamespace, user)
+            apps = msgpack.unpackb(raw_apps)
+        except Exception as err:
+            self.logger.error(repr(err))
+        finally:
+            yield apps
