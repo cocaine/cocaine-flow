@@ -324,11 +324,11 @@ func ConstructHandler() http.Handler {
 	rootRouter.HandleFunc("/groupsrefresh/", AuthRequired(GroupRefresh)).Methods("POST")
 	rootRouter.HandleFunc("/groupsrefresh/{name}", AuthRequired(GroupRefresh)).Methods("POST")
 
-	// //crashlog router
-	// crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
-	// crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
-	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
-	// // crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
+	//crashlog router
+	crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
+	crashlogRouter.HandleFunc("/{name}", AuthRequired(CrashlogList)).Methods("GET")
+	crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogView)).Methods("GET")
+	crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogRemove)).Methods("DELETE")
 
 	//auth router
 	authRouter := rootRouter.PathPrefix("/users").Subrouter()
@@ -337,9 +337,4 @@ func ConstructHandler() http.Handler {
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
 	return handlers.LoggingHandler(os.Stdout, router)
-}
-
-func main() {
-	h := ConstructHandler()
-	log.Fatalln(http.ListenAndServe(":8080", h))
 }
