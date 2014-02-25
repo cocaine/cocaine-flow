@@ -238,6 +238,12 @@ func UserSignin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session, _ := store.Get(r, sessionName)
+
+	session.Values["name"] = name
+	session.Values["password"] = password
+	store.Save(r, w, session)
+
 	fmt.Fprint(w, "OK")
 }
 
@@ -328,7 +334,7 @@ func ConstructHandler() http.Handler {
 	crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
 	crashlogRouter.HandleFunc("/{name}", AuthRequired(CrashlogList)).Methods("GET")
 	crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogView)).Methods("GET")
-	crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogRemove)).Methods("DELETE")
+	// crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogRemove)).Methods("DELETE")
 
 	//auth router
 	authRouter := rootRouter.PathPrefix("/users").Subrouter()

@@ -36,14 +36,40 @@ func Ping(w http.ResponseWriter, r *http.Request) {
 
 func AuthRequired(fn func(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//Check token auth
-		token := extractToken(r)
-		c, err := cocs.ValidateToken(token)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+		if session, ok := store.Get(r, sessionName); ok != nil {
+
+			name, isString := session.Values["name"].(string)
+			if !isString {
+				http.Error(w, "Corrupted cookies", http.StatusUnauthorized)
+				return
+			}
+
+			password, isString := session.Values["password"].(string)
+			if !isString {
+				http.Error(w, "Corrupted cookies", http.StatusUnauthorized)
+				return
+			}
+
+			c, err := cocs.UserSignin(name, password)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			fn(c, w, r)
 			return
 		}
-		fn(c, w, r)
+
+		if token := extractToken(r); len(token) > 0 {
+			c, err := cocs.ValidateToken(token)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			fn(c, w, r)
+			return
+		}
 	}
 }
 
