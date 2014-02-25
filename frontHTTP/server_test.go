@@ -3,6 +3,7 @@ package frontHTTP
 import (
 	_ "bytes"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,48 +21,102 @@ func AssertStatus(method string, urlStr string, status int, body io.Reader, t *t
 		t.Fatal(err)
 	}
 	if r.StatusCode != status {
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal(r.StatusCode, string(body))
 		t.Fatalf("%s Unexpected status %s %s", method, urlStr, r.Status)
 	}
 }
 
-func TestServer(t *testing.T) {
+func getToken(ts *httptest.Server, t *testing.T) (token string) {
 	uv := url.Values{}
 	uv.Set("name", testUser)
 	uv.Set("password", testUserPasswd)
 
+	resp, err := http.PostForm(ts.URL+"/flow/v1/users/token", uv)
+
+	if err != nil || resp.StatusCode != 200 {
+		t.Fatal(resp, err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token = string(body)
+	return token
+}
+
+func BTestAuth(t *testing.T) {
 	ts := httptest.NewServer(ConstructHandler())
 	defer ts.Close()
-	t.Logf("Test server is runing on %s", ts.URL)
 
-	AssertStatus("GET", ts.URL+"/ping", 200, nil, t)
-	AssertStatus("GET", ts.URL+"/flow/v1/hosts/", 200, nil, t)
-	AssertStatus("POST", ts.URL+"/flow/v1/hosts/HOST2", 200, nil, t)
-	AssertStatus("DELETE", ts.URL+"/flow/v1/hosts/HOST3", 200, nil, t)
+	uv := url.Values{}
+	uv.Set("name", testUser)
+	uv.Set("password", testUserPasswd)
 
-	AssertStatus("GET", ts.URL+"/flow/v1/profiles/", 200, nil, t)
-	AssertStatus("GET", ts.URL+"/flow/v1/profiles/TEST", 200, nil, t)
-
-	AssertStatus("GET", ts.URL+"/flow/v1/runlists/", 200, nil, t)
-	AssertStatus("GET", ts.URL+"/flow/v1/runlists/default", 200, nil, t)
-
-	AssertStatus("GET", ts.URL+"/flow/v1/groups/", 200, nil, t)
-	AssertStatus("POST", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
-	AssertStatus("GET", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
-
-	AssertStatus("POST", ts.URL+"/flow/v1/groups/TEST/APP?weight=1", 200, nil, t)
-	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST/APP", 200, nil, t)
-	AssertStatus("DELETE", ts.URL+"/flow/v1/groups/TEST", 200, nil, t)
-	AssertStatus("POST", ts.URL+"/flow/v1/groupsrefresh/", 200, nil, t)
-
-	if r, err := http.PostForm(ts.URL+"/flow/v1/users/signup", uv); err != nil || r.StatusCode != 200 {
-		t.Fatal(r, err)
+	r, err := http.PostForm(ts.URL+"/flow/v1/users/signup", uv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.StatusCode != 200 {
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal(r.StatusCode, string(body))
 	}
 
-	if r, err := http.PostForm(ts.URL+"/flow/v1/users/signin", uv); err != nil || r.StatusCode != 200 {
-		t.Fatal(r, err)
+	r, err = http.PostForm(ts.URL+"/flow/v1/users/signin", uv)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if r.StatusCode != 200 {
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal(r.StatusCode, string(body))
+	}
+}
 
-	if r, err := http.PostForm(ts.URL+"/flow/v1/users/token", uv); err != nil || r.StatusCode != 200 {
-		t.Fatal(r, err)
-	}
+func TestHosts(t *testing.T) {
+	ts := httptest.NewServer(ConstructHandler())
+	defer ts.Close()
+	token := getToken(ts, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/hosts/"+"?token="+token, 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/hosts/HOST2"+"?token="+token, 200, nil, t)
+	AssertStatus("DELETE", ts.URL+"/flow/v1/hosts/HOST3"+"?token="+token, 200, nil, t)
+}
+
+func TestProfiles(t *testing.T) {
+	ts := httptest.NewServer(ConstructHandler())
+	defer ts.Close()
+	token := getToken(ts, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/profiles/"+"?token="+token, 200, nil, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/profiles/TEST"+"?token="+token, 200, nil, t)
+}
+
+func TestRunlists(t *testing.T) {
+	ts := httptest.NewServer(ConstructHandler())
+	defer ts.Close()
+	token := getToken(ts, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/runlists/"+"?token="+token, 200, nil, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/runlists/default"+"?token="+token, 200, nil, t)
+}
+
+func TestGroups(t *testing.T) {
+	ts := httptest.NewServer(ConstructHandler())
+	defer ts.Close()
+	token := getToken(ts, t)
+
+	AssertStatus("GET", ts.URL+"/flow/v1/groups/"+"?token="+token, 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/groups/TEST"+"?token="+token, 200, nil, t)
+	AssertStatus("GET", ts.URL+"/flow/v1/groups/TEST"+"?token="+token, 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/groupsrefresh/"+"?token="+token, 200, nil, t)
 }

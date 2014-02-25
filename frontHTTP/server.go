@@ -35,65 +35,6 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "OK")
 }
 
-func ConstructHandler() http.Handler {
-	var err error
-	cocs, err = backend.NewBackend()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	//main router
-	router := mux.NewRouter()
-	router.HandleFunc("/ping", Ping)
-	router.HandleFunc("/test", Test)
-
-	//flow router
-	rootRouter := router.PathPrefix(pathPrefix).Subrouter()
-
-	//profiles router
-	profilesRouter := rootRouter.PathPrefix("/profiles").Subrouter()
-	profilesRouter.HandleFunc("/", Guest(ProfileList)).Methods("GET")
-	profilesRouter.HandleFunc("/{name}", Guest(ProfileRead)).Methods("GET")
-
-	//hosts router
-	// hostsRouter := rootRouter.PathPrefix("/hosts").Subrouter()
-	// hostsRouter.HandleFunc("/", HostList).Methods("GET")
-	// hostsRouter.HandleFunc("/{host}", HostAdd).Methods("POST", "PUT")
-	// hostsRouter.HandleFunc("/{host}", HostRemove).Methods("DELETE")
-
-	// //runlists router
-	// runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
-	// runlistsRouter.HandleFunc("/", RunlistList).Methods("GET")
-	// runlistsRouter.HandleFunc("/{name}", RunlistRead).Methods("GET")
-
-	// //routing groups
-	// groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
-	// groupsRouter.HandleFunc("/", GroupList).Methods("GET")
-	// groupsRouter.HandleFunc("/{name}", GroupView).Methods("GET")
-	// groupsRouter.HandleFunc("/{name}", GroupCreate).Methods("POST")
-	// groupsRouter.HandleFunc("/{name}", GroupRemove).Methods("DELETE")
-
-	// groupsRouter.HandleFunc("/{name}/{app}", GroupPushApp).Methods("POST", "PUT")
-	// groupsRouter.HandleFunc("/{name}/{app}", GroupPopApp).Methods("DELETE")
-
-	// rootRouter.HandleFunc("/groupsrefresh/", GroupRefresh).Methods("POST")
-	// rootRouter.HandleFunc("/groupsrefresh/{name}", GroupRefresh).Methods("POST")
-
-	// //crashlog router
-	// crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
-	// crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
-	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
-	// // crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
-
-	//auth router
-	authRouter := rootRouter.PathPrefix("/users").Subrouter()
-	authRouter.HandleFunc("/token", GenToken).Methods("POST")
-	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
-	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
-
-	return handlers.LoggingHandler(os.Stdout, router)
-}
-
 /*
 	Profiles
 */
@@ -337,6 +278,65 @@ func CrashlogView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	fmt.Fprintf(w, crashlog)
+}
+
+func ConstructHandler() http.Handler {
+	var err error
+	cocs, err = backend.NewBackend()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	//main router
+	router := mux.NewRouter()
+	router.HandleFunc("/ping", Ping)
+	router.HandleFunc("/test", Test)
+
+	//flow router
+	rootRouter := router.PathPrefix(pathPrefix).Subrouter()
+
+	//profiles router
+	profilesRouter := rootRouter.PathPrefix("/profiles").Subrouter()
+	profilesRouter.HandleFunc("/", Guest(ProfileList)).Methods("GET")
+	profilesRouter.HandleFunc("/{name}", AuthRequired(ProfileRead)).Methods("GET")
+
+	//hosts router
+	hostsRouter := rootRouter.PathPrefix("/hosts").Subrouter()
+	hostsRouter.HandleFunc("/", AuthRequired(HostList)).Methods("GET")
+	hostsRouter.HandleFunc("/{host}", AuthRequired(HostAdd)).Methods("POST", "PUT")
+	hostsRouter.HandleFunc("/{host}", AuthRequired(HostRemove)).Methods("DELETE")
+
+	// //runlists router
+	runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
+	runlistsRouter.HandleFunc("/", AuthRequired(RunlistList)).Methods("GET")
+	runlistsRouter.HandleFunc("/{name}", AuthRequired(RunlistRead)).Methods("GET")
+
+	// //routing groups
+	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
+	groupsRouter.HandleFunc("/", AuthRequired(GroupList)).Methods("GET")
+	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupView)).Methods("GET")
+	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupCreate)).Methods("POST")
+	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupRemove)).Methods("DELETE")
+
+	groupsRouter.HandleFunc("/{name}/{app}", AuthRequired(GroupPushApp)).Methods("POST", "PUT")
+	groupsRouter.HandleFunc("/{name}/{app}", AuthRequired(GroupPopApp)).Methods("DELETE")
+
+	rootRouter.HandleFunc("/groupsrefresh/", AuthRequired(GroupRefresh)).Methods("POST")
+	rootRouter.HandleFunc("/groupsrefresh/{name}", AuthRequired(GroupRefresh)).Methods("POST")
+
+	// //crashlog router
+	// crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
+	// crashlogRouter.HandleFunc("/{name}", CrashlogList).Methods("GET")
+	// crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogView).Methods("GET")
+	// // crashlogRouter.HandleFunc("/{name}/{timestamp}", CrashlogRemove).Methods("DELETE")
+
+	//auth router
+	authRouter := rootRouter.PathPrefix("/users").Subrouter()
+	authRouter.HandleFunc("/token", GenToken).Methods("POST")
+	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
+	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
+
+	return handlers.LoggingHandler(os.Stdout, router)
 }
 
 func main() {
