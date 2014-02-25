@@ -1,12 +1,11 @@
 import uuid
 import hashlib
+from functools import partial
 
 from Crypto.Hash import HMAC
 import msgpack
 
 
-# from cocaine.tools.actions.app import DockerUpload
-# from cocaine.futures.chain import concurrent
 from cocaine.asio.engine import asynchronous
 from cocaine.logging import Logger
 
@@ -16,6 +15,8 @@ USER_TAG = ["FLOW_USER"]
 
 encoder = msgpack.packb
 decoder = msgpack.unpackb
+
+logger = Logger()
 
 
 class SecureStorage(object):
@@ -95,7 +96,17 @@ class UserDB(object):
 
     @asynchronous
     def remove(self, name):
-        yield self.storage.remove(self.namespace, name)
+        try:
+            self.logger.info("Remove user %s" % name)
+            yield self.storage.remove(self.namespace, name)
+        except Exception as err:
+            self.logger.error(repr(err))
+
+        try:
+            self.logger.info("Remove user %s application info" % name)
+            yield self.storage.remove(self.dbnamespace, name)
+        except Exception as err:
+            self.logger.error(repr(err))
 
     @asynchronous
     def login(self, name, password):
@@ -115,49 +126,6 @@ class UserDB(object):
         yield self.storage.find(self.namespace, USER_TAG)
 
     @asynchronous
-    def upload_app(self, user, name, path):
-        self.logger.error("%s %s %s" % (user, name, path))
-        yield self.write_app_info(user, name)
-
-    @asynchronous
-    def write_app_info(self, user, name):
-        while True:
-            info = None
-            summ = ""
-            try:
-                info = yield self.storage.read(self.dbnamespace, user)
-                summ = hashlib.md5(info).hexdigest()
-            except Exception as err:
-                self.logger.error(repr(err))
-
-            apps = list()
-            if info is None:
-                apps = list()
-            else:
-                apps = msgpack.unpackb(info)
-
-            if name in apps:
-                self.logger.error("App %s has already existed" % name)
-                break
-            apps.append(name)
-
-            try:
-                info = yield self.storage.read(self.dbnamespace, user)
-            except Exception as err:
-                self.logger.error(repr(err))
-
-            if info is not None and summ != hashlib.md5(info).hexdigest():
-                self.logger.info("MD5 mismatchs. Continue")
-                continue
-
-            self.logger.info("MD5 is still valid. Do write")
-            yield self.storage.write(self.dbnamespace,
-                                     user,
-                                     msgpack.packb(apps),
-                                     USER_TAG)
-            break
-
-    @asynchronous
     def user_apps(self, user):
         apps = list()
         try:
@@ -167,3 +135,53 @@ class UserDB(object):
             self.logger.error(repr(err))
         finally:
             yield apps
+
+    @asynchronous
+    def write_app_info(self, user, name):
+        def handler(data):
+            apps = list()
+            if data is None:
+                apps = list()
+            else:
+                apps = msgpack.unpackb(data)
+
+            if name in apps:
+                self.logger.error("App %s already exists" % name)
+                return None
+
+            apps.append(name)
+            return msgpack.packb(apps)
+
+        reader = partial(self.storage.read, self.dbnamespace, user)
+        writer = lambda result: self.storage.write(self.dbnamespace,
+                                                   user,
+                                                   result,
+                                                   USER_TAG)
+        yield self.quasi_atomic_write(reader, writer, handler)
+
+    @asynchronous
+    def quasi_atomic_write(self, reader, writer, handler):
+        while True:
+            data = None
+            summ = ""
+            try:
+                data = yield reader()
+                summ = hashlib.md5(data).hexdigest()
+            except Exception as err:
+                self.logger.error(repr(err))
+
+            result = handler(data)
+            if result is None:
+                break
+
+            try:
+                data = yield reader()
+            except Exception as err:
+                self.logger.error(repr(err))
+
+            if data is None or summ == hashlib.md5(data).hexdigest():
+                self.logger.info("MD5 is still valid. Do write")
+                yield writer(result)
+                break
+
+            self.logger.info("MD5 mismatchs. Continue")

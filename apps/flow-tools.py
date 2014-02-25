@@ -316,9 +316,9 @@ def user_upload(info, response):
         path = info["path"]
         apps = yield app.List(storage).execute()
         if appname in apps:
-            log.error("App %s has been already existed" % appname)
-            raise ValueError("App %s has been already existed" % appname)
-        yield db.upload_app(user, appname, path)
+            log.error("App %s already exists" % appname)
+            raise ValueError("App %s already exists" % appname)
+        yield db.write_app_info(user, appname)
     except KeyError as err:
         response.error(-500, "Missing argument %s" % str(err))
     except Exception as err:

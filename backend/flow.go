@@ -38,6 +38,11 @@ type CrashlogController interface {
 	CrashlogView(name string, timestamp int) (string, error)
 }
 
+type ApplicationContriller interface {
+	ApplicationList(username string) ([]string, error)
+	ApplicationUpload(username string, appname string) error
+}
+
 type Cocaine interface {
 	CrashlogController
 	GroupController
