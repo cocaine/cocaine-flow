@@ -1,6 +1,8 @@
 package backend
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -179,7 +181,8 @@ func TestCrashlogs(t *testing.T) {
 
 	if len(crashlogs) > 0 {
 		t.Log(crashlogs[0])
-		crash, err := cocs.CrashlogView(crashlogs[0], 1392638415086578)
+		ts, _ := strconv.Atoi(strings.Split(crashlogs[0], ":")[0])
+		crash, err := cocs.CrashlogView(crashlogs[0], ts)
 		if err != nil {
 			t.Fatal(err)
 		}
