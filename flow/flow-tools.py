@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import cStringIO
+import uuid
+
 import msgpack
 
 from cocaine.services import Service
@@ -23,7 +26,32 @@ storage = Service("storage")
 locator = Locator()
 
 
+LOGS_NAMESPACE = "flow_upload_logs"
+
 db = UserDB(storage, "KEY", "TEST")
+
+
+class UploadLog(object):
+    def __init__(self, depth=10, on_flush=None):
+        self.current = list()
+        self.buffer = cStringIO.StringIO()
+        self.depth = depth
+        self.on_flush = on_flush
+
+    def write(self, value):
+        self.current.append(str(value))
+        if len(self.current) >= self.depth:
+            self.flush()
+
+    def flush(self):
+        data = ''.join(self.current)
+        self.buffer.write(data)
+        self.current = list()
+        if self.on_flush is not None:
+            self.on_flush(data)
+
+    def getall(self):
+        return self.buffer.getvalue()
 
 
 def unpacker(decoder):
@@ -310,15 +338,44 @@ def user_list(_, response):
 @unpacker(msgpack.unpackb)
 @asynchronous
 def user_upload(info, response):
+    upload_ID = uuid.uuid4().hex
+    response.write(upload_ID)
     try:
         user = info["user"]
         appname = info["app"]
         path = info["path"]
+        docker = info["docker"]
+        registry = info["registry"]
+        user_exists = yield db.exists(user)
+        if not user_exists:
+            raise ValueError("User %s doesn't exist" % user)
+
         apps = yield app.List(storage).execute()
         if appname in apps:
             log.error("App %s already exists" % appname)
             raise ValueError("App %s already exists" % appname)
-        yield db.write_app_info(user, appname)
+
+        upload_log = UploadLog(depth=5, on_flush=response.write)
+        upload_log.write("User %s, app %s, id %s\n" % (user,
+                                                       appname,
+                                                       upload_ID))
+        try:
+            uploader = app.DockerUpload(storage, path,
+                                        appname, None,
+                                        docker, registry,
+                                        on_read=upload_log.write)
+            yield uploader.execute()
+            yield db.write_app_info(user, appname)
+        except Exception as err:
+            upload_log.write("Error: %s\n" % str(err))
+            raise err
+        finally:
+            upload_log.flush()
+            logdata = upload_log.getall()
+            log.debug("Saving uploadlog into storage")
+            yield db.write_uploadlog(user, upload_ID, logdata)
+            log.debug("Uploadlog has been saved successfully")
+
     except KeyError as err:
         response.error(-500, "Missing argument %s" % str(err))
     except Exception as err:
@@ -346,6 +403,32 @@ def user_apps_list(username, response):
         inter = set_user_apps.intersection(set_all_apps)
         response.write(list(inter))
     response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_uploadlog_list(username, response):
+    try:
+        keys = db.list_uploadlog(username)
+        response.write(keys)
+    except Exception as err:
+        log.error(str(err))
+        response.error(-100, repr(err))
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def user_uploadlog_read(key, response):
+    try:
+        data = db.read_uploadlog(key)
+        response.write(data)
+    except Exception as err:
+        log.error(str(err))
+        response.error(-100, repr(err))
+    finally:
+        response.close()
 
 
 binds = {
@@ -379,6 +462,8 @@ binds = {
     "user-list": user_list,
     "user-upload": user_upload,
     "user-apps-list": user_apps_list,
+    "user-uploadlog-list": user_uploadlog_list,
+    "user-uploadlog-read": user_uploadlog_read,
 }
 
 API = {"Version": 1,

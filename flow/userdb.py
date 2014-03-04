@@ -11,7 +11,7 @@ from cocaine.logging import Logger
 
 namespace_prefix = "flow-users@"
 USER_TAG = ["FLOW_USER"]
-
+LOG_TAG = ["FLOW_UPLOAD_LOG"]
 
 encoder = msgpack.packb
 decoder = msgpack.unpackb
@@ -51,6 +51,7 @@ class UserDB(object):
         self.logger = Logger()
         self.namespace = namespace_prefix + namespace
         self.dbnamespace = namespace_prefix + "apps"
+        self.lognamespace = namespace_prefix + "logs"
         self.logger.info("UserDB has been initialized. Use namespace %s"
                          % self.namespace)
 
@@ -108,6 +109,16 @@ class UserDB(object):
         except Exception as err:
             self.logger.error(repr(err))
 
+        try:
+            self.logger.info("Remove user %s upload logs" % name)
+            tags = LOG_TAG + [name]
+            logkeys = yield self.storage.find(self.lognamespace, tags)
+            self.logger.debug("Uploadlogs keys %s" % logkeys)
+            for key in logkeys:
+                yield self.storage.remove(self.lognamespace, key)
+        except Exception as err:
+            self.logger.error(repr(err))
+
     @asynchronous
     def login(self, name, password):
         user_info = yield self.get(name)
@@ -158,6 +169,20 @@ class UserDB(object):
                                                    result,
                                                    USER_TAG)
         yield self.quasi_atomic_write(reader, writer, handler)
+
+    @asynchronous
+    def write_uploadlog(self, user, key, logdata):
+        tags = LOG_TAG + [user]
+        yield self.storage.write(self.lognamespace, key, logdata, tags)
+
+    @asynchronous
+    def read_uploadlog(self, key):
+        yield self.storage.read(self.lognamespace, key)
+
+    @asynchronous
+    def list_uploadlog(self, user):
+        tags = [user] if user else LOG_TAG
+        yield self.storage.find(self.lognamespace, tags)
 
     @asynchronous
     def quasi_atomic_write(self, reader, writer, handler):
