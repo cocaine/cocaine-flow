@@ -1,5 +1,9 @@
 package backend
 
+import (
+	"github.com/cocaine/cocaine-flow/common"
+)
+
 const null_arg = 0
 
 /*
@@ -38,9 +42,14 @@ type CrashlogController interface {
 	CrashlogView(name string, timestamp int) (string, error)
 }
 
-type ApplicationContriller interface {
-	ApplicationList(username string) ([]string, error)
-	ApplicationUpload(username string, appname string) error
+type ApplicationController interface {
+	// ApplicationList(username string) ([]string, error)
+	ApplicationUpload(username string, appname string, path string) (chan string, *bool, error)
+}
+
+type UploadLogController interface {
+	UploadLogList(username string) ([]string, error)
+	UploadLogRead(id string) ([]byte, error)
 }
 
 type Cocaine interface {
@@ -49,10 +58,12 @@ type Cocaine interface {
 	HostController
 	ProfileController
 	RunlistController
+	ApplicationController
 }
 
 type cocainebackend struct {
 	app appWrapper
+	common.Context
 }
 
 /*
@@ -169,5 +180,58 @@ func (b *cocainebackend) CrashlogView(name string, timestamp int) (crashlog stri
 		"timestamp": timestamp,
 	}
 	err = b.app.Call("crashlog-view", task, &crashlog)
+	return
+}
+
+/*
+	ApplicationController impl
+*/
+
+//TBD - drop *bool
+func (b *cocainebackend) ApplicationUpload(username string, appname string, path string) (ans chan string, isOk *bool, err error) {
+	task := map[string]interface{}{
+		"user":     username,
+		"app":      appname,
+		"path":     path,
+		"docker":   b.Context.DockerEndpoint(),
+		"registry": b.Context.RegistryEndpoint(),
+	}
+	stream, err := b.app.StreamCall("user-upload", task)
+	if err != nil {
+		return
+	}
+
+	isOk = new(bool)
+
+	ans = make(chan string, 10)
+	go func() {
+		for {
+			var logdata string
+			select {
+			case res, ok := <-stream:
+				if !ok {
+					close(ans)
+					*isOk = true
+					return
+				}
+
+				if res.Err() != nil {
+					*isOk = false
+					close(ans)
+					return
+				}
+
+				extracterr := res.Extract(&logdata)
+				if extracterr != nil {
+					continue
+				}
+
+				if len(logdata) > 0 {
+					ans <- logdata
+				}
+			}
+		}
+	}()
+	//TBD TEMP
 	return
 }

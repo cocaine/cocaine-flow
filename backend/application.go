@@ -19,6 +19,7 @@ var (
 
 type appWrapper interface {
 	Call(method string, args interface{}, result ...interface{}) (err error)
+	StreamCall(method string, args interface{}) (<-chan cocaine.ServiceResult, error)
 }
 
 type wrappedApp struct {
@@ -46,6 +47,17 @@ func (aW *wrappedApp) Call(method string, args interface{}, result ...interface{
 		err = res.Extract(result[0])
 	}
 	return
+}
+
+func (aW *wrappedApp) StreamCall(method string, args interface{}) (<-chan cocaine.ServiceResult, error) {
+	var buf []byte
+	err := codec.NewEncoderBytes(&buf, h).Encode(args)
+	if err != nil {
+		return nil, err
+	}
+
+	ch := aW.app.Call("enqueue", method, buf)
+	return ch, nil
 }
 
 func NewAppWrapper(name string) (wa appWrapper, err error) {

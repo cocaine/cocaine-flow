@@ -346,20 +346,22 @@ def user_upload(info, response):
         path = info["path"]
         docker = info["docker"]
         registry = info["registry"]
-        user_exists = yield db.exists(user)
-        if not user_exists:
-            raise ValueError("User %s doesn't exist" % user)
-
-        apps = yield app.List(storage).execute()
-        if appname in apps:
-            log.error("App %s already exists" % appname)
-            raise ValueError("App %s already exists" % appname)
 
         upload_log = UploadLog(depth=5, on_flush=response.write)
         upload_log.write("User %s, app %s, id %s\n" % (user,
                                                        appname,
                                                        upload_ID))
+
         try:
+            user_exists = yield db.exists(user)
+            if not user_exists:
+                raise ValueError("User %s doesn't exist" % user)
+
+            apps = yield app.List(storage).execute()
+            if appname in apps:
+                log.error("App %s already exists" % appname)
+                raise ValueError("App %s already exists" % appname)
+
             uploader = app.DockerUpload(storage, path,
                                         appname, None,
                                         docker, registry,

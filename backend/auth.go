@@ -27,6 +27,7 @@ type AuthCocaine interface {
 type authCocaine struct {
 	app     appWrapper
 	tokener Tokenhandler
+	context common.Context
 }
 
 type authBackend struct {
@@ -41,7 +42,7 @@ type authBackend struct {
 func (ac *authCocaine) getBackend(ui UserInfo) (c Cocaine) {
 	return &authBackend{
 		ui.Name,
-		cocainebackend{ac.app},
+		cocainebackend{ac.app, ac.context},
 	}
 }
 
@@ -104,12 +105,17 @@ func (ac *authCocaine) ValidateToken(token string) (c Cocaine, err error) {
 func (ac *authCocaine) GuestAccount() (c Cocaine, err error) {
 	c = &authBackend{
 		"GUEST",
-		cocainebackend{ac.app},
+		cocainebackend{ac.app, ac.context},
 	}
 	return
 }
 
 func NewBackend() (ac AuthCocaine, err error) {
+	context, err := common.GetContext()
+	if err != nil {
+		return
+	}
+
 	app, err := NewAppWrapper("flow-tools")
 	if err != nil {
 		return
@@ -124,6 +130,7 @@ func NewBackend() (ac AuthCocaine, err error) {
 	ac = &authCocaine{
 		app:     app,
 		tokener: &Token{ciph},
+		context: context,
 	}
 	return
 }

@@ -4,12 +4,27 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/cocaine/cocaine-flow/common"
 )
 
 const testUser = "noxiouz"
 const testUserPasswd = "qwerty"
+const testDocker = "http://192.168.1.150:3138"
+const testCocaine = ":10053"
+const testRegistry = "192.168.1.150:5000"
+
+func createContext() {
+	cfg := common.ContextCfg{
+		Docker:   testDocker,
+		Registry: testRegistry,
+		Cocaine:  testCocaine,
+	}
+	common.InitializeContext(cfg)
+}
 
 func getTestCocaine(t *testing.T) (c Cocaine) {
+
 	b, err := NewBackend()
 	if err != nil {
 		t.Fatalf("Unable to create backend %s ", err)
@@ -24,6 +39,7 @@ func getTestCocaine(t *testing.T) (c Cocaine) {
 
 func TestAuth(t *testing.T) {
 	// Create backend
+	createContext()
 	b, err := NewBackend()
 	if err != nil {
 		t.Fatalf("Unable to create backend %s ", err)
@@ -177,7 +193,7 @@ func TestCrashlogs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Logf("There is/are %d crashlog", len(crashlogs))
+	t.Logf("There is/are %d crashlogs", len(crashlogs))
 
 	if len(crashlogs) > 0 {
 		t.Log(crashlogs[0])
@@ -187,5 +203,21 @@ func TestCrashlogs(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Log(crash)
+	}
+}
+
+func TestUpload(t *testing.T) {
+	cocs := getTestCocaine(t)
+	ch, status, err := cocs.ApplicationUpload(testUser, "bullet", "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	for lg := range ch {
+		t.Log(lg)
+	}
+
+	if !(*status) {
+		t.Fatalf("Not uploaded")
 	}
 }
