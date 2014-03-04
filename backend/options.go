@@ -18,6 +18,6 @@ func init() {
 	)
 
 	flag.StringVar(&CocaineEndpoint, "cocaine", defaultCocaine, "cocaine endpoint")
-	flag.StringVar(&DockerEndpoint, "cocaine", defaultDocker, "Docker endpoint")
-	flag.StringVar(&RegistryEndpoint, "cocaine", defaultRegistry, "cocaine endpoint")
+	flag.StringVar(&DockerEndpoint, "docker", defaultDocker, "Docker endpoint")
+	flag.StringVar(&RegistryEndpoint, "registry", defaultRegistry, "cocaine endpoint")
 }
