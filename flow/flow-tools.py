@@ -339,7 +339,7 @@ def user_list(_, response):
 @asynchronous
 def user_upload(info, response):
     upload_ID = uuid.uuid4().hex
-    response.write(upload_ID)
+    response.write("%s\n" % upload_ID)
     try:
         user = info["user"]
         appname = info["app"]

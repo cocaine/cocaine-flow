@@ -209,10 +209,11 @@ func TestCrashlogs(t *testing.T) {
 func TestUpload(t *testing.T) {
 	cocs := getTestCocaine(t)
 	info := AppUplodaInfo{
-		Path: "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
-		App:  "bullet",
+		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
+		App:     "bullet",
+		Version: "first",
 	}
-	ch, status, err := cocs.ApplicationUpload(testUser, info)
+	ch, status, err := cocs.ApplicationUpload(info)
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}

@@ -35,6 +35,10 @@ type authBackend struct {
 	cocainebackend
 }
 
+func (a *authBackend) ApplicationUpload(info AppUplodaInfo) (chan string, *bool, error) {
+	return a.cocainebackend.ApplicationUpload(a.name, info)
+}
+
 /*
 
 */

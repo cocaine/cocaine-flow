@@ -70,6 +70,9 @@ func AuthRequired(fn func(cocs backend.Cocaine, w http.ResponseWriter, r *http.R
 			fn(c, w, r)
 			return
 		}
+
+		http.Error(w, "Authorization required", http.StatusUnauthorized)
+		return
 	}
 }
 

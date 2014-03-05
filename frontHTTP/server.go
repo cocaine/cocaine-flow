@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 
@@ -286,6 +284,23 @@ func CrashlogView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, crashlog)
 }
 
+func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	info := backend.AppUplodaInfo{
+		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
+		App:     "bullet",
+		Version: "first",
+	}
+	ch, _, err := cocs.ApplicationUpload(info)
+	if err != nil {
+		log.Println("Error %s", err)
+	}
+
+	for lg := range ch {
+		w.Write([]byte(lg))
+		w.(http.Flusher).Flush()
+	}
+}
+
 func ConstructHandler() http.Handler {
 	var err error
 	cocs, err = backend.NewBackend()
@@ -312,12 +327,12 @@ func ConstructHandler() http.Handler {
 	hostsRouter.HandleFunc("/{host}", AuthRequired(HostAdd)).Methods("POST", "PUT")
 	hostsRouter.HandleFunc("/{host}", AuthRequired(HostRemove)).Methods("DELETE")
 
-	// //runlists router
+	//runlists router
 	runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
 	runlistsRouter.HandleFunc("/", AuthRequired(RunlistList)).Methods("GET")
 	runlistsRouter.HandleFunc("/{name}", AuthRequired(RunlistRead)).Methods("GET")
 
-	// //routing groups
+	//routing groups
 	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
 	groupsRouter.HandleFunc("/", AuthRequired(GroupList)).Methods("GET")
 	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupView)).Methods("GET")
@@ -342,5 +357,15 @@ func ConstructHandler() http.Handler {
 	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
-	return handlers.LoggingHandler(os.Stdout, router)
+	//app router
+	buildlogRouter := rootRouter.PathPrefix("/builldlog").Subrouter()
+	buildlogRouter.HandleFunc("/", AuthRequired(BuildlogList)).Methods("GET")
+	buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildlogRead)).Methods("GET")
+
+	//uploadlog router
+	appRouter := rootRouter.PathPrefix("/uploadlog").Subrouter()
+	authRouter.HandleFunc("/", AuthRequired())
+
+	//return handlers.LoggingHandler(os.Stdout, router)
+	return router
 }

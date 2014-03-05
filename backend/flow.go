@@ -1,14 +1,26 @@
 package backend
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/cocaine/cocaine-flow/common"
 )
 
 const null_arg = 0
 
 type AppUplodaInfo struct {
-	Path string `codec:"path"`
-	App  string `codec:"app"`
+	Path    string `codec:"path"`
+	App     string `codec:"app"`
+	Version string `codec:"-"`
+}
+
+func (a *AppUplodaInfo) Fullname() string {
+	return fmt.Sprintf("%s@%s", a.App, a.Version)
+}
+
+func (a *AppUplodaInfo) RoutingGroup() string {
+	return a.App
 }
 
 type AppUploadTask struct {
@@ -16,6 +28,17 @@ type AppUploadTask struct {
 	Docker   string `codec:"docker"`
 	Registry string `codec:"registry"`
 	AppUplodaInfo
+}
+
+func isStringInSlice(name string, slice []string) (b bool) {
+	b = false
+	for _, item := range slice {
+		if item == name {
+			b = true
+			return
+		}
+	}
+	return
 }
 
 /*
@@ -56,7 +79,7 @@ type CrashlogController interface {
 
 type ApplicationController interface {
 	// ApplicationList(username string) ([]string, error)
-	ApplicationUpload(username string, info AppUplodaInfo) (chan string, *bool, error)
+	ApplicationUpload(info AppUplodaInfo) (chan string, *bool, error)
 }
 
 type UploadLogController interface {
@@ -216,19 +239,46 @@ func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) 
 
 	ans = make(chan string, 10)
 	go func() {
+		//close response stream
+		defer close(ans)
+		//operations with routing groups
+		defer func() {
+			if !(*isOk) {
+				return
+			}
+
+			routingGroupName := info.RoutingGroup()
+
+			rgs, err := b.GroupList()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			if !isStringInSlice(routingGroupName, rgs) {
+				b.GroupCreate(routingGroupName)
+			}
+
+			err = b.GroupPushApp(
+				routingGroupName,
+				info.Fullname(), 0)
+			if err != nil {
+				log.Println(err)
+			}
+
+		}()
+
 		for {
 			var logdata string
 			select {
 			case res, ok := <-stream:
 				if !ok {
-					close(ans)
 					*isOk = true
 					return
 				}
 
 				if res.Err() != nil {
 					*isOk = false
-					close(ans)
 					return
 				}
 
