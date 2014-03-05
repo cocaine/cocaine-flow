@@ -6,6 +6,18 @@ import (
 
 const null_arg = 0
 
+type AppUplodaInfo struct {
+	Path string `codec:"path"`
+	App  string `codec:"app"`
+}
+
+type AppUploadTask struct {
+	Username string `codec:"user"`
+	Docker   string `codec:"docker"`
+	Registry string `codec:"registry"`
+	AppUplodaInfo
+}
+
 /*
 	Content interfaces
 */
@@ -44,7 +56,7 @@ type CrashlogController interface {
 
 type ApplicationController interface {
 	// ApplicationList(username string) ([]string, error)
-	ApplicationUpload(username string, appname string, path string) (chan string, *bool, error)
+	ApplicationUpload(username string, info AppUplodaInfo) (chan string, *bool, error)
 }
 
 type UploadLogController interface {
@@ -188,13 +200,12 @@ func (b *cocainebackend) CrashlogView(name string, timestamp int) (crashlog stri
 */
 
 //TBD - drop *bool
-func (b *cocainebackend) ApplicationUpload(username string, appname string, path string) (ans chan string, isOk *bool, err error) {
-	task := map[string]interface{}{
-		"user":     username,
-		"app":      appname,
-		"path":     path,
-		"docker":   b.Context.DockerEndpoint(),
-		"registry": b.Context.RegistryEndpoint(),
+func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) (ans chan string, isOk *bool, err error) {
+	task := AppUploadTask{
+		Username:      username,
+		Docker:        b.Context.DockerEndpoint(),
+		Registry:      b.Context.RegistryEndpoint(),
+		AppUplodaInfo: info,
 	}
 	stream, err := b.app.StreamCall("user-upload", task)
 	if err != nil {

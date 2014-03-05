@@ -10,9 +10,9 @@ import (
 
 const testUser = "noxiouz"
 const testUserPasswd = "qwerty"
-const testDocker = "http://192.168.1.150:3138"
+const testDocker = "http://192.168.57.100:3138"
 const testCocaine = ":10053"
-const testRegistry = "192.168.1.150:5000"
+const testRegistry = "192.168.57.100:5000"
 
 func createContext() {
 	cfg := common.ContextCfg{
@@ -208,7 +208,11 @@ func TestCrashlogs(t *testing.T) {
 
 func TestUpload(t *testing.T) {
 	cocs := getTestCocaine(t)
-	ch, status, err := cocs.ApplicationUpload(testUser, "bullet", "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow")
+	info := AppUplodaInfo{
+		Path: "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
+		App:  "bullet",
+	}
+	ch, status, err := cocs.ApplicationUpload(testUser, info)
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}
