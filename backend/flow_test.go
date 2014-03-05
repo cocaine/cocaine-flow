@@ -19,6 +19,7 @@ func createContext() {
 		Docker:   testDocker,
 		Registry: testRegistry,
 		Cocaine:  testCocaine,
+		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/keyfile.cfg",
 	}
 	common.InitializeContext(cfg)
 }

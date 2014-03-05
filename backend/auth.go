@@ -125,7 +125,7 @@ func NewBackend() (ac AuthCocaine, err error) {
 		return
 	}
 
-	ciph, err := aes.NewCipher(common.GetsScretKey())
+	ciph, err := aes.NewCipher(context.SecretKey())
 	if err != nil {
 		log.Printf("Error %s", err)
 		return

@@ -8,10 +8,15 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/cocaine/cocaine-flow/common"
 )
 
 const testUser = "noxiouz"
 const testUserPasswd = "qwerty"
+const testDocker = "http://192.168.57.100:3138"
+const testCocaine = ":10053"
+const testRegistry = "192.168.57.100:5000"
 
 func AssertStatus(method string, urlStr string, status int, body io.Reader, t *testing.T) {
 	cl := http.Client{}
@@ -50,7 +55,26 @@ func getToken(ts *httptest.Server, t *testing.T) (token string) {
 	return token
 }
 
+func TestInit(t *testing.T) {
+	cfg := common.ContextCfg{
+		Docker:   testDocker,
+		Registry: testRegistry,
+		Cocaine:  testCocaine,
+		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/keyfile.cfg",
+	}
+	err := common.InitializeContext(cfg)
+	if err != nil {
+		t.Fatalf("Context initialization error %s", err)
+	}
+
+	_, err = common.GetContext()
+	if err != nil {
+		t.Fatalf("GetContext error %s", err)
+	}
+}
+
 func BTestAuth(t *testing.T) {
+
 	ts := httptest.NewServer(ConstructHandler())
 	defer ts.Close()
 

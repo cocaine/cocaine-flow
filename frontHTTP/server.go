@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/sessions"
 
 	"github.com/cocaine/cocaine-flow/backend"
+	"github.com/cocaine/cocaine-flow/common"
 )
 
 const pathPrefix = "/flow/v1"
@@ -17,9 +18,9 @@ const sessionName = "flow-session"
 
 var (
 	// TBD: Read it from file
-	secretkey = []byte("something-very-secretkeysddsddsd")
-	cocs      backend.AuthCocaine
-	store     = sessions.NewCookieStore(secretkey)
+	// secretkey = []byte("something-very-secretkeysddsddsd")
+	cocs  backend.AuthCocaine
+	store *sessions.CookieStore //sessions.NewCookieStore(secretkey)
 )
 
 func Test(w http.ResponseWriter, r *http.Request) {
@@ -308,6 +309,13 @@ func ConstructHandler() http.Handler {
 		log.Fatalln(err)
 	}
 
+	context, err := common.GetContext()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	store = sessions.NewCookieStore(context.SecretKey())
+
 	//main router
 	router := mux.NewRouter()
 	router.HandleFunc("/ping", Ping)
@@ -358,13 +366,9 @@ func ConstructHandler() http.Handler {
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
 	//app router
-	buildlogRouter := rootRouter.PathPrefix("/builldlog").Subrouter()
-	buildlogRouter.HandleFunc("/", AuthRequired(BuildlogList)).Methods("GET")
-	buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildlogRead)).Methods("GET")
-
-	//uploadlog router
-	appRouter := rootRouter.PathPrefix("/uploadlog").Subrouter()
-	authRouter.HandleFunc("/", AuthRequired())
+	// buildlogRouter := rootRouter.PathPrefix("/builldlog").Subrouter()
+	// buildlogRouter.HandleFunc("/", AuthRequired(BuildlogList)).Methods("GET")
+	// buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildlogRead)).Methods("GET")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
 	return router
