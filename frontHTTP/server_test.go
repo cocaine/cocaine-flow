@@ -158,5 +158,6 @@ func TestBuildLog(t *testing.T) {
 	ts := httptest.NewServer(ConstructHandler())
 	defer ts.Close()
 	token := getToken(ts, t)
+
 	AssertStatus("GET", ts.URL+"/flow/v1/buildlog/"+"?token="+token, 200, nil, t)
 }

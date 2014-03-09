@@ -328,6 +328,20 @@ func BuildLogRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 	fmt.Println(w, buildlog)
 }
 
+/*
+	Application
+*/
+
+func ApplicationList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	apps, err := cocs.ApplicationList()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	SendJson(w, apps)
+}
+
 // func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 // 	info := backend.AppUplodaInfo{
 // 		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
@@ -408,10 +422,14 @@ func ConstructHandler() http.Handler {
 	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
-	// app router
+	//buildlog router
 	buildlogRouter := rootRouter.PathPrefix("/buildlog").Subrouter()
 	buildlogRouter.HandleFunc("/", AuthRequired(BuildLogList)).Methods("GET")
 	buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildLogRead)).Methods("GET")
+
+	//app router
+	appRouter := rootRouter.PathPrefix("/app/").Subrouter()
+	appRouter.HandleFunc("/", AuthRequired(ApplicationList)).Methods("GET")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
 	return router

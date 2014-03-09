@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 
@@ -8,21 +9,24 @@ import (
 	"github.com/cocaine/cocaine-flow/frontHTTP"
 )
 
-const testDocker = "http://192.168.57.100:3138"
-const testCocaine = ":10053"
-const testRegistry = "192.168.57.100:5000"
-
 func main() {
+	dockerEndpoint := flag.String("docker", "unix:///var/run/docker.sock", "dockersocket unix:// or http://")
+	cocaineEndpoint := flag.String("cocaine", ":10053", "cocaine-runtime")
+	registryEndpoint := flag.String("registry", ":5000", "registry endpoint")
+	keyFile := flag.String("keyfile", "", "keyfile path")
+	serverEndpoint := flag.String("-H", ":8080", "")
+	flag.Parse()
+
 	cfg := common.ContextCfg{
-		Docker:   testDocker,
-		Registry: testRegistry,
-		Cocaine:  testCocaine,
-		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/test/keyfile.cfg",
+		Docker:   *dockerEndpoint,
+		Registry: *registryEndpoint,
+		Cocaine:  *cocaineEndpoint,
+		KeyFile:  *keyFile,
 	}
 	err := common.InitializeContext(cfg)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	h := frontHTTP.ConstructHandler()
-	http.ListenAndServe(":8080", h)
+	http.ListenAndServe(*serverEndpoint, h)
 }
