@@ -239,6 +239,12 @@ func UserSignup(w http.ResponseWriter, r *http.Request) {
 func UserSignin(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	password := r.FormValue("password")
+
+	if len(name) == 0 || len(password) == 0 {
+		http.Error(w, "name or password parametr is missing", http.StatusBadRequest)
+		return
+	}
+
 	if _, err := cocs.UserSignin(name, password); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
