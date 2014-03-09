@@ -312,11 +312,17 @@ def user_signup(info, response):
 @unpacker(msgpack.unpackb)
 @asynchronous
 def user_signin(info, response):
-    name = info['name']
-    password = info['password']
-    r = yield db.login(name, password)
-    response.write(r)
-    response.close()
+    try:
+        name = info['name']
+        password = info['password']
+        r = yield db.login(name, password)
+        response.write(r)
+    except KeyError as err:
+        response.error(-100, "Parametr %s is missing" % repr(err))
+    except Exception as err:
+        response.error(-99, "Unknown error %s" % repr(err))
+    finally:
+        response.close()
 
 
 @unpacker(msgpack.unpackb)
