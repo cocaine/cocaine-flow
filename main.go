@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/cocaine/cocaine-flow/common"
@@ -16,8 +17,12 @@ func main() {
 		Docker:   testDocker,
 		Registry: testRegistry,
 		Cocaine:  testCocaine,
+		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/test/keyfile.cfg",
 	}
-	common.InitializeContext(cfg)
+	err := common.InitializeContext(cfg)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	h := frontHTTP.ConstructHandler()
 	http.ListenAndServe(":8080", h)
 }

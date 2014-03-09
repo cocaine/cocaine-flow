@@ -221,6 +221,13 @@ func GroupRefresh(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 func UserSignup(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	password := r.FormValue("password")
+
+	if len(name) == 0 || len(password) == 0 {
+		http.Error(w, "name or password parametr is missing", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println(name, password)
 	if err := cocs.UserSignup(name, password); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
