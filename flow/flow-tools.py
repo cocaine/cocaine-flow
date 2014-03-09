@@ -256,7 +256,7 @@ def group_refresh(name, response):
         yield group.Refresh(locator, storage, name).execute()
     except Exception as err:
         log.error(repr(err))
-        response.error(-100, "Unable to refresh")
+        response.error(-100, "Unable to refresh %s" % err)
     finally:
         response.close()
 

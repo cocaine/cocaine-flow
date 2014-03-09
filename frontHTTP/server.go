@@ -257,6 +257,10 @@ func GenToken(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, token)
 }
 
+/*
+	Crashlogs
+*/
+
 func CrashlogList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 
@@ -285,22 +289,48 @@ func CrashlogView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, crashlog)
 }
 
-func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
-	info := backend.AppUplodaInfo{
-		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
-		App:     "bullet",
-		Version: "first",
-	}
-	ch, _, err := cocs.ApplicationUpload(info)
+/*
+	Buildlog
+*/
+
+func BuildLogList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	buildlogs, err := cocs.BuildLogList()
 	if err != nil {
-		log.Println("Error %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	for lg := range ch {
-		w.Write([]byte(lg))
-		w.(http.Flusher).Flush()
-	}
+	SendJson(w, buildlogs)
 }
+
+func BuildLogRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	buildlog, err := cocs.BuildLogRead(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println(w, buildlog)
+}
+
+// func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+// 	info := backend.AppUplodaInfo{
+// 		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
+// 		App:     "bullet",
+// 		Version: "first",
+// 	}
+// 	ch, _, err := cocs.ApplicationUpload(info)
+// 	if err != nil {
+// 		log.Println("Error %s", err)
+// 	}
+
+// 	for lg := range ch {
+// 		w.Write([]byte(lg))
+// 		w.(http.Flusher).Flush()
+// 	}
+// }
 
 func ConstructHandler() http.Handler {
 	var err error
@@ -365,10 +395,10 @@ func ConstructHandler() http.Handler {
 	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
-	//app router
-	// buildlogRouter := rootRouter.PathPrefix("/builldlog").Subrouter()
-	// buildlogRouter.HandleFunc("/", AuthRequired(BuildlogList)).Methods("GET")
-	// buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildlogRead)).Methods("GET")
+	// app router
+	buildlogRouter := rootRouter.PathPrefix("/buildlog").Subrouter()
+	buildlogRouter.HandleFunc("/", AuthRequired(BuildLogList)).Methods("GET")
+	buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildLogRead)).Methods("GET")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
 	return router

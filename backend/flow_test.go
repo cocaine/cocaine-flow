@@ -19,7 +19,7 @@ func createContext() {
 		Docker:   testDocker,
 		Registry: testRegistry,
 		Cocaine:  testCocaine,
-		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/keyfile.cfg",
+		KeyFile:  "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/test/keyfile.cfg",
 	}
 	common.InitializeContext(cfg)
 }
@@ -159,7 +159,7 @@ func TestGroups(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to read group %s %s", group, err)
 		}
-		t.Logf("runlist %s: %v", groupName, group)
+		t.Logf("group %s: %v", groupName, group)
 	}
 
 	err = cocs.GroupPushApp("TESTGROUP", "TESTAPP", 1)
@@ -170,6 +170,18 @@ func TestGroups(t *testing.T) {
 	err = cocs.GroupPopApp("TESTGROUP", "TESTAPP")
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	t.SkipNow()
+
+	err = cocs.GroupRefresh()
+	if err != nil {
+		t.Fatalf("All GroupRefresh error: %s", err)
+	}
+
+	err = cocs.GroupRefresh("TESTGROUP")
+	if err != nil {
+		t.Fatalf("GroupRefresh error: %s", err)
 	}
 
 	err = cocs.GroupRemove("TESTGROUP")
@@ -183,6 +195,7 @@ func TestGroups(t *testing.T) {
 	}
 
 	t.Logf("%v", groups)
+
 }
 
 func TestCrashlogs(t *testing.T) {
@@ -210,7 +223,7 @@ func TestCrashlogs(t *testing.T) {
 func TestUpload(t *testing.T) {
 	cocs := getTestCocaine(t)
 	info := AppUplodaInfo{
-		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
+		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/test/testapp",
 		App:     "bullet",
 		Version: "first",
 	}
