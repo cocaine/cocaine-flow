@@ -375,6 +375,7 @@ func ConstructHandler() http.Handler {
 
 	//main router
 	router := mux.NewRouter()
+	router.StrictSlash(true)
 	router.HandleFunc("/ping", Ping)
 	router.HandleFunc("/test", Test)
 
@@ -383,6 +384,7 @@ func ConstructHandler() http.Handler {
 
 	//profiles router
 	profilesRouter := rootRouter.PathPrefix("/profiles").Subrouter()
+	profilesRouter.StrictSlash(true)
 	profilesRouter.HandleFunc("/", Guest(ProfileList)).Methods("GET")
 	profilesRouter.HandleFunc("/{name}", AuthRequired(ProfileRead)).Methods("GET")
 
@@ -394,11 +396,13 @@ func ConstructHandler() http.Handler {
 
 	//runlists router
 	runlistsRouter := rootRouter.PathPrefix("/runlists").Subrouter()
+	runlistsRouter.StrictSlash(true)
 	runlistsRouter.HandleFunc("/", AuthRequired(RunlistList)).Methods("GET")
 	runlistsRouter.HandleFunc("/{name}", AuthRequired(RunlistRead)).Methods("GET")
 
 	//routing groups
 	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
+	groupsRouter.StrictSlash(true)
 	groupsRouter.HandleFunc("/", AuthRequired(GroupList)).Methods("GET")
 	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupRead)).Methods("GET")
 	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupCreate)).Methods("POST")
@@ -412,25 +416,30 @@ func ConstructHandler() http.Handler {
 
 	//crashlog router
 	crashlogRouter := rootRouter.PathPrefix("/crashlogs").Subrouter()
+	crashlogRouter.StrictSlash(true)
 	crashlogRouter.HandleFunc("/{name}", AuthRequired(CrashlogList)).Methods("GET")
 	crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogView)).Methods("GET")
 	// crashlogRouter.HandleFunc("/{name}/{timestamp}", AuthRequired(CrashlogRemove)).Methods("DELETE")
 
 	//auth router
 	authRouter := rootRouter.PathPrefix("/users").Subrouter()
+	authRouter.StrictSlash(true)
 	authRouter.HandleFunc("/token", GenToken).Methods("POST")
 	authRouter.HandleFunc("/signup", UserSignup).Methods("POST")
 	authRouter.HandleFunc("/signin", UserSignin).Methods("POST")
 
 	//buildlog router
 	buildlogRouter := rootRouter.PathPrefix("/buildlog").Subrouter()
+	buildlogRouter.StrictSlash(true)
 	buildlogRouter.HandleFunc("/", AuthRequired(BuildLogList)).Methods("GET")
 	buildlogRouter.HandleFunc("/{id}", AuthRequired(BuildLogRead)).Methods("GET")
 
 	//app router
 	appRouter := rootRouter.PathPrefix("/app/").Subrouter()
+	appRouter.StrictSlash(true)
 	appRouter.HandleFunc("/", AuthRequired(ApplicationList)).Methods("GET")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 	return router
 }
