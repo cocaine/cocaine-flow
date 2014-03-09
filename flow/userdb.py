@@ -171,16 +171,16 @@ class UserDB(object):
         yield self.quasi_atomic_write(reader, writer, handler)
 
     @asynchronous
-    def write_uploadlog(self, user, key, logdata):
+    def write_buildlog(self, user, key, logdata):
         tags = LOG_TAG + [user]
         yield self.storage.write(self.lognamespace, key, logdata, tags)
 
     @asynchronous
-    def read_uploadlog(self, key):
+    def read_buildlog(self, key):
         yield self.storage.read(self.lognamespace, key)
 
     @asynchronous
-    def list_uploadlog(self, user):
+    def list_buildlog(self, user):
         tags = [user] if user else LOG_TAG
         yield self.storage.find(self.lognamespace, tags)
 

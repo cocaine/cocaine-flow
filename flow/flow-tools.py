@@ -347,10 +347,10 @@ def user_upload(info, response):
         docker = info["docker"]
         registry = info["registry"]
 
-        upload_log = UploadLog(depth=5, on_flush=response.write)
-        upload_log.write("User %s, app %s, id %s\n" % (user,
-                                                       appname,
-                                                       upload_ID))
+        buildlog = UploadLog(depth=5, on_flush=response.write)
+        buildlog.write("User %s, app %s, id %s\n" % (user,
+                                                     appname,
+                                                     upload_ID))
 
         try:
             user_exists = yield db.exists(user)
@@ -365,17 +365,17 @@ def user_upload(info, response):
             uploader = app.DockerUpload(storage, path,
                                         appname, None,
                                         docker, registry,
-                                        on_read=upload_log.write)
+                                        on_read=buildlog.write)
             yield uploader.execute()
             yield db.write_app_info(user, appname)
         except Exception as err:
-            upload_log.write("Error: %s\n" % str(err))
+            buildlog.write("Error: %s\n" % str(err))
             raise err
         finally:
-            upload_log.flush()
-            logdata = upload_log.getall()
+            buildlog.flush()
+            logdata = buildlog.getall()
             log.debug("Saving uploadlog into storage")
-            yield db.write_uploadlog(user, upload_ID, logdata)
+            yield db.write_buildlog(user, upload_ID, logdata)
             log.debug("Uploadlog has been saved successfully")
 
     except KeyError as err:
@@ -409,9 +409,9 @@ def user_apps_list(username, response):
 
 @unpacker(msgpack.unpackb)
 @asynchronous
-def user_uploadlog_list(username, response):
+def user_buildlog_list(username, response):
     try:
-        keys = db.list_uploadlog(username)
+        keys = yield db.list_buildlog(username)
         response.write(keys)
     except Exception as err:
         log.error(str(err))
@@ -422,9 +422,9 @@ def user_uploadlog_list(username, response):
 
 @unpacker(msgpack.unpackb)
 @asynchronous
-def user_uploadlog_read(key, response):
+def user_buildlog_read(key, response):
     try:
-        data = db.read_uploadlog(key)
+        data = yield db.read_buildlog(key)
         response.write(data)
     except Exception as err:
         log.error(str(err))
@@ -463,9 +463,9 @@ binds = {
     "user-remove": user_remove,
     "user-list": user_list,
     "user-upload": user_upload,
-    "user-apps-list": user_apps_list,
-    "user-uploadlog-list": user_uploadlog_list,
-    "user-uploadlog-read": user_uploadlog_read,
+    "user-app-list": user_apps_list,
+    "user-buildlog-list": user_buildlog_list,
+    "user-buildlog-read": user_buildlog_read,
 }
 
 API = {"Version": 1,
