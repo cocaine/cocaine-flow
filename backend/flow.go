@@ -41,52 +41,6 @@ func isStringInSlice(name string, slice []string) (b bool) {
 	return
 }
 
-/*
-	Content interfaces
-*/
-
-type ProfileController interface {
-	ProfileList() ([]string, error)
-	ProfileRead(name string) (map[string]interface{}, error)
-}
-
-type HostController interface {
-	HostAdd(name string) error
-	HostRemove(name string) error
-	HostList() ([]string, error)
-}
-
-type RunlistController interface {
-	RunlistRead(name string) (map[string]string, error)
-	RunlistList() ([]string, error)
-}
-
-type GroupController interface {
-	GroupList() ([]string, error)
-	GroupView(name string) (map[string]interface{}, error)
-	GroupCreate(name string) error
-	GroupRemove(name string) error
-
-	GroupPushApp(name string, app string, weight int) error
-	GroupPopApp(name string, app string) error
-	GroupRefresh(name ...string) error
-}
-
-type CrashlogController interface {
-	CrashlogList(name string) ([]string, error)
-	CrashlogView(name string, timestamp int) (string, error)
-}
-
-type ApplicationController interface {
-	// ApplicationList(username string) ([]string, error)
-	ApplicationUpload(info AppUplodaInfo) (chan string, *bool, error)
-}
-
-type UploadLogController interface {
-	UploadLogList(username string) ([]string, error)
-	UploadLogRead(id string) ([]byte, error)
-}
-
 type Cocaine interface {
 	CrashlogController
 	GroupController
@@ -222,8 +176,7 @@ func (b *cocainebackend) CrashlogView(name string, timestamp int) (crashlog stri
 	ApplicationController impl
 */
 
-//TBD - drop *bool
-func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) (ans chan string, isOk *bool, err error) {
+func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) (<-chan string, <-chan error, error) {
 	task := AppUploadTask{
 		Username:      username,
 		Docker:        b.Context.DockerEndpoint(),
@@ -232,58 +185,61 @@ func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) 
 	}
 	stream, err := b.app.StreamCall("user-upload", task)
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 
-	isOk = new(bool)
+	uploadError := make(chan error, 1)
+	ans := make(chan string, 10)
 
-	ans = make(chan string, 10)
+	onSuccess := func() {
+
+		routingGroupName := info.RoutingGroup()
+
+		rgs, err := b.GroupList()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if !isStringInSlice(routingGroupName, rgs) {
+			b.GroupCreate(routingGroupName)
+		}
+
+		err = b.GroupPushApp(
+			routingGroupName,
+			info.Fullname(), 0)
+		if err != nil {
+			log.Println(err)
+		}
+
+	}
+
 	go func() {
 		//close response stream
 		defer close(ans)
-		//operations with routing groups
-		defer func() {
-			if !(*isOk) {
-				return
-			}
-
-			routingGroupName := info.RoutingGroup()
-
-			rgs, err := b.GroupList()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			if !isStringInSlice(routingGroupName, rgs) {
-				b.GroupCreate(routingGroupName)
-			}
-
-			err = b.GroupPushApp(
-				routingGroupName,
-				info.Fullname(), 0)
-			if err != nil {
-				log.Println(err)
-			}
-
-		}()
-
 		for {
 			var logdata string
 			select {
 			case res, ok := <-stream:
 				if !ok {
-					*isOk = true
+					uploadError <- nil
+					close(uploadError)
+					// update routing groups with new application
+					onSuccess()
 					return
 				}
 
 				if res.Err() != nil {
-					*isOk = false
+					uploadError <- res.Err()
+					close(uploadError)
 					return
 				}
 
 				extracterr := res.Extract(&logdata)
 				if extracterr != nil {
+					/*
+						Should I log this situation???
+					*/
 					continue
 				}
 
@@ -293,6 +249,5 @@ func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) 
 			}
 		}
 	}()
-	//TBD TEMP
-	return
+	return ans, uploadError, nil
 }

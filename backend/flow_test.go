@@ -223,7 +223,7 @@ func TestUpload(t *testing.T) {
 		t.Log(lg)
 	}
 
-	if !(*status) {
+	if <-status != nil {
 		t.Fatalf("Not uploaded")
 	}
 }
