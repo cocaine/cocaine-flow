@@ -4,6 +4,16 @@ package backend
 	Content interfaces
 */
 
+type Cocaine interface {
+	CrashlogController
+	GroupController
+	HostController
+	ProfileController
+	RunlistController
+	ApplicationController
+	BuildLogController
+}
+
 type ProfileController interface {
 	ProfileList() ([]string, error)
 	ProfileRead(name string) (map[string]interface{}, error)
@@ -22,7 +32,7 @@ type RunlistController interface {
 
 type GroupController interface {
 	GroupList() ([]string, error)
-	GroupView(name string) (map[string]interface{}, error)
+	GroupRead(name string) (map[string]interface{}, error)
 	GroupCreate(name string) error
 	GroupRemove(name string) error
 
@@ -37,11 +47,11 @@ type CrashlogController interface {
 }
 
 type ApplicationController interface {
-	// ApplicationList(username string) ([]string, error)
+	ApplicationList() ([]string, error)
 	ApplicationUpload(info AppUplodaInfo) (<-chan string, <-chan error, error)
 }
 
-type UploadLogController interface {
-	UploadLogList(username string) ([]string, error)
-	UploadLogRead(id string) ([]byte, error)
+type BuildLogController interface {
+	BuildLogList() ([]string, error)
+	BuildLogRead(id string) (string, error)
 }

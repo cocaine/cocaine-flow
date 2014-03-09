@@ -135,9 +135,9 @@ func GroupList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	SendJson(w, runlists)
 }
 
-func GroupView(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+func GroupRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
-	group, err := cocs.GroupView(name)
+	group, err := cocs.GroupRead(name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -343,7 +343,7 @@ func ConstructHandler() http.Handler {
 	//routing groups
 	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()
 	groupsRouter.HandleFunc("/", AuthRequired(GroupList)).Methods("GET")
-	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupView)).Methods("GET")
+	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupRead)).Methods("GET")
 	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupCreate)).Methods("POST")
 	groupsRouter.HandleFunc("/{name}", AuthRequired(GroupRemove)).Methods("DELETE")
 

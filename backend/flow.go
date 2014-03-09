@@ -41,15 +41,6 @@ func isStringInSlice(name string, slice []string) (b bool) {
 	return
 }
 
-type Cocaine interface {
-	CrashlogController
-	GroupController
-	HostController
-	ProfileController
-	RunlistController
-	ApplicationController
-}
-
 type cocainebackend struct {
 	app appWrapper
 	common.Context
@@ -121,7 +112,7 @@ func (b *cocainebackend) GroupRemove(name string) (err error) {
 	return
 }
 
-func (b *cocainebackend) GroupView(name string) (gr map[string]interface{}, err error) {
+func (b *cocainebackend) GroupRead(name string) (gr map[string]interface{}, err error) {
 	err = b.app.Call("group-read", name, &gr)
 	return
 }
@@ -175,6 +166,11 @@ func (b *cocainebackend) CrashlogView(name string, timestamp int) (crashlog stri
 /*
 	ApplicationController impl
 */
+
+func (b *cocainebackend) ApplicationList(username string) (apps []string, err error) {
+	err = b.app.Call("user-app-list", username, &apps)
+	return
+}
 
 func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) (<-chan string, <-chan error, error) {
 	task := AppUploadTask{
@@ -250,4 +246,18 @@ func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) 
 		}
 	}()
 	return ans, uploadError, nil
+}
+
+/*
+	Buildlogs impl
+*/
+
+func (b *cocainebackend) BuildLogList(username string) (buildlogs []string, err error) {
+	err = b.app.Call("user-buildlog-list", username, &buildlogs)
+	return
+}
+
+func (b *cocainebackend) BuildLogRead(id string) (buildlog string, err error) {
+	err = b.app.Call("user-buildlog-read", id, &buildlog)
+	return
 }

@@ -155,7 +155,7 @@ func TestGroups(t *testing.T) {
 	}
 
 	for _, groupName := range groups {
-		group, err := cocs.GroupView(groupName)
+		group, err := cocs.GroupRead(groupName)
 		if err != nil {
 			t.Fatalf("Unable to read group %s %s", group, err)
 		}
@@ -225,5 +225,32 @@ func TestUpload(t *testing.T) {
 
 	if <-status != nil {
 		t.Fatalf("Not uploaded")
+	}
+
+	apps, err := cocs.ApplicationList()
+	if err != nil {
+		t.Fatalf("ApplicationList error %s", err)
+	}
+
+	t.Logf("Apps %v", apps)
+
+}
+
+func TestBuildLog(t *testing.T) {
+	cocs := getTestCocaine(t)
+
+	buildlogs, err := cocs.BuildLogList()
+	if err != nil {
+		t.Fatalf("BuildLogList error %s", err)
+	}
+
+	t.Logf("Buildlogs: %s", buildlogs)
+
+	for _, onelogid := range buildlogs {
+		buildlog, err := cocs.BuildLogRead(onelogid)
+		if err != nil {
+			t.Fatalf("BuildLogRead %s error: %s", onelogid, err)
+		}
+		t.Logf("Build log: %s", buildlog)
 	}
 }

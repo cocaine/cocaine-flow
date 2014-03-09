@@ -35,8 +35,27 @@ type authBackend struct {
 	cocainebackend
 }
 
+/*
+	ApplicationController
+*/
+
 func (a *authBackend) ApplicationUpload(info AppUplodaInfo) (<-chan string, <-chan error, error) {
 	return a.cocainebackend.ApplicationUpload(a.name, info)
+}
+
+func (a *authBackend) ApplicationList() ([]string, error) {
+	/*
+		Insert ACL hook for admin in future
+	*/
+	return a.cocainebackend.ApplicationList(a.name)
+}
+
+/*
+	BuildlogContorller
+*/
+
+func (a *authBackend) BuildLogList() ([]string, error) {
+	return a.cocainebackend.BuildLogList(a.name)
 }
 
 /*
