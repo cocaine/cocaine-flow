@@ -60,8 +60,8 @@ func (aW *wrappedApp) StreamCall(method string, args interface{}) (<-chan cocain
 	return ch, nil
 }
 
-func NewAppWrapper(name string) (wa appWrapper, err error) {
-	app, err := cocaine.NewService("flow-tools")
+func NewAppWrapper(name string, endpoint string) (wa appWrapper, err error) {
+	app, err := cocaine.NewService("flow-tools", endpoint)
 	if err != nil {
 		log.Printf("Error %s", err)
 		return nil, err

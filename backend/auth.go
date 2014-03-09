@@ -139,7 +139,7 @@ func NewBackend() (ac AuthCocaine, err error) {
 		return
 	}
 
-	app, err := NewAppWrapper("flow-tools")
+	app, err := NewAppWrapper("flow-tools", context.CocaineEndpoint())
 	if err != nil {
 		return
 	}
