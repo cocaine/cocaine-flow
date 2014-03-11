@@ -1,0 +1,15 @@
+Source: cocaine-flow
+Section: utils
+Priority: extra
+Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
+Build-Depends: debhelper (>= 7), cdbs, curl, git-core
+Standards-Version: 3.9.1
+Homepage: https://github.com/noxiouz/infinite-flow
+
+Package: cocaine-flow
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ cocaine-tools,
+ cocaine-framework-python,
+ adduser
+Description: REST-API server for Cocaine cloud
