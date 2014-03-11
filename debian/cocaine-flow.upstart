@@ -12,5 +12,5 @@ script
     if [ -f /etc/default/$UPSTART_JOB ]; then
         . /etc/default/$UPSTART_JOB
     fi
-    "$FLOW" -d $FLOW_OPTS
+    "$FLOW" $FLOW_OPTS
 end script
