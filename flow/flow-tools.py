@@ -18,6 +18,7 @@ from cocaine.tools.actions import app
 
 
 from userdb import UserDB
+from hostdb import HostDB
 
 ITEM_IS_ABSENT = -100
 
@@ -27,8 +28,9 @@ locator = Locator()
 
 
 LOGS_NAMESPACE = "flow_upload_logs"
-
+HOSTS_NAMESPACE = "flow_hosts"
 db = UserDB(storage, "KEY", "TEST")
+hostdb = HostDB(storage, HOSTS_NAMESPACE)
 
 
 class UploadLog(object):
@@ -129,15 +131,12 @@ def runlist_list(_, response):
 
 # hosts
 
-HOSTS_TAG = ["flow-host"]
-HOSTS_NAMESPACE = "flow-hosts"
-
-
 @unpacker(msgpack.unpackb)
 @asynchronous
 def host_list(_, response):
     try:
-        hosts = yield storage.find(HOSTS_NAMESPACE, HOSTS_TAG)
+        # hosts = yield storage.find(HOSTS_NAMESPACE, HOSTS_TAG)
+        hosts = yield hostdb.hosts()
         response.write(hosts)
     except:
         response.error(ITEM_IS_ABSENT, "Unable to read hosts")
@@ -149,7 +148,8 @@ def host_list(_, response):
 @asynchronous
 def host_add(name, response):
     try:
-        yield storage.write(HOSTS_NAMESPACE, name, name, HOSTS_TAG)
+        # yield storage.write(HOSTS_NAMESPACE, name, name, HOSTS_TAG)
+        yield hostdb.add(name)
     except:
         response.error(ITEM_IS_ABSENT, "Unable to write host")
     finally:
@@ -160,7 +160,8 @@ def host_add(name, response):
 @asynchronous
 def host_remove(name, response):
     try:
-        yield storage.remove(HOSTS_NAMESPACE, name)
+        # yield storage.remove(HOSTS_NAMESPACE, name)
+        yield hostdb.remove(name)
     except:
         response.error(ITEM_IS_ABSENT, "Unable to remove host")
     finally:
