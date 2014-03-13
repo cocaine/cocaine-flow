@@ -27,7 +27,10 @@ class NodeCluster(object):
             try:
                 nodeinstance = Service("node", blockingConnect=False)
                 yield nodeinstance.connect(host=host)
-                yield app.Start(nodeinstance, appname, profilename).execute()
+                res = yield app.Start(nodeinstance,
+                                      appname,
+                                      profilename).execute()
+                self.logcallback(str(res))
             except Exception as e:
                 item = "Unable to connect to node at host %s %s" % (host, e)
                 log.error(item)
@@ -56,7 +59,8 @@ class NodeCluster(object):
             try:
                 nodeinstance = Service("node", blockingConnect=False)
                 yield nodeinstance.connect(host=host)
-                yield app.Stop(nodeinstance, appname).execute()
+                res = yield app.Stop(nodeinstance, appname).execute()
+                self.logcallback(str(res))
             except Exception as e:
                 item = "Unable to connect to node at host %s %s" % (host, e)
                 log.error(item)
