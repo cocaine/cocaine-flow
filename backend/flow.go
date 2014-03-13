@@ -248,6 +248,73 @@ func (b *cocainebackend) ApplicationUpload(username string, info AppUplodaInfo) 
 	return ans, uploadError, nil
 }
 
+func (b *cocainebackend) ApplicationInfo(username string, appname string) (info AppInfo, err error) {
+	task := struct {
+		Appname  string `codec:"appname"`
+		Username string `codec:"username"`
+	}{
+		Appname:  appname,
+		Username: username,
+	}
+	err = b.app.Call("app-info", task, &info)
+	return
+}
+
+func (b *cocainebackend) ApplicationDeploy(appname string, profile string, runlist string) (<-chan string, <-chan error, error) {
+	task := struct {
+		Appname string `codec:"appname"`
+		Profile string `codec:"profile"`
+		Runlist string `codec:"runlist"`
+	}{
+		appname,
+		profile,
+		runlist,
+	}
+
+	stream, err := b.app.StreamCall("app-deploy", task)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ans := make(chan string, 10)
+	errStream := make(chan error, 1)
+
+	go func() {
+		defer close(ans)
+		for {
+			var logdata string
+			select {
+			case res, ok := <-stream:
+				if !ok {
+					errStream <- nil
+					close(errStream)
+					return
+				}
+
+				if res.Err() != nil {
+					errStream <- res.Err()
+					close(errStream)
+					return
+				}
+
+				extracterr := res.Extract(&logdata)
+				if extracterr != nil {
+					/*
+						Should I log this situation???
+					*/
+					continue
+				}
+
+				if len(logdata) > 0 {
+					ans <- logdata
+				}
+			}
+		}
+	}()
+	return ans, errStream, err
+}
+
 /*
 	Buildlogs impl
 */

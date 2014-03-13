@@ -50,6 +50,10 @@ func (a *authBackend) ApplicationList() ([]string, error) {
 	return a.cocainebackend.ApplicationList(a.name)
 }
 
+func (a *authBackend) ApplicationInfo(appname string) (info AppInfo, err error) {
+	return a.cocainebackend.ApplicationInfo(a.name, appname)
+}
+
 /*
 	BuildlogContorller
 */

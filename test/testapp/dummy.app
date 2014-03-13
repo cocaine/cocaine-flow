@@ -3,3 +3,6 @@
 #
 #  MOCK
 #
+
+
+print("DUMMY")

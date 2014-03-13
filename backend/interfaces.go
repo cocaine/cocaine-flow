@@ -4,6 +4,13 @@ package backend
 	Content interfaces
 */
 
+type AppInfo map[string]interface{}
+
+type DeployResult struct {
+	Succeed []string `codec:"succeed"`
+	Failed  []string `codec:"failed"`
+}
+
 type Cocaine interface {
 	CrashlogController
 	GroupController
@@ -49,6 +56,8 @@ type CrashlogController interface {
 type ApplicationController interface {
 	ApplicationList() ([]string, error)
 	ApplicationUpload(info AppUplodaInfo) (<-chan string, <-chan error, error)
+	ApplicationInfo(appname string) (AppInfo, error)
+	ApplicationDeploy(appname string, profile string, runlist string) (<-chan string, <-chan error, error)
 }
 
 type BuildLogController interface {

@@ -94,7 +94,7 @@ func TestHosts(t *testing.T) {
 	cocs := getTestCocaine(t)
 
 	//List of hosts
-	err := cocs.HostAdd("TESTHOST")
+	err := cocs.HostAdd("localhost")
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}
@@ -266,4 +266,29 @@ func TestBuildLog(t *testing.T) {
 		}
 		t.Logf("Build log: %s", buildlog)
 	}
+}
+
+func TestAppOperations(t *testing.T) {
+	cocs := getTestCocaine(t)
+
+	ch, status, err := cocs.ApplicationDeploy("bullet", "TEST", "FLOW")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	for lg := range ch {
+		t.Log(lg)
+	}
+
+	if <-status != nil {
+		t.Fatal("Error in Deploy")
+	}
+
+	info, err := cocs.ApplicationInfo("flow-tools")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	t.Log(info)
+
 }

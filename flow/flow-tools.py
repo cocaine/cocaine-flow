@@ -19,6 +19,7 @@ from cocaine.tools.actions import app
 
 from userdb import UserDB
 from hostdb import HostDB
+from nodecluster import NodeCluster
 
 ITEM_IS_ABSENT = -100
 
@@ -440,6 +441,75 @@ def user_buildlog_read(key, response):
         response.close()
 
 
+# apps
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def app_info(task, response):
+    info = dict()
+    try:
+        appname = task["appname"]
+        username = task["username"]
+
+        if username:
+            # not admin - all apps
+            user_apps = yield app.List(storage).execute()
+        else:
+            user_apps = yield db.user_apps(username)
+
+        if appname not in user_apps:
+            raise ValueError("App %s doesn't exist" % appname)
+
+        hosts = yield hostdb.hosts()
+        for host in hosts:
+            appinstance = None
+            try:
+                appinstance = Service(appname, blockingConnect=False)
+                yield appinstance.connect(host=host)
+                info[host] = yield appinstance.info()
+            except Exception as err:
+                log.error("Unable to connect to app %s host %s" % (appname,
+                                                                   host))
+            finally:
+                if appinstance is not None:
+                    appinstance.disconnect()
+    except KeyError as err:
+        response.error(-500, "Missing argument %s" % str(err))
+    except Exception as err:
+        log.error("Unknown error %s" % repr(err))
+        response.error(-100, "Unknown error %s" % repr(err))
+    else:
+        response.write(info)
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def app_deploy(task, response):
+    s = list()
+    f = list()
+    try:
+        appname = task["appname"]
+        profilename = task["profile"]
+        runlistname = task["runlist"]
+
+        log.info("Add %s to runlist %s" % (appname, runlistname))
+        yield runlist.AddApplication(storage,
+                                     runlistname,
+                                     appname,
+                                     profilename, force=True).execute()
+        hosts = yield hostdb.hosts()
+        cluster = NodeCluster(hosts, response.write)
+        (s, f) = yield cluster.start_app(appname, profilename)
+    except Exception as err:
+        log.error("Unknown error %s" % repr(err))
+        response.error(-100, "Unknown error %s" % repr(err))
+    else:
+        response.write("Done")
+    finally:
+        response.close()
+
 binds = {
     # profiles
     "profile-read": profile_read,
@@ -473,6 +543,11 @@ binds = {
     "user-app-list": user_apps_list,
     "user-buildlog-list": user_buildlog_list,
     "user-buildlog-read": user_buildlog_read,
+    # app
+    "app-info": app_info,
+    "app-deploy": app_deploy,
+    # "app-start": app_start,
+    # "app-stop": app_stop,
 }
 
 API = {"Version": 1,
