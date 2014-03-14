@@ -60,6 +60,23 @@ func (b *cocainebackend) ProfileRead(name string) (pf map[string]interface{}, er
 	return
 }
 
+func (b *cocainebackend) ProfileUpload(name string, body []byte) (err error) {
+	task := struct {
+		ProfileName string `codec:"profilename"`
+		ProfileBody []byte `codec:"profile"`
+	}{
+		ProfileName: name,
+		ProfileBody: body,
+	}
+	err = b.app.Call("profile-upload", task)
+	return
+}
+
+func (b *cocainebackend) ProfileRemove(name string) (err error) {
+	err = b.app.Call("profile-remove", name)
+	return
+}
+
 /*
 	HostController impl
 */

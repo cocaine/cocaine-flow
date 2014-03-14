@@ -74,7 +74,8 @@ def profile_read(name, response):
     try:
         pf = yield profile.View(storage, name).execute()
         response.write(pf)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Profile %s is missing" % name)
     finally:
         response.close()
@@ -87,7 +88,8 @@ def profile_list(_, response):
         pf = yield profile.List(storage).execute()
         log.info("Profiles %s" % pf)
         response.write(pf)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to list profiles")
     finally:
         response.close()
@@ -98,8 +100,23 @@ def profile_list(_, response):
 def profile_remove(name, response):
     try:
         yield profile.Remove(storage, name).execute()
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to remove profile")
+    finally:
+        response.close()
+
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def profile_upload(task, response):
+    try:
+        profilename = task["profilename"]
+        profilebody = task["profile"]
+        yield profile.Upload(storage, profilename, profilebody).execute()
+    except Exception as err:
+        log.error("Unable to upload profile %s" % err)
+        response.error(-99, "Unable to upload profile %s" % err)
     finally:
         response.close()
 
@@ -124,7 +141,8 @@ def runlist_list(_, response):
     try:
         pf = yield runlist.List(storage).execute()
         response.write(pf)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to list runlists")
     finally:
         response.close()
@@ -139,7 +157,8 @@ def host_list(_, response):
         # hosts = yield storage.find(HOSTS_NAMESPACE, HOSTS_TAG)
         hosts = yield hostdb.hosts()
         response.write(hosts)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to read hosts")
     finally:
         response.close()
@@ -151,7 +170,8 @@ def host_add(name, response):
     try:
         # yield storage.write(HOSTS_NAMESPACE, name, name, HOSTS_TAG)
         yield hostdb.add(name)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to write host")
     finally:
         response.close()
@@ -163,7 +183,8 @@ def host_remove(name, response):
     try:
         # yield storage.remove(HOSTS_NAMESPACE, name)
         yield hostdb.remove(name)
-    except:
+    except Exception as err:
+        log.error(str(err))
         response.error(ITEM_IS_ABSENT, "Unable to remove host")
     finally:
         response.close()
@@ -287,7 +308,7 @@ def crashlog_view(info, response):
         data = yield crashlog.View(storage, name, timestamp).execute()
     except Exception as err:
         log.error(repr(err))
-        response.error(-100, "Unknown error")
+        response.error(-100, "Unknown error %s" % err)
     else:
         response.write(data)
     finally:
@@ -510,11 +531,32 @@ def app_deploy(task, response):
     finally:
         response.close()
 
+
+@unpacker(msgpack.unpackb)
+@asynchronous
+def app_stop(task, response):
+    s = list()
+    f = list()
+    try:
+        appname = task["appname"]
+        hosts = yield hostdb.hosts()
+        cluster = NodeCluster(hosts, response.write)
+        (s, f) = yield cluster.stop_app(appname)
+    except Exception as err:
+        log.error("Unknown error %s" % repr(err))
+        response.error(-100, "Unknown error %s" % repr(err))
+    else:
+        response.write("Done")
+    finally:
+        response.close()
+
+
 binds = {
     # profiles
     "profile-read": profile_read,
     "profile-list": profile_list,
     "profile-remove": profile_remove,
+    "profile-upload": profile_upload,
     # runlists
     "runlist-read": runlist_read,
     "runlist-list": runlist_list,
@@ -547,7 +589,7 @@ binds = {
     "app-info": app_info,
     "app-deploy": app_deploy,
     # "app-start": app_start,
-    # "app-stop": app_stop,
+    "app-stop": app_stop,
 }
 
 API = {"Version": 1,

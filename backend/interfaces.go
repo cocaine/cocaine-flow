@@ -24,6 +24,8 @@ type Cocaine interface {
 type ProfileController interface {
 	ProfileList() ([]string, error)
 	ProfileRead(name string) (map[string]interface{}, error)
+	ProfileUpload(name string, body []byte) error
+	ProfileRemove(name string) error
 }
 
 type HostController interface {

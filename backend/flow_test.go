@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"encoding/json"
 	"github.com/cocaine/cocaine-flow/common"
 )
 
@@ -87,6 +88,29 @@ func TestProfile(t *testing.T) {
 		}
 		t.Logf("Profile %s: %v", profileName, profile)
 	}
+	pr := map[string]interface{}{
+		"pool-limit": 99999999,
+	}
+
+	body, err := json.Marshal(pr)
+	if err != nil {
+		t.Logf("Bad json %s", err)
+	}
+	err = cocs.ProfileUpload("NOXIOUZTESTPROFILE", body)
+	if err != nil {
+		t.Logf("ProfileUplaod error %s", err)
+	}
+
+	err = cocs.ProfileUpload("NOXIOUZTESTPROFILE", []byte("notjson"))
+	if err == nil {
+		t.Fatal("Error expected, but nil")
+	}
+
+	err = cocs.ProfileRemove("NOXIOUZTESTPROFILE")
+	if err != nil {
+		t.Fatalf("ProfileRemove error %s", err)
+	}
+
 }
 
 func TestHosts(t *testing.T) {
@@ -214,7 +238,7 @@ func TestCrashlogs(t *testing.T) {
 		ts, _ := strconv.Atoi(strings.Split(crashlogs[0], ":")[0])
 		crash, err := cocs.CrashlogView(crashlogs[0], ts)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("CrashlogView error %s %s ", crashlogs[0], err)
 		}
 		t.Log(crash)
 	}
