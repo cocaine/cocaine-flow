@@ -12,6 +12,7 @@ import (
 
 	"github.com/cocaine/cocaine-flow/backend"
 	"github.com/cocaine/cocaine-flow/common"
+	"github.com/cocaine/cocaine-flow/common/archive"
 )
 
 const pathPrefix = "/flow/v1"
@@ -347,7 +348,7 @@ func BuildLogRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	fmt.Println(w, buildlog)
+	fmt.Fprintf(w, buildlog)
 }
 
 /*
@@ -364,22 +365,34 @@ func ApplicationList(cocs backend.Cocaine, w http.ResponseWriter, r *http.Reques
 	SendJson(w, apps)
 }
 
-// func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
-// 	info := backend.AppUplodaInfo{
-// 		Path:    "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/flow",
-// 		App:     "bullet",
-// 		Version: "first",
-// 	}
-// 	ch, _, err := cocs.ApplicationUpload(info)
-// 	if err != nil {
-// 		log.Println("Error %s", err)
-// 	}
+func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	version := mux.Vars(r)["version"]
 
-// 	for lg := range ch {
-// 		w.Write([]byte(lg))
-// 		w.(http.Flusher).Flush()
-// 	}
-// }
+	defer r.Body.Close()
+	path, err := archive.Unpack(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	info := backend.AppUplodaInfo{
+		Path:    path,
+		App:     name,
+		Version: version,
+	}
+
+	ch, _, err := cocs.ApplicationUpload(info)
+	if err != nil {
+		log.Println("Error %s", err)
+		return
+	}
+
+	for lg := range ch {
+		w.Write([]byte(lg))
+		w.(http.Flusher).Flush()
+	}
+}
 
 func ConstructHandler() http.Handler {
 	var err error
@@ -461,6 +474,7 @@ func ConstructHandler() http.Handler {
 	appRouter := rootRouter.PathPrefix("/app/").Subrouter()
 	appRouter.StrictSlash(true)
 	appRouter.HandleFunc("/", AuthRequired(ApplicationList)).Methods("GET")
+	appRouter.HandleFunc("/{name}/{version}", AuthRequired(ApplicationUpload)).Methods("POST", "PUT")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))

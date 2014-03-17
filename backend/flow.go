@@ -13,11 +13,11 @@ const null_arg = 0
 type AppUplodaInfo struct {
 	Path    string `codec:"path"`
 	App     string `codec:"app"`
-	Version string `codec:"-"`
+	Version string `codec:"version"`
 }
 
 func (a *AppUplodaInfo) Fullname() string {
-	return fmt.Sprintf("%s@%s", a.App, a.Version)
+	return fmt.Sprintf("%s_%s", a.App, a.Version)
 }
 
 func (a *AppUplodaInfo) RoutingGroup() string {

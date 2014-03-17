@@ -372,7 +372,7 @@ def user_upload(info, response):
     response.write("%s\n" % upload_ID)
     try:
         user = info["user"]
-        appname = info["app"]
+        appname = "%s_%s" % (info["app"], info["version"])
         path = info["path"]
         docker = info["docker"]
         registry = info["registry"]
