@@ -1,7 +1,8 @@
 package frontHTTP
 
 import (
-	_ "bytes"
+	"bytes"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -118,11 +119,22 @@ func TestHosts(t *testing.T) {
 }
 
 func TestProfiles(t *testing.T) {
+	testProfile := map[string]interface{}{
+		"pool-limit": 99999999,
+	}
+
+	body, err := json.Marshal(testProfile)
+	if err != nil {
+		t.Logf("Bad json %s", err)
+	}
 	ts := httptest.NewServer(ConstructHandler())
 	defer ts.Close()
 	token := getToken(ts, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/profiles/TEST"+"?token="+token, 500, bytes.NewBuffer(body[:2]), t)
+	AssertStatus("POST", ts.URL+"/flow/v1/profiles/TEST"+"?token="+token, 200, bytes.NewBuffer(body), t)
 	AssertStatus("GET", ts.URL+"/flow/v1/profiles/"+"?token="+token, 200, nil, t)
 	AssertStatus("GET", ts.URL+"/flow/v1/profiles/TEST"+"?token="+token, 200, nil, t)
+	AssertStatus("DELETE", ts.URL+"/flow/v1/profiles/TEST"+"?token="+token, 200, nil, t)
 }
 
 func TestRunlists(t *testing.T) {

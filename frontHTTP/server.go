@@ -2,6 +2,7 @@ package frontHTTP
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -60,14 +61,31 @@ func ProfileRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	SendJson(w, profile)
 }
 
-func ProfileRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.ResponseWriter) {
+func ProfileRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
-	profile, err := cocs.ProfileRemove(name)
+	err := cocs.ProfileRemove(name)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Fprintln(w, "OK")
+}
+
+func ProfileUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = cocs.ProfileUpload(name, body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprintln(w, "OK")
 }
 
