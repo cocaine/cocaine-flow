@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -375,6 +376,7 @@ func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer os.RemoveAll(path)
 
 	info := backend.AppUplodaInfo{
 		Path:    path,
