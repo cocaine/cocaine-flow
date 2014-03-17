@@ -419,7 +419,7 @@ def user_upload(info, response):
             log.debug("Saving uploadlog into storage")
             yield db.write_buildlog(user, upload_ID, logdata)
             log.debug("Uploadlog has been saved successfully")
-
+        response.write("Done")
     except KeyError as err:
         response.error(-500, "Missing argument %s" % str(err))
     except Exception as err:

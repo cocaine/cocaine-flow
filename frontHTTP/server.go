@@ -256,7 +256,6 @@ func UserSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(name, password)
 	if err := cocs.UserSignup(name, password); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -397,7 +396,6 @@ func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Requ
 
 	ch, _, err := cocs.ApplicationUpload(info)
 	if err != nil {
-		log.Println("Error %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -407,6 +405,42 @@ func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Requ
 		w.(http.Flusher).Flush()
 	}
 }
+
+func ApplicationStart(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	name := r.FormValue("name")
+	profile := r.FormValue("profile")
+
+	if len(name) == 0 || len(profile) == 0 {
+		http.Error(w, "name or profile wasn't specified", http.StatusInternalServerError)
+		return
+	}
+
+	stream, err := cocs.ApplicationStart(name, profile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if f, ok := w.(http.Flusher); !ok {
+		for {
+			var p []byte
+			_, err := stream.Read(p)
+			fmt.Println(p, err)
+			if err != nil {
+				break
+			}
+			w.Write(p)
+			f.Flush()
+		}
+	} else {
+		body, _ := ioutil.ReadAll(stream)
+		fmt.Fprintf(w, "%s", body)
+	}
+}
+
+/*
+
+*/
 
 func ConstructHandler() http.Handler {
 	var err error
@@ -490,6 +524,8 @@ func ConstructHandler() http.Handler {
 	appRouter.StrictSlash(true)
 	appRouter.HandleFunc("/", AuthRequired(ApplicationList)).Methods("GET")
 	appRouter.HandleFunc("/{name}/{version}", AuthRequired(ApplicationUpload)).Methods("POST", "PUT")
+	appRouter.HandleFunc("/start", AuthRequired(ApplicationStart)).Methods("POST", "PUT")
+	// appRouter.HandleFunc("/stop", AuthRequired(ApplicationStop)).Methods("POST", "PUT")
 
 	//return handlers.LoggingHandler(os.Stdout, router)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))

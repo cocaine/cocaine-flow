@@ -18,22 +18,24 @@ const testUserPasswd = "qwerty"
 const testDocker = "http://192.168.57.100:3138"
 const testCocaine = ":10053"
 const testRegistry = "192.168.57.100:5000"
+const testPackage = "/Users/noxiouz/Gotest/src/github.com/cocaine/cocaine-flow/test/testapp/TEST.tar.gz"
 
-func AssertStatus(method string, urlStr string, status int, body io.Reader, t *testing.T) {
+func AssertStatus(method string, urlStr string, status int, body io.Reader, t *testing.T) (rbody []byte) {
 	cl := http.Client{}
 	req, _ := (http.NewRequest(method, urlStr, body))
 	r, err := cl.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer r.Body.Close()
+	rbody, err = ioutil.ReadAll(r.Body)
 	if r.StatusCode != status {
-		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("%s Unexpected status %s %s %s", method, urlStr, r.Status, string(body))
+		t.Fatalf("%s Unexpected status %s %s %s", method, urlStr, r.Status, string(rbody))
 	}
+	return
 }
 
 func getToken(ts *httptest.Server, t *testing.T) (token string) {
@@ -173,4 +175,20 @@ func TestBuildLog(t *testing.T) {
 	token := getToken(ts, t)
 
 	AssertStatus("GET", ts.URL+"/flow/v1/buildlog/"+"?token="+token, 200, nil, t)
+}
+
+func TestApp(t *testing.T) {
+	ts := httptest.NewServer(ConstructHandler())
+	defer ts.Close()
+	token := getToken(ts, t)
+
+	body, err := ioutil.ReadFile(testPackage)
+	if err != nil {
+		t.Fatalf("Unable to perfom test %s", err)
+	}
+	b := AssertStatus("POST", ts.URL+"/flow/v1/app/bullet/first"+"?token="+token, 200, bytes.NewBuffer(body), t)
+	t.Logf("%s", b)
+
+	AssertStatus("POST", ts.URL+"/flow/v1/appstart"+"?name=bullet_first&profile=TEST&token="+token, 200, nil, t)
+	AssertStatus("POST", ts.URL+"/flow/v1/appstop"+"?name=bullet_first&token="+token, 200, nil, t)
 }
