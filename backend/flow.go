@@ -100,6 +100,11 @@ func (b *cocainebackend) RunlistRead(name string) (runlist map[string]string, er
 	return
 }
 
+func (b *cocainebackend) RunlistRemove(name string) (err error) {
+	err = b.app.Call("runlist-remove", name)
+	return
+}
+
 /*
 	GroupController impl
 */

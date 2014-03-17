@@ -139,6 +139,17 @@ func RunlistRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	SendJson(w, runlist)
 }
 
+func RunlistRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["name"]
+	err := cocs.RunlistRemove(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, "OK")
+}
+
 /*
 	Groups
 */
@@ -437,6 +448,7 @@ func ConstructHandler() http.Handler {
 	runlistsRouter.StrictSlash(true)
 	runlistsRouter.HandleFunc("/", AuthRequired(RunlistList)).Methods("GET")
 	runlistsRouter.HandleFunc("/{name}", AuthRequired(RunlistRead)).Methods("GET")
+	runlistsRouter.HandleFunc("/{name}", AuthRequired(RunlistRemove)).Methods("DELETE")
 
 	//routing groups
 	groupsRouter := rootRouter.PathPrefix("/groups").Subrouter()

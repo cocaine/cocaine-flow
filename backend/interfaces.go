@@ -41,6 +41,7 @@ type HostController interface {
 type RunlistController interface {
 	RunlistRead(name string) (map[string]string, error)
 	RunlistList() ([]string, error)
+	RunlistRemove(name string) error
 }
 
 type GroupController interface {

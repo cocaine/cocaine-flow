@@ -234,6 +234,7 @@ func TestCrashlogs(t *testing.T) {
 
 	t.Logf("There is/are %d crashlogs", len(crashlogs))
 
+	t.SkipNow()
 	if len(crashlogs) > 0 {
 		t.Log(crashlogs[0])
 		ts, _ := strconv.Atoi(strings.Split(crashlogs[0], ":")[0])
@@ -296,7 +297,7 @@ func TestBuildLog(t *testing.T) {
 func TestAppOperations(t *testing.T) {
 	cocs := getTestCocaine(t)
 
-	r, err := cocs.ApplicationDeploy("bullet", "TEST", "FLOW")
+	r, err := cocs.ApplicationDeploy("bullet_first", "TEST", "FLOW")
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}

@@ -149,6 +149,18 @@ def runlist_list(_, response):
         response.close()
 
 
+@unpacker(msgpack.unpackb)
+@asynchronous
+def runlist_remove(name, response):
+    try:
+        yield runlist.Remove(storage, name).execute()
+    except Exception as err:
+        log.error(str(err))
+        response.error(ITEM_IS_ABSENT, "Runlist %s is missing" % name)
+    finally:
+        response.close()
+
+
 # hosts
 
 @unpacker(msgpack.unpackb)
@@ -561,6 +573,7 @@ binds = {
     # runlists
     "runlist-read": runlist_read,
     "runlist-list": runlist_list,
+    "runlist-remove": runlist_remove,
     # hosts
     "host-add": host_add,
     "host-list": host_list,
