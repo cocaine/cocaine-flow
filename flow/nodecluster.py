@@ -62,7 +62,7 @@ class NodeCluster(object):
                 res = yield app.Stop(nodeinstance, appname).execute()
                 self.logcallback(str(res) + '\n')
             except Exception as e:
-                item = "Unable to connect to node at host %s %s" % (host, e)
+                item = "Unable to connect to node at host %s %s\n" % (host, e)
                 log.error(item)
                 self.logcallback(item)
                 failed.append(host)

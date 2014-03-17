@@ -398,6 +398,7 @@ func ApplicationUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Requ
 	ch, _, err := cocs.ApplicationUpload(info)
 	if err != nil {
 		log.Println("Error %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

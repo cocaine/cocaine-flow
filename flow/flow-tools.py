@@ -564,6 +564,26 @@ def app_stop(task, response):
         response.close()
 
 
+@unpacker(msgpack.unpackb)
+@asynchronous
+def app_start(task, response):
+    s = list()
+    f = list()
+    try:
+        appname = task["appname"]
+        profilename = task["profile"]
+        hosts = yield hostdb.hosts()
+        cluster = NodeCluster(hosts, response.write)
+        (s, f) = yield cluster.start_app(appname, profilename)
+    except Exception as err:
+        log.error("Unknown error %s" % repr(err))
+        response.error(-100, "Unknown error %s" % repr(err))
+    else:
+        response.write("Done")
+    finally:
+        response.close()
+
+
 binds = {
     # profiles
     "profile-read": profile_read,
@@ -602,7 +622,7 @@ binds = {
     # app
     "app-info": app_info,
     "app-deploy": app_deploy,
-    # "app-start": app_start,
+    "app-start": app_start,
     "app-stop": app_stop,
 }
 

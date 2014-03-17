@@ -62,9 +62,34 @@ func TestAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	_, err = b.GenToken(testUser, "CHAOS")
+	if err == nil {
+		t.Fatal("Error is expected. Got nil")
+	}
+
 	t.Logf("Token %s", token)
 
+	_, err = b.ValidateToken(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = b.ValidateToken("CHAOS")
+	if err == nil {
+		t.Fatal(err)
+	}
+
 	_, err = b.UserSignin(testUser, testUserPasswd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = b.UserSignin(testUser, "CHAOS")
+	if err == nil {
+		t.Fatal("Error is expected. Got nil")
+	}
+
+	_, err = b.GuestAccount()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,6 +222,11 @@ func TestGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err = cocs.GroupRemove("TESTGROUP")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
 	t.SkipNow()
 
 	err = cocs.GroupRefresh()
@@ -207,11 +237,6 @@ func TestGroups(t *testing.T) {
 	err = cocs.GroupRefresh("TESTGROUP")
 	if err != nil {
 		t.Fatalf("GroupRefresh error: %s", err)
-	}
-
-	err = cocs.GroupRemove("TESTGROUP")
-	if err != nil {
-		t.Fatalf("Error %s", err)
 	}
 
 	groups, err = cocs.GroupList()
@@ -303,6 +328,29 @@ func TestAppOperations(t *testing.T) {
 	}
 
 	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+	t.Logf("Log: \n%s", b)
+
+	r, err = cocs.ApplicationStart("bullet_first", "TEST")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	b, err = ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	t.Logf("Log: \n%s", b)
+
+	r, err = cocs.ApplicationStop("bullet_first")
+	if err != nil {
+		t.Fatalf("Error %s", err)
+	}
+
+	b, err = ioutil.ReadAll(r)
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}

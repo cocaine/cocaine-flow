@@ -287,6 +287,30 @@ func (b *cocainebackend) ApplicationDeploy(appname string, profile string, runli
 	return
 }
 
+func (b *cocainebackend) ApplicationStart(username string, appname string, profile string) (r io.Reader, err error) {
+	task := struct {
+		Appname string `codec:"appname"`
+		Profile string `codec:"profile"`
+	}{
+		appname,
+		profile,
+	}
+
+	r, err = b.app.CallReader("app-start", task)
+	return
+}
+
+func (b *cocainebackend) ApplicationStop(username string, appname string) (r io.Reader, err error) {
+	task := struct {
+		Appname string `codec:"appname"`
+	}{
+		appname,
+	}
+
+	r, err = b.app.CallReader("app-stop", task)
+	return
+}
+
 /*
 	Buildlogs impl
 */

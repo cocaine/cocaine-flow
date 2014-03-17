@@ -2,6 +2,7 @@ package backend
 
 import (
 	"crypto/aes"
+	"io"
 	"log"
 
 	"github.com/cocaine/cocaine-flow/common"
@@ -52,6 +53,14 @@ func (a *authBackend) ApplicationList() ([]string, error) {
 
 func (a *authBackend) ApplicationInfo(appname string) (info AppInfo, err error) {
 	return a.cocainebackend.ApplicationInfo(a.name, appname)
+}
+
+func (a *authBackend) ApplicationStart(appname string, profile string) (io.Reader, error) {
+	return a.cocainebackend.ApplicationStart(a.name, appname, profile)
+}
+
+func (a *authBackend) ApplicationStop(appname string) (io.Reader, error) {
+	return a.cocainebackend.ApplicationStop(a.name, appname)
 }
 
 /*
