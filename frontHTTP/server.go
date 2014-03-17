@@ -60,6 +60,17 @@ func ProfileRead(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	SendJson(w, profile)
 }
 
+func ProfileRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.ResponseWriter) {
+	name := mux.Vars(r)["name"]
+	profile, err := cocs.ProfileRemove(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "OK")
+}
+
 /*
 	Hosts
 */
@@ -393,6 +404,8 @@ func ConstructHandler() http.Handler {
 	profilesRouter.StrictSlash(true)
 	profilesRouter.HandleFunc("/", Guest(ProfileList)).Methods("GET")
 	profilesRouter.HandleFunc("/{name}", AuthRequired(ProfileRead)).Methods("GET")
+	profilesRouter.HandleFunc("/{name}", AuthRequired(ProfileUpload)).Methods("PUT", "POST")
+	profilesRouter.HandleFunc("/{name}", AuthRequired(ProfileRemove)).Methods("DELETE")
 
 	//hosts router
 	hostsRouter := rootRouter.PathPrefix("/hosts").Subrouter()

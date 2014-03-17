@@ -4,6 +4,10 @@ package backend
 	Content interfaces
 */
 
+import (
+	"io"
+)
+
 type AppInfo map[string]interface{}
 
 type DeployResult struct {
@@ -59,7 +63,7 @@ type ApplicationController interface {
 	ApplicationList() ([]string, error)
 	ApplicationUpload(info AppUplodaInfo) (<-chan string, <-chan error, error)
 	ApplicationInfo(appname string) (AppInfo, error)
-	ApplicationDeploy(appname string, profile string, runlist string) (<-chan string, <-chan error, error)
+	ApplicationDeploy(appname string, profile string, runlist string) (io.Reader, error)
 }
 
 type BuildLogController interface {

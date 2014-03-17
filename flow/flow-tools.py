@@ -42,7 +42,8 @@ class UploadLog(object):
         self.on_flush = on_flush
 
     def write(self, value):
-        self.current.append(str(value))
+
+        self.current.append("%s\n" % value)
         if len(self.current) >= self.depth:
             self.flush()
 

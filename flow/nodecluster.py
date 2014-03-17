@@ -18,9 +18,9 @@ class NodeCluster(object):
         failed = list()
         hosts_count = len(self.hosts)
         for i, host in enumerate(self.hosts):
-            item = "Start %s at host %d/%d %s" % (appname,
-                                                  i + 1, hosts_count,
-                                                  host)
+            item = "Start %s at host %d/%d %s\n" % (appname,
+                                                    i + 1, hosts_count,
+                                                    host)
             log.info(item)
             self.logcallback(item)
             nodeinstance = None
@@ -30,14 +30,14 @@ class NodeCluster(object):
                 res = yield app.Start(nodeinstance,
                                       appname,
                                       profilename).execute()
-                self.logcallback(str(res))
+                self.logcallback(str(res) + '\n')
             except Exception as e:
-                item = "Unable to connect to node at host %s %s" % (host, e)
+                item = "Unable to connect to node at host %s %s\n" % (host, e)
                 log.error(item)
                 self.logcallback(item)
                 failed.append(host)
             else:
-                item = "App %s has been launched successfully" % appname
+                item = "App %s has been launched successfully\n" % appname
                 log.info(item)
                 self.logcallback(item)
                 success.append(host)
@@ -60,14 +60,14 @@ class NodeCluster(object):
                 nodeinstance = Service("node", blockingConnect=False)
                 yield nodeinstance.connect(host=host)
                 res = yield app.Stop(nodeinstance, appname).execute()
-                self.logcallback(str(res))
+                self.logcallback(str(res) + '\n')
             except Exception as e:
                 item = "Unable to connect to node at host %s %s" % (host, e)
                 log.error(item)
                 self.logcallback(item)
                 failed.append(host)
             else:
-                item = "App %s has been stoped successfully" % appname
+                item = "App %s has been stoped successfully\n" % appname
                 log.info(item)
                 self.logcallback(item)
                 succeed.append(host)

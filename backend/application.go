@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"io"
 	"log"
 
 	"github.com/ugorji/go/codec"
@@ -20,6 +21,7 @@ var (
 type appWrapper interface {
 	Call(method string, args interface{}, result ...interface{}) (err error)
 	StreamCall(method string, args interface{}) (<-chan cocaine.ServiceResult, error)
+	CallReader(method string, args interface{}) (io.Reader, error)
 }
 
 type wrappedApp struct {
@@ -60,6 +62,16 @@ func (aW *wrappedApp) StreamCall(method string, args interface{}) (<-chan cocain
 	return ch, nil
 }
 
+func (aW *wrappedApp) CallReader(method string, args interface{}) (r io.Reader, err error) {
+	ch, err := aW.StreamCall(method, args)
+	if err != nil {
+		return
+	}
+
+	r = &appStreamReader{ch}
+	return
+}
+
 func NewAppWrapper(name string, endpoint string) (wa appWrapper, err error) {
 	app, err := cocaine.NewService("flow-tools", endpoint)
 	if err != nil {
@@ -68,4 +80,26 @@ func NewAppWrapper(name string, endpoint string) (wa appWrapper, err error) {
 	}
 	wa = &wrappedApp{app}
 	return
+}
+
+type appStreamReader struct {
+	input <-chan cocaine.ServiceResult
+}
+
+func (a *appStreamReader) Read(p []byte) (n int, err error) {
+	res, ok := <-a.input
+	if !ok {
+		return 0, io.EOF
+	}
+
+	if res.Err() != nil {
+		return 0, res.Err()
+	}
+
+	err = res.Extract(&p)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
 }

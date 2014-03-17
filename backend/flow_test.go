@@ -1,11 +1,12 @@
 package backend
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"testing"
 
-	"encoding/json"
 	"github.com/cocaine/cocaine-flow/common"
 )
 
@@ -295,18 +296,17 @@ func TestBuildLog(t *testing.T) {
 func TestAppOperations(t *testing.T) {
 	cocs := getTestCocaine(t)
 
-	ch, status, err := cocs.ApplicationDeploy("bullet", "TEST", "FLOW")
+	r, err := cocs.ApplicationDeploy("bullet", "TEST", "FLOW")
 	if err != nil {
 		t.Fatalf("Error %s", err)
 	}
 
-	for lg := range ch {
-		t.Log(lg)
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("Error %s", err)
 	}
 
-	if <-status != nil {
-		t.Fatal("Error in Deploy")
-	}
+	t.Logf("Log: \n%s", b)
 
 	info, err := cocs.ApplicationInfo("flow-tools")
 	if err != nil {

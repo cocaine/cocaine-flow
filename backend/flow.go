@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/cocaine/cocaine-flow/common"
@@ -28,17 +29,6 @@ type AppUploadTask struct {
 	Docker   string `codec:"docker"`
 	Registry string `codec:"registry"`
 	AppUplodaInfo
-}
-
-func isStringInSlice(name string, slice []string) (b bool) {
-	b = false
-	for _, item := range slice {
-		if item == name {
-			b = true
-			return
-		}
-	}
-	return
 }
 
 type cocainebackend struct {
@@ -277,7 +267,7 @@ func (b *cocainebackend) ApplicationInfo(username string, appname string) (info 
 	return
 }
 
-func (b *cocainebackend) ApplicationDeploy(appname string, profile string, runlist string) (<-chan string, <-chan error, error) {
+func (b *cocainebackend) ApplicationDeploy(appname string, profile string, runlist string) (r io.Reader, err error) {
 	task := struct {
 		Appname string `codec:"appname"`
 		Profile string `codec:"profile"`
@@ -288,48 +278,8 @@ func (b *cocainebackend) ApplicationDeploy(appname string, profile string, runli
 		runlist,
 	}
 
-	stream, err := b.app.StreamCall("app-deploy", task)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ans := make(chan string, 10)
-	errStream := make(chan error, 1)
-
-	go func() {
-		defer close(ans)
-		for {
-			var logdata string
-			select {
-			case res, ok := <-stream:
-				if !ok {
-					errStream <- nil
-					close(errStream)
-					return
-				}
-
-				if res.Err() != nil {
-					errStream <- res.Err()
-					close(errStream)
-					return
-				}
-
-				extracterr := res.Extract(&logdata)
-				if extracterr != nil {
-					/*
-						Should I log this situation???
-					*/
-					continue
-				}
-
-				if len(logdata) > 0 {
-					ans <- logdata
-				}
-			}
-		}
-	}()
-	return ans, errStream, err
+	r, err = b.app.CallReader("app-deploy", task)
+	return
 }
 
 /*
@@ -343,5 +293,20 @@ func (b *cocainebackend) BuildLogList(username string) (buildlogs []string, err 
 
 func (b *cocainebackend) BuildLogRead(id string) (buildlog string, err error) {
 	err = b.app.Call("user-buildlog-read", id, &buildlog)
+	return
+}
+
+/*
+	Utils
+*/
+
+func isStringInSlice(name string, slice []string) (b bool) {
+	b = false
+	for _, item := range slice {
+		if item == name {
+			b = true
+			return
+		}
+	}
 	return
 }
