@@ -18,22 +18,9 @@ const pathPrefix = "/flow/v1"
 const sessionName = "flow-session"
 
 var (
-	// TBD: Read it from file
-	// secretkey = []byte("something-very-secretkeysddsddsd")
 	cocs  backend.AuthCocaine
 	store *sessions.CookieStore //sessions.NewCookieStore(secretkey)
 )
-
-func Test(w http.ResponseWriter, r *http.Request) {
-	session, ok := store.Get(r, "flow-session")
-	fmt.Println(session, ok)
-	// Set some session values.
-	session.Values["foo"] = "bar"
-	session.Values[42] = 43
-	// Save it.
-	session.Save(r, w)
-	fmt.Fprintln(w, "OK")
-}
 
 /*
 	Profiles
@@ -75,13 +62,13 @@ func ProfileRemove(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request)
 func ProfileUpload(cocs backend.Cocaine, w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	body, _ := ioutil.ReadAll(r.Body)
+	if len(body) == 0 {
+		http.Error(w, "Empty profile", http.StatusInternalServerError)
 		return
 	}
 
-	err = cocs.ProfileUpload(name, body)
+	err := cocs.ProfileUpload(name, body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -412,7 +399,6 @@ func ConstructHandler() http.Handler {
 	router := mux.NewRouter()
 	router.StrictSlash(true)
 	router.HandleFunc("/ping", Ping)
-	router.HandleFunc("/test", Test)
 
 	//flow router
 	rootRouter := router.PathPrefix(pathPrefix).Subrouter()
