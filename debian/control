@@ -1,24 +1,15 @@
 Source: cocaine-flow
-Section: misc
+Section: utils
 Priority: extra
 Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
-Build-Depends: debhelper (>= 7), cdbs, python-support, python (>= 2.6)
+Build-Depends: debhelper (>= 7), cdbs, curl, git-core
 Standards-Version: 3.9.1
 Homepage: https://github.com/cocaine/cocaine-flow
 
 Package: cocaine-flow
-Architecture: all
-Depends: ${shlibs:Depends}, 
- ${misc:Depends}, 
- cocaine-flow-static,
- python (>= 2.6),
- cocaine-tools, 
- cocaine-framework-python (>= 0.10.6),
- python-tornado (>= 3.1),
- python-pip,
- git-core,
- python-sh
-XB-Python-Version: >= 2.6
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
-
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ cocaine-tools,
+ cocaine-framework-python,
+ adduser
+Description: REST-API server for Cocaine cloud

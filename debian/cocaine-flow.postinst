@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -e
+
+case $1 in
+    configure)
+        # Create a new system user to run the cocaine-flow
+        adduser --quiet --system --ingroup adm cocaine
+
+        # push flow-tools application
+        echo "Upload flow-tools."
+        cocaine-tool app upload /usr/lib/cocaine-flow/flow/ --name flow-tools
+        cocaine-tool app restart --name flow-tools --profile default
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with an unknown argument \`$1'" >&2
+        ;;
+esac
+
+#DEBHELPER#
+        
+exit 0

@@ -1,4 +1,10 @@
-cocaine-flow (0.11-6) lucid; urgency=low
+cocaine-flow (0.11.7.1) unstable; urgency=low
+
+  * Introduce go implementation.
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Tue, 11 Mar 2014 12:06:59 +0400
+
+cocaine-flow (0.11-6) unstable; urgency=low
 
   * Update deps: rename cocainoom -> cocaine-flow-static 
 

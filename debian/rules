@@ -1,8 +1,46 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
 
-DEB_PYTHON_SYSTEM=pysupport
+# Uncomment this to turn on verbose mode.
+# export DH_VERBOSE=1
 
 include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
 
-DEB_PYTHON_INSTALL_ARGS_ALL += --install-layout=deb
+PACKAGE_NAME=github.com/cocaine
+BUILDENV=$(CURDIR)/buildenv
+
+export GOROOT=$(BUILDENV)/go
+export GOPATH=$(BUILDENV)
+
+DESTDIR=debian/tmp
+
+
+build:
+	mkdir -p $(BUILDENV)
+	mkdir -p $(BUILDENV)/src/$(PACKAGE_NAME)
+	ln -s $(CURDIR)/ $(BUILDENV)/src/$(PACKAGE_NAME)/cocaine-flow
+	curl -s https://go.googlecode.com/files/go1.2.1.linux-amd64.tar.gz | tar -C $(BUILDENV) -xz
+	go get github.com/ugorji/go/codec
+	go get github.com/gorilla/mux
+	go get github.com/gorilla/sessions
+	go get github.com/cocaine/cocaine-framework-go/cocaine
+	go build -o $(CURDIR)/cocaine-flow $(CURDIR)/main.go
+
+install/cocaine-flow::
+	# ugly hack
+	# REST server
+	install -d $(DESTDIR)/usr/bin
+	install -m755 $(CURDIR)/cocaine-flow $(DESTDIR)/usr/bin
+
+	# cocaine app
+	install -d $(DESTDIR)/usr/lib/cocaine-flow
+	cp -r $(CURDIR)/flow $(DESTDIR)/usr/lib/cocaine-flow/
+
+clean::
+	rm -rf $(BUILDENV)
+	rm -f ./cocaine-flow
