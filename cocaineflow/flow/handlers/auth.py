@@ -26,7 +26,7 @@ class GenToken(CocaineHanler):
     def post(self):
         name = self.get_argument("name")
         password = self.get_argument("password")
+        # TBD: Merge it into private method
         yield self.fw.signin(name, password)
-        token = self.token.pack_user({"name": name,
-                                      "password": password, })
+        token = self.fw.gentoken(name, password)
         self.write(token)

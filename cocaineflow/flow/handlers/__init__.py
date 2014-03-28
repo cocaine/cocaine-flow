@@ -3,16 +3,15 @@ import json
 from tornado import web
 
 from flow.flowcloud import FlowCloud
-from flow.token import Token
 
 
 AuthHeaderName = "Authorization"
 
 
 class CocaineHanler(web.RequestHandler):
-    # TBD: Merge it into application
-    fw = FlowCloud.instance()
-    token = Token()
+
+    def prepare(self):
+        self.fw = FlowCloud.guest()
 
     def send_json(self, data):
         self.set_header("Content-Type", "application/json")
@@ -31,8 +30,7 @@ class AuthRequiredCocaineHandler(CocaineHanler):
         # check Authorization header
         try:
             token = self.request.headers[AuthHeaderName]
-            user_info = self.token.valid(token)
-            self.user = user_info['name']
+            self.fw = FlowCloud.authorized(token)
             return
         except KeyError:
             pass

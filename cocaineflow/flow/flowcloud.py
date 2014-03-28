@@ -1,10 +1,10 @@
-import threading
-
 import msgpack
 from tornado.concurrent import Future
 
 from cocaine.services import Service
 from cocaine.exceptions import ChokeEvent
+
+from flow.token import Token
 
 null_arg = msgpack.packb(None)
 
@@ -26,19 +26,20 @@ def convert_future(cocaine_future):
 
 
 class FlowCloud(object):
-    _instance_lock = threading.Lock()
+    app = Service("flow-tools")
+    token = Token()
 
-    def __init__(self):
-        self.app = Service("flow-tools")
+    def __init__(self, user):
+        self.user = user
 
     @staticmethod
-    def instance():
-        if not hasattr(FlowCloud, "_instance"):
-            with FlowCloud._instance_lock:
-                if not hasattr(FlowCloud, "_instance"):
-                    # New instance after double check
-                    FlowCloud._instance = FlowCloud()
-        return FlowCloud._instance
+    def authorized(token):
+        user_info = FlowCloud.token.valid(token)
+        return FlowCloud(user_info['name'])
+
+    @staticmethod
+    def guest():
+        return FlowCloud("guest")
 
     def enqueue(self, method, *args):
         packed_args = msgpack.packb(*args) if args else null_arg
@@ -138,6 +139,13 @@ class FlowCloud(object):
             "password": password,
         }
         return self.enqueue("user-signin", task)
+
+    def gentoken(self, name, password):
+        user_info = {
+            "name": name,
+            "password": password,
+        }
+        return self.token.pack_user(user_info)
 
     #buildlogs
     def buildlog_list(self, username):
