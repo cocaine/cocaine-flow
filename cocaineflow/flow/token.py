@@ -35,9 +35,17 @@ class Token(object):
     def unpack_user(self, token):
         return json.loads(self.loads(token))
 
-    def is_valid(self, token):
-        user_info = self.unpack_user(token)
-        return int(time.time()) - user_info['time'] < TOKEN_LIFETIME
+    def valid(self, token):
+        try:
+            user_info = self.unpack_user(token)
+            creation_time = user_info.pop('time')
+        except (TypeError, ValueError):
+            raise ValueError("Invalid token")
+
+        if int(time.time()) - creation_time < TOKEN_LIFETIME:
+            return user_info
+        else:
+            raise ValueError("Token expired")
 
 
 if __name__ == "__main__":
@@ -56,5 +64,5 @@ if __name__ == "__main__":
     token2 = t.dumps(json.dumps(d))
     print token2
 
-    print t.is_valid(token)
-    print t.is_valid(token2)
+    print t.valid(token)
+    print t.valid(token2)

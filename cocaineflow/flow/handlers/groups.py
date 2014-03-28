@@ -1,9 +1,9 @@
 from tornado import gen
 
-from flow.handlers import CocaineHanler
+from flow.handlers import AuthRequiredCocaineHandler
 
 
-class RoutingGroups(CocaineHanler):
+class RoutingGroups(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self, name):
         result = yield self.fw.group_read(name)
@@ -24,14 +24,14 @@ class RoutingGroups(CocaineHanler):
         self.ok()
 
 
-class RoutingGroupsList(CocaineHanler):
+class RoutingGroupsList(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self):
         result = yield self.fw.group_list()
         self.send_json(result)
 
 
-class RoutingGroupsPushPop(CocaineHanler):
+class RoutingGroupsPushPop(AuthRequiredCocaineHandler):
     @gen.coroutine
     def put(self, group, app):
         weight = self.get_argument("weight")
@@ -44,7 +44,7 @@ class RoutingGroupsPushPop(CocaineHanler):
         self.ok()
 
 
-class RoutingGroupsRefresh(CocaineHanler):
+class RoutingGroupsRefresh(AuthRequiredCocaineHandler):
     @gen.coroutine
     def post(self, name):
         yield self.fw.group_refresh(name)

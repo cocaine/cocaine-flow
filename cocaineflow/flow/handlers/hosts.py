@@ -1,9 +1,9 @@
 from tornado import gen
 
-from flow.handlers import CocaineHanler
+from flow.handlers import AuthRequiredCocaineHandler
 
 
-class Hosts(CocaineHanler):
+class Hosts(AuthRequiredCocaineHandler):
     @gen.coroutine
     def post(self, name):
         yield self.fw.host_add(name)
@@ -19,7 +19,7 @@ class Hosts(CocaineHanler):
         self.ok()
 
 
-class HostsList(CocaineHanler):
+class HostsList(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self):
         hosts = yield self.fw.host_list()
