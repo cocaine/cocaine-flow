@@ -319,11 +319,12 @@ def crashlog_view(info, response):
         name = info['name']
         timestamp = info['timestamp']
         data = yield crashlog.View(storage, name, timestamp).execute()
+        encoded = msgpack.unpackb(data)
     except Exception as err:
         log.error(repr(err))
         response.error(-100, "Unknown error %s" % err)
     else:
-        response.write(data)
+        response.write(encoded)
     finally:
         response.close()
 

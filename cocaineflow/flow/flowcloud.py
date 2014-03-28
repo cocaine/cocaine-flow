@@ -11,6 +11,7 @@ null_arg = msgpack.packb(None)
 
 def convert_future(cocaine_future):
     future = Future()
+    print "Come in"
 
     def handler(res):
         try:
@@ -112,3 +113,14 @@ class FlowCloud(object):
 
     def group_refresh(self, name):
         return self.enqueue("group-refresh", name)
+
+    # crashlogs
+    def crashlog_list(self, name):
+        return self.enqueue("crashlog-list", name)
+
+    def crashlog_view(self, name, timestamp):
+        task = {
+            "name": name,
+            "timestamp": timestamp,
+        }
+        return self.enqueue("crashlog-view", task)
