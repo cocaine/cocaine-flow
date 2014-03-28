@@ -28,13 +28,16 @@ class Token(object):
         return cipher.decrypt(value)
 
     def pack_user(self, user_info):
+        # set timestamp
+        user_info['time'] = int(time.time())
         return self.dumps(json.dumps(user_info))
 
-    def unpack_user(self, packed_user_info):
-        return json.loads(self.loads(packed_user_info))
+    def unpack_user(self, token):
+        return json.loads(self.loads(token))
 
     def is_valid(self, token):
-        pass
+        user_info = self.unpack_user(token)
+        return int(time.time()) - user_info['time'] < TOKEN_LIFETIME
 
 
 if __name__ == "__main__":
@@ -42,3 +45,16 @@ if __name__ == "__main__":
     incoming = sys.argv[1]
     t = Token()
     assert incoming == t.loads(t.dumps(incoming)), "Something wrong"
+
+    d = {"name": "user",
+         "password": "pass"}
+
+    token = t.pack_user(d)
+    print token
+
+    d['time'] = 100000
+    token2 = t.dumps(json.dumps(d))
+    print token2
+
+    print t.is_valid(token)
+    print t.is_valid(token2)

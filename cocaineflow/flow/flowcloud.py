@@ -11,7 +11,6 @@ null_arg = msgpack.packb(None)
 
 def convert_future(cocaine_future):
     future = Future()
-    print "Come in"
 
     def handler(res):
         try:
@@ -124,3 +123,19 @@ class FlowCloud(object):
             "timestamp": timestamp,
         }
         return self.enqueue("crashlog-view", task)
+
+    # auth
+    def signup(self, name, password):
+        task = {
+            "name": name,
+            "password": password,
+        }
+        return self.enqueue("user-signup", task)
+
+    def signin(self, name, password):
+        task = {
+            "name": name,
+            "password": password,
+        }
+        return self.enqueue("user-signin", task)
+

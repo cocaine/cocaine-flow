@@ -3,10 +3,12 @@ import json
 from tornado import web
 
 from flow.flowcloud import FlowCloud
+from flow.token import Token
 
 
 class CocaineHanler(web.RequestHandler):
     fw = FlowCloud.instance()
+    token = Token()
 
     def send_json(self, data):
         self.set_header("Content-Type", "application/json")
@@ -20,4 +22,4 @@ class CocaineHanler(web.RequestHandler):
         super(CocaineHanler, self).write_error(*args, **kwargs)
 
     def get_current_user(self):
-        user = self.get_secure_cookie("username")
+        pass

@@ -1,10 +1,11 @@
 import tornado.web
 
-from flow.handlers import profiles
-from flow.handlers import hosts
-from flow.handlers import runlists
-from flow.handlers import groups
+from flow.handlers import auth
 from flow.handlers import crashlogs
+from flow.handlers import groups
+from flow.handlers import hosts
+from flow.handlers import profiles
+from flow.handlers import runlists
 
 Application = tornado.web.Application([
     (r"/flow/v1/profiles/?", profiles.ProfilesList),
@@ -23,4 +24,8 @@ Application = tornado.web.Application([
 
     (r"/flow/v1/crashlogs/([^/]+)", crashlogs.CrashlogsList),
     (r"/flow/v1/crashlogs/([^/]+)/([^/]+)", crashlogs.Crashlogs),
+
+    (r"/flow/v1/signup", auth.SignUp),
+    (r"/flow/v1/signin", auth.SignIn),
+    (r"/flow/v1/gentoken", auth.GenToken),
 ], debug=True)
