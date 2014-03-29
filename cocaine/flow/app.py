@@ -23,6 +23,7 @@ import logging
 
 import tornado.web
 
+from cocaine.flow.handlers import apps
 from cocaine.flow.handlers import auth
 from cocaine.flow.handlers import buildlogs
 from cocaine.flow.handlers import crashlogs
@@ -62,6 +63,9 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/v1/signin", auth.SignIn),
             (r"/flow/v1/removeuser/([^/]+)", auth.RemoveUser),
             (r"/flow/v1/gentoken", auth.GenToken),
+
+            (r"/flow/v1/apps", apps.AppsList),
+
         ]
 
         settings = dict(

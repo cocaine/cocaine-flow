@@ -191,9 +191,13 @@ class FlowCloud(object):
         else:
             raise PermissionDenied("Unable to remove user %s." % name)
 
-    #buildlogs
+    # buildlogs
     def buildlog_list(self, username):
         return self.enqueue("user-buildlog-list", username)
 
     def buildlog_read(self, bl_id):
         return self.enqueue("user-buildlog-read", bl_id)
+
+    # apps
+    def app_list(self):
+        return self.enqueue("user-app-list", self.user)

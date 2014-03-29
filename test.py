@@ -29,8 +29,10 @@ class FlowTestCase(AsyncHTTPTestCase):
 def create_fake_user(func):
     def wrapper(self):
         self.reg()
-        func(self)
-        self.unreg()
+        try:
+            func(self)
+        finally:
+            self.unreg()
     return wrapper
 
 
@@ -82,6 +84,12 @@ class FlowTest(FlowTestCase):
         #                method="DELETE")
         # self.assertEqual(200, r.code, "Runlist delete failed")
         # self.assertEqual({}, json.loads(r.body))
+
+    @create_fake_user
+    def test_apps(self):
+        r = self.fetch('/flow/v1/apps',
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
 
     @create_fake_user
     def test_profile(self):
