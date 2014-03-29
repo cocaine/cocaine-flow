@@ -31,5 +31,6 @@ Application = tornado.web.Application([
 
     (r"/flow/v1/signup", auth.SignUp),
     (r"/flow/v1/signin", auth.SignIn),
+    (r"/flow/v1/removeuser/([^/]+)", auth.RemoveUser),
     (r"/flow/v1/gentoken", auth.GenToken),
 ], debug=True)

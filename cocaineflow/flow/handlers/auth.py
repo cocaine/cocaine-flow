@@ -1,6 +1,6 @@
 from tornado import gen
 
-from flow.handlers import CocaineHanler
+from flow.handlers import CocaineHanler, AuthRequiredCocaineHandler
 
 
 class SignUp(CocaineHanler):
@@ -30,3 +30,10 @@ class GenToken(CocaineHanler):
         yield self.fw.signin(name, password)
         token = self.fw.gentoken(name, password)
         self.write(token)
+
+
+class RemoveUser(AuthRequiredCocaineHandler):
+    @gen.coroutine
+    def delete(self, name):
+        yield self.fw.user_remove(name)
+        self.ok()

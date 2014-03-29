@@ -1,9 +1,9 @@
 from tornado import gen
 
-from flow.handlers import CocaineHanler
+from flow.handlers import AuthRequiredCocaineHandler
 
 
-class Profiles(CocaineHanler):
+class Profiles(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self, name):
         result = yield self.fw.profile_read(name)
@@ -25,7 +25,7 @@ class Profiles(CocaineHanler):
         self.ok()
 
 
-class ProfilesList(CocaineHanler):
+class ProfilesList(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self):
         result = yield self.fw.profile_list()

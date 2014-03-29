@@ -9,6 +9,10 @@ from flow.token import Token
 null_arg = msgpack.packb(None)
 
 
+class PermissionDenied(Exception):
+    pass
+
+
 def convert_future(cocaine_future):
     future = Future()
 
@@ -146,6 +150,12 @@ class FlowCloud(object):
             "password": password,
         }
         return self.token.pack_user(user_info)
+
+    def user_remove(self, name):
+        if name == self.user:
+            return self.enqueue("user-remove", name)
+        else:
+            raise PermissionDenied("Unable to remove user %s." % name)
 
     #buildlogs
     def buildlog_list(self, username):
