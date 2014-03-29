@@ -21,7 +21,6 @@
 #
 from __future__ import print_function
 
-import errno
 import logging
 import socket
 import sys
@@ -81,12 +80,9 @@ def main():
         sockets = tornado.netutil.bind_sockets(options.port,
                                                options.host)
     except socket.error as err:
-        if errno.EADDRNOTAVAIL == err.errno:
-            log.error("%s %s:%s", err,
-                      options.host,
-                      options.port)
-        else:
-            log.error(err)
+        log.error("Unable to use endpoint %s:%d %s",
+                  options.host,
+                  options.port, err)
         exit(1)
 
     log.info("Listening to port %s:%d",
