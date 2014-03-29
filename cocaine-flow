@@ -19,18 +19,52 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+from __future__ import print_function
+
+import logging
+import sys
 
 import tornado.ioloop
 import tornado.httpserver
 from tornado.options import define, options
+from tornado.options import parse_config_file, parse_command_line
 
 from cocaine.flow.app import FlowRestServer
 
-define('port', default=8888, help='run on the given port', type=int)
+RESTGroup = 'RestServer'
+ServerGroup = 'HTTPServer'
+
+define('port', default=8888, group=ServerGroup,
+       help='run on the given port', type=int)
+
+define('registry', group=RESTGroup,
+       help='Docker-registry host:port', type=str)
+
+define('cocaine', group=RESTGroup,
+       help='Cocaine-runtime',
+       type=str, default="localhost:10053"),
+
+define('docker', group=RESTGroup,
+       help='Docker daemon endpoint', type=str)
+
+define('config', group=ServerGroup,
+       type=str, help='path to config file',
+       callback=lambda path: parse_config_file(path, final=False))
+
+
+def check_options():
+    for opt, value in options.group_dict(RESTGroup).iteritems():
+        if value is None:
+            log = logging.getLogger()
+            log.error("Option '%s' should have a value" % opt)
+            print("Option '%s' should have a value" % opt, file=sys.stderr)
+            options.print_help()
+            exit(1)
 
 
 def main():
-    tornado.options.parse_command_line()
+    options.add_parse_callback(check_options)
+    parse_command_line()
     http_server = tornado.httpserver.HTTPServer(FlowRestServer())
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.instance().start()
