@@ -51,6 +51,7 @@ class Token(object):
     def pack_user(self, user_info):
         # set timestamp
         user_info['time'] = int(time.time())
+        user_info['salt'] = Random.get_random_bytes(128).encode('hex')
         return self.dumps(json.dumps(user_info))
 
     def unpack_user(self, token):
