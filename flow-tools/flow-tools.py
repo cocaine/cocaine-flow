@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 #
-#    Copyright (c) 2011-2014+ Anton Tyurin <noxiouz@yandex.ru>
-#    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+#    Copyright (c) 2013-2014+ Anton Tyurin <noxiouz@yandex.ru>
+#    Copyright (c) 2013-2014 Other contributors as noted in the AUTHORS file.
 #
 #    This file is part of Cocaine.
 #
