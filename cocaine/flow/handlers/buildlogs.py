@@ -1,6 +1,6 @@
 from tornado import gen
 
-from flow.handlers import AuthRequiredCocaineHandler
+from cocaine.flow.handlers import AuthRequiredCocaineHandler
 
 
 class Buildlogs(AuthRequiredCocaineHandler):

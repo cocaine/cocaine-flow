@@ -1,6 +1,7 @@
 from tornado import gen
 
-from flow.handlers import CocaineHanler, AuthRequiredCocaineHandler
+from cocaine.flow.handlers import CocaineHanler
+from cocaine.flow.handlers import AuthRequiredCocaineHandler
 
 
 class SignUp(CocaineHanler):

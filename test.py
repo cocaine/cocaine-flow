@@ -4,7 +4,7 @@ import urllib
 from tornado.testing import AsyncHTTPTestCase
 from tornado.ioloop import IOLoop
 
-from flow.app import Application
+from cocaine.flow.app import FlowRestServer
 
 test_runlist_name = "sometestrunlist"
 test_runlists = "{}"
@@ -23,7 +23,7 @@ class FlowTestCase(AsyncHTTPTestCase):
         return IOLoop.instance()
 
     def get_app(self):
-        return Application
+        return FlowRestServer()
 
 
 def create_fake_user(func):

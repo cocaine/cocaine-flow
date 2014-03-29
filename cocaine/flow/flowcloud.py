@@ -4,7 +4,7 @@ from tornado.concurrent import Future
 from cocaine.services import Service
 from cocaine.exceptions import ChokeEvent
 
-from flow.token import Token
+from cocaine.flow.token import Token
 
 null_arg = msgpack.packb(None)
 

@@ -2,7 +2,7 @@ import json
 
 from tornado import web
 
-from flow.flowcloud import FlowCloud
+from cocaine.flow.flowcloud import FlowCloud
 
 
 AuthHeaderName = "Authorization"
