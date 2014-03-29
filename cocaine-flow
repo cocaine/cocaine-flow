@@ -21,21 +21,31 @@
 #
 from __future__ import print_function
 
+import errno
 import logging
+import socket
 import sys
 
-import tornado.ioloop
 import tornado.httpserver
+from tornado.ioloop import IOLoop
 from tornado.options import define, options
 from tornado.options import parse_config_file, parse_command_line
 
 from cocaine.flow.app import FlowRestServer
+
+log = logging.getLogger()
 
 RESTGroup = 'RestServer'
 ServerGroup = 'HTTPServer'
 
 define('port', default=8888, group=ServerGroup,
        help='run on the given port', type=int)
+
+define('host', default="", group=ServerGroup,
+       help='run on the given host', type=str)
+
+define('procs', default=-1, group=ServerGroup,
+       help='Procs number', type=int)
 
 define('registry', group=RESTGroup,
        help='Docker-registry host:port', type=str)
@@ -55,8 +65,8 @@ define('config', group=ServerGroup,
 def check_options():
     for opt, value in options.group_dict(RESTGroup).iteritems():
         if value is None:
-            log = logging.getLogger()
-            log.error("Option '%s' should have a value" % opt)
+            log.error("Option '%s' should have a value", opt)
+            # Print to stderr as fallback
             print("Option '%s' should have a value" % opt, file=sys.stderr)
             options.print_help()
             exit(1)
@@ -65,9 +75,36 @@ def check_options():
 def main():
     options.add_parse_callback(check_options)
     parse_command_line()
-    http_server = tornado.httpserver.HTTPServer(FlowRestServer())
-    http_server.listen(options.port)
-    tornado.ioloop.IOLoop.instance().start()
+
+    # bind sockets
+    try:
+        sockets = tornado.netutil.bind_sockets(options.port,
+                                               options.host)
+    except socket.error as err:
+        if errno.EADDRNOTAVAIL == err.errno:
+            log.error("%s %s:%s", err,
+                      options.host,
+                      options.port)
+        else:
+            log.error(err)
+        exit(1)
+
+    log.info("Listening to port %s:%d",
+             options.host,
+             options.port)
+    # Should I fork?
+    if options.procs > -1:
+        # 0 value means: "create as many procs as CPUs"
+        tornado.process.fork_processes(options.procs)
+
+    # initialize RestServer web app
+    rest_server_settings = options.group_dict(RESTGroup)
+    app = FlowRestServer(**rest_server_settings)
+    # create server
+    server = tornado.httpserver.HTTPServer(app)
+    # attach handlers
+    server.add_sockets(sockets)
+    IOLoop.instance().start()
 
 if __name__ == "__main__":
     main()

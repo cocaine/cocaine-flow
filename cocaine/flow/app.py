@@ -35,7 +35,7 @@ logger = logging.getLogger("tornado.application")
 
 
 class FlowRestServer(tornado.web.Application):
-    def __init__(self):
+    def __init__(self, **options):
         logger.info("Create FlowRestServer")
         handlers = [
             (r"/flow/v1/profiles/?", profiles.ProfilesList),

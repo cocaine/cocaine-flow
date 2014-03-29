@@ -18,11 +18,10 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
+import threading
 
 import msgpack
 from tornado.concurrent import Future
-
-from cocaine.services import Service
 from cocaine.exceptions import ChokeEvent
 
 from cocaine.flow.token import Token
@@ -50,11 +49,25 @@ def convert_future(cocaine_future):
     return future
 
 
+class FlowTools(object):
+    _instance_lock = threading.Lock()
+
+    @staticmethod
+    def instance():
+        if not hasattr(FlowTools, "_instance"):
+            with FlowTools._instance_lock:
+                if not hasattr(FlowTools, "_instance"):
+                    # New instance after double check
+                    from cocaine.services import Service
+                    FlowTools._instance = Service("flow-tools")
+        return FlowTools._instance
+
+
 class FlowCloud(object):
-    app = Service("flow-tools")
     token = Token()
 
     def __init__(self, user):
+        self.app = FlowTools.instance()
         self.user = user
 
     @staticmethod
