@@ -85,9 +85,6 @@ def main():
                   options.port, err)
         exit(1)
 
-    log.info("Listening to port %s:%d",
-             options.host,
-             options.port)
     # Should I fork?
     if options.procs > -1:
         # 0 value means: "create as many procs as CPUs"
@@ -100,6 +97,8 @@ def main():
     server = tornado.httpserver.HTTPServer(app)
     # attach handlers
     server.add_sockets(sockets)
+    log.info("Listening to %s",
+             ' '.join(('%s:%d' % s.getsockname()[:2] for s in sockets)))
     IOLoop.instance().start()
 
 if __name__ == "__main__":
