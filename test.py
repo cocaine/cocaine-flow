@@ -90,6 +90,18 @@ class FlowTest(FlowTestCase):
         r = self.fetch('/flow/v1/apps',
                        headers={"Authorization": self.token})
         self.assertEqual(200, r.code)
+        apps = json.loads(r.body)
+
+        r = self.fetch('/flow/v1/apps/bullet/fdfd',
+                       headers={"Authorization": self.token},
+                       body="AAA",
+                       method="POST")
+        self.assertEqual(200, r.code)
+
+        for app in apps:
+            r = self.fetch('/flow/v1/appinfo/' + app,
+                           headers={"Authorization": self.token})
+            self.assertEqual(200, r.code)
 
     @create_fake_user
     def test_profile(self):

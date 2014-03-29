@@ -65,6 +65,7 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/v1/gentoken", auth.GenToken),
 
             (r"/flow/v1/apps", apps.AppsList),
+            (r"/flow/v1/apps/([^/]+)/(.*)", apps.Apps),
 
         ]
 

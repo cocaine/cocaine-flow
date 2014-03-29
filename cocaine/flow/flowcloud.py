@@ -33,6 +33,26 @@ class PermissionDenied(Exception):
     pass
 
 
+class AppUploadInfo(object):
+    def __init__(self, appname, version, path):
+        self.appname = appname
+        self.version = version
+        self.path = path
+
+    def fullname(self):
+        return "%s_%s" % (self.appname, self.version)
+
+    def routing_group(self):
+        return self.appname
+
+    def to_task(self):
+        return {
+            "path": self.path,
+            "app": self.appname,
+            "version": self.version,
+        }
+
+
 def convert_future(cocaine_future):
     future = Future()
 
@@ -83,6 +103,10 @@ class FlowCloud(object):
         packed_args = msgpack.packb(*args) if args else null_arg
         return convert_future(self.app.enqueue(method,
                                                packed_args))
+
+    def stream_enqueue(self, method, *args):
+        packed_args = msgpack.packb(*args) if args else null_arg
+        return self.app.enqueue(method, packed_args)
 
     # profiles
     def profile_list(self):
@@ -201,3 +225,13 @@ class FlowCloud(object):
     # apps
     def app_list(self):
         return self.enqueue("user-app-list", self.user)
+
+    def app_info(self, appname):
+        task = {
+            "appname": appname,
+            "username": self.user,
+        }
+        return self.enqueue("app-info", task)
+
+    def app_upload(self, upload_info):
+        return self.stream_enqueue("user-upload", upload_info.to_task())
