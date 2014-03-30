@@ -55,6 +55,8 @@ class Apps(AuthRequiredCocaineHandler):
         self.tempdir = yield gen.Task(self.run_background,
                                       partial(unpack_archive,
                                               self.request.body))
+        if self.tempdir is None:
+            raise Exception("Unable to unpack body")
 
         upl_info = AppUploadInfo(appname, version, self.tempdir.path)
         # clean tempdir after the finish of request

@@ -52,7 +52,7 @@ def unpack_archive(data):
             archive.extractall(tempdir.path)
     except Exception as err:
         logger.error(err)
-
-    return tempdir
+    else:
+        return tempdir
 
 
