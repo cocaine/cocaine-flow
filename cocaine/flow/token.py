@@ -26,15 +26,20 @@ from Crypto.Cipher import AES
 from Crypto import Random
 
 
-key = b'Sixteen byte key'
-
 TOKEN_LIFETIME = 3600
 
 
 class Token(object):
+    def __init__(self, key, lifetime=TOKEN_LIFETIME):
+        self.key = key
+        self.lifetime = lifetime
+        # check key
+        if len(key) not in AES.key_size:
+            raise ValueError("AES key must be either 16, 24, or 32 bytes long")
+
     def dumps(self, data):
         iv = Random.new().read(AES.block_size)
-        cipher = AES.new(key, AES.MODE_CFB, iv)
+        cipher = AES.new(self.key, AES.MODE_CFB, iv)
         msg = iv + cipher.encrypt(data)
         return msg.encode("hex")
 
@@ -45,7 +50,7 @@ class Token(object):
 
         iv = data[:AES.block_size]
         value = data[AES.block_size:]
-        cipher = AES.new(key, AES.MODE_CFB, iv)
+        cipher = AES.new(self.key, AES.MODE_CFB, iv)
         return cipher.decrypt(value)
 
     def pack_user(self, user_info):
@@ -64,7 +69,7 @@ class Token(object):
         except (TypeError, ValueError):
             raise ValueError("Invalid token")
 
-        if int(time.time()) - creation_time < TOKEN_LIFETIME:
+        if int(time.time()) - creation_time < self.lifetime:
             return user_info
         else:
             raise ValueError("Token expired")
@@ -73,7 +78,8 @@ class Token(object):
 if __name__ == "__main__":
     import sys
     incoming = sys.argv[1]
-    t = Token()
+    key = b'sdsdsdsdsdsdsdds'
+    t = Token(key)
     assert incoming == t.loads(t.dumps(incoming)), "Something wrong"
 
     d = {"name": "user",

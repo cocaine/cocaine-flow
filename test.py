@@ -23,7 +23,11 @@ class FlowTestCase(AsyncHTTPTestCase):
         return IOLoop.instance()
 
     def get_app(self):
-        return FlowRestServer()
+        settings = {
+            "debug": True,
+            "token_key": b"aaaaaaaaaaaaaaaa",
+        }
+        return FlowRestServer(**settings)
 
 
 def create_fake_user(func):

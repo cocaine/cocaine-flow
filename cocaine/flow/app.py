@@ -33,12 +33,19 @@ from cocaine.flow.handlers import profiles
 from cocaine.flow.handlers import runlists
 from cocaine.flow.handlers import utils
 
-logger = logging.getLogger("tornado.application")
+from cocaine.flow.flowcloud import FlowCloud
+from cocaine.flow.flowcloud import FlowTools
+from cocaine.flow.token import Token
+
+
+class FlowInitializationError(Exception):
+    pass
 
 
 class FlowRestServer(tornado.web.Application):
-    def __init__(self, **options):
-        logger.info("Create FlowRestServer")
+    def __init__(self, **settings):
+        self.logger = logging.getLogger("tornado.application")
+        self.logger.debug("Creating FlowRestServer")
         handlers = [
             (r"/flow/v1/profiles/?", profiles.ProfilesList),
             (r"/flow/v1/profiles/(.+)", profiles.Profiles),
@@ -71,9 +78,22 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/ping", utils.Ping),
         ]
 
-        settings = dict(
-            cookie_secret='11oETzKXQAGaYdkL5gEmGeJJFuYh7EQnp2XdTP1o/Vo=',
-            debug=True
-        )
+        self.cipher = Token(settings['token_key'])
+        cocaine_host = settings['cocaine_host']
+        cocaine_port = settings['cocaine_port']
+
+        self.logger.info("Connectiong to Cocaine Runtime at %s:%d",
+                         cocaine_host, cocaine_port)
+        try:
+            FlowTools.instance(host=cocaine_host, port=cocaine_port)
+        except Exception as err:  # todo: check other exc types
+            self.logger.error("Unable to connect to flow-tools application")
+            raise FlowInitializationError("flow-tools is unavailable %s" % err)
 
         tornado.web.Application.__init__(self, handlers, **settings)
+
+    def guest(self):
+        return FlowCloud.guest()
+
+    def authorized(self, user_info):
+        return FlowCloud.authorized(user_info)

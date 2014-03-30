@@ -23,8 +23,6 @@ import json
 
 from tornado import web
 
-from cocaine.flow.flowcloud import FlowCloud
-
 
 AuthHeaderName = "Authorization"
 
@@ -32,7 +30,7 @@ AuthHeaderName = "Authorization"
 class CocaineHanler(web.RequestHandler):
 
     def prepare(self):
-        self.fw = FlowCloud.guest()
+        self.fw = self.application.guest()
 
     def send_json(self, data):
         self.set_header("Content-Type", "application/json")
@@ -45,16 +43,28 @@ class CocaineHanler(web.RequestHandler):
         # hijack exception here
         super(CocaineHanler, self).write_error(*args, **kwargs)
 
+    @property
+    def cipher(self):
+        return self.application.cipher
+
+    @property
+    def logger(self):
+        return self.application.logger
+
 
 class AuthRequiredCocaineHandler(CocaineHanler):
     def prepare(self):
         # check Authorization header
-        try:
-            token = self.request.headers[AuthHeaderName]
-            self.fw = FlowCloud.authorized(token)
-            return
-        except KeyError:
-            pass
+        token = self.request.headers.get(AuthHeaderName)
+        if token is not None:
+            self.logger.debug("Authorization header has been located")
+            try:
+                user_info = self.cipher.valid(token)
+                self.fw = self.application.authorized(user_info)
+            except ValueError as err:
+                self.logger.warning(err)
+            else:
+                return
         #
         # TBD: cookies
         #

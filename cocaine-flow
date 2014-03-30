@@ -31,12 +31,14 @@ from tornado.options import define, options
 from tornado.options import parse_config_file, parse_command_line
 
 from cocaine.flow.app import FlowRestServer
+from cocaine.flow.app import FlowInitializationError
 
 log = logging.getLogger()
 
 RESTGroup = 'RestServer'
 ServerGroup = 'HTTPServer'
 
+# Webserver options
 define('port', default=8888, group=ServerGroup,
        help='run on the given port', type=int)
 
@@ -46,16 +48,31 @@ define('host', default="", group=ServerGroup,
 define('procs', default=-1, group=ServerGroup,
        help='Procs number', type=int)
 
+# REST server options
 define('registry', group=RESTGroup,
        help='Docker-registry host:port', type=str)
 
-define('cocaine', group=RESTGroup,
+define('cocaine_host', group=RESTGroup,
        help='Cocaine-runtime',
-       type=str, default="localhost:10053"),
+       type=str, default="localhost"),
+
+define('cocaine_port', group=RESTGroup,
+       help='Cocaine-runtime',
+       type=int, default=10053),
 
 define('docker', group=RESTGroup,
        help='Docker daemon endpoint', type=str)
 
+define('cookie_secret', group=RESTGroup,
+       help='cookie secret key', type=str)
+
+define('token_key', group=RESTGroup,
+       help='AES secret key', type=str)
+
+define('debug', group=RESTGroup,
+       help='enable debug mode', type=bool, default=False)
+
+# configuration file
 define('config', group=ServerGroup,
        type=str, help='path to config file',
        callback=lambda path: parse_config_file(path, final=False))
@@ -92,7 +109,14 @@ def main():
 
     # initialize RestServer web app
     rest_server_settings = options.group_dict(RESTGroup)
-    app = FlowRestServer(**rest_server_settings)
+    try:
+        app = FlowRestServer(**rest_server_settings)
+    except FlowInitializationError as err:
+        log.error(err)
+        exit(1)
+    except Exception as err:
+        log.error("Unknown error %s", err)
+        exit(1)
     # create server
     server = tornado.httpserver.HTTPServer(app)
     # attach handlers

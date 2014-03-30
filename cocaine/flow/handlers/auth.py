@@ -49,8 +49,14 @@ class GenToken(CocaineHanler):
         name = self.get_argument("name")
         password = self.get_argument("password")
         # TBD: Merge it into private method
-        yield self.fw.signin(name, password)
-        token = self.fw.gentoken(name, password)
+        res = yield self.fw.signin(name, password)
+        if res['name'] != name:
+            self.logger.error("Excepted name %s, but %s got", name, res['name'])
+            raise ValueError("Authorization error")
+        user_info = {
+            "name": name
+        }
+        token = self.cipher.pack_user(user_info)
         self.write(token)
 
 

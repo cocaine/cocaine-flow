@@ -24,7 +24,6 @@ import msgpack
 from tornado.concurrent import Future
 from cocaine.exceptions import ChokeEvent
 
-from cocaine.flow.token import Token
 
 null_arg = msgpack.packb(None)
 
@@ -73,31 +72,33 @@ class FlowTools(object):
     _instance_lock = threading.Lock()
 
     @staticmethod
-    def instance():
+    def instance(host="localhost", port=10053):
         if not hasattr(FlowTools, "_instance"):
             with FlowTools._instance_lock:
                 if not hasattr(FlowTools, "_instance"):
-                    # New instance after double check
                     from cocaine.services import Service
-                    FlowTools._instance = Service("flow-tools")
+                    FlowTools._instance = Service("flow-tools",
+                                                  host=host,
+                                                  port=port)
         return FlowTools._instance
 
 
 class FlowCloud(object):
-    token = Token()
-
-    def __init__(self, user):
+    def __init__(self, user_info):
         self.app = FlowTools.instance()
-        self.user = user
+        self.user_info = user_info
+        self.user = user_info['name']
 
     @staticmethod
-    def authorized(token):
-        user_info = FlowCloud.token.valid(token)
-        return FlowCloud(user_info['name'])
+    def authorized(user_info):
+        return FlowCloud(user_info)
 
     @staticmethod
     def guest():
-        return FlowCloud("guest")
+        user_info = {
+            "name": "guest"
+        }
+        return FlowCloud(user_info)
 
     def enqueue(self, method, *args):
         packed_args = msgpack.packb(*args) if args else null_arg
@@ -201,13 +202,6 @@ class FlowCloud(object):
             "password": password,
         }
         return self.enqueue("user-signin", task)
-
-    def gentoken(self, name, password):
-        user_info = {
-            "name": name,
-            "password": password,
-        }
-        return self.token.pack_user(user_info)
 
     def user_remove(self, name):
         if name == self.user:
