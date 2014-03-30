@@ -128,6 +128,29 @@ class FlowTest(FlowTestCase):
         self.assertEqual(200, r.code, "Profile delete failed")
         self.assertEqual({}, json.loads(r.body))
 
+    @create_fake_user
+    def test_host(self):
+        r = self.fetch('/flow/v1/hosts/' + "testHost",
+                       method="PUT",
+                       body="",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+
+        r = self.fetch('/flow/v1/hosts',
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+        self.assertIn('testHost', json.loads(r.body))
+
+        r = self.fetch('/flow/v1/hosts/' + "testHost",
+                       method="DELETE",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+
+        r = self.fetch('/flow/v1/hosts',
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+        self.assertTrue(not 'testHost'in json.loads(r.body))
+
 
 class FlowTestAuth(FlowTestCase):
 
