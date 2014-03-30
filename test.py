@@ -26,6 +26,8 @@ class FlowTestCase(AsyncHTTPTestCase):
         settings = {
             "debug": True,
             "token_key": b"aaaaaaaaaaaaaaaa",
+            "cocaine_port": 10053,
+            "cocaine_host": "localhost",
         }
         return FlowRestServer(**settings)
 
