@@ -31,6 +31,7 @@ from cocaine.flow.handlers import groups
 from cocaine.flow.handlers import hosts
 from cocaine.flow.handlers import profiles
 from cocaine.flow.handlers import runlists
+from cocaine.flow.handlers import utils
 
 logger = logging.getLogger("tornado.application")
 
@@ -67,6 +68,7 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/v1/apps", apps.AppsList),
             (r"/flow/v1/apps/([^/]+)/(.*)", apps.Apps),
 
+            (r"/flow/ping", utils.Ping),
         ]
 
         settings = dict(
