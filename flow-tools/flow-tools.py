@@ -574,9 +574,24 @@ def app_deploy(task, response):
     s = list()
     f = list()
     try:
-        appname = task["appname"]
+        name = task["appname"]
+        version = task['version']
+        appname = appname_from_name_version(name, version)
         profilename = task["profile"]
         runlistname = task["runlist"]
+        weight = task.get("weight", 0)
+
+        # get routing groups
+        groups = yield group.List(storage).execute()
+        if name not in groups:
+            log.info("Create routing group %s" % name)
+            # create routing group for given application
+            yield group.Create(storage, name).execute()
+        # add application into routing group
+        log.info("Add %s to groups %s with weight %d" % (appname,
+                                                         name,
+                                                         weight))
+        yield group.AddApplication(storage, name, appname, weight).execute()
 
         log.info("Add %s to runlist %s" % (appname, runlistname))
         yield runlist.AddApplication(storage,
@@ -601,7 +616,9 @@ def app_stop(task, response):
     s = list()
     f = list()
     try:
-        appname = task["appname"]
+        name = task["appname"]
+        version = task["version"]
+        appname = appname_from_name_version(name, version)
         hosts = yield hostdb.hosts()
         cluster = NodeCluster(hosts, response.write)
         (s, f) = yield cluster.stop_app(appname)
@@ -609,7 +626,7 @@ def app_stop(task, response):
         log.error("Unknown error %s" % repr(err))
         response.error(-100, "Unknown error %s" % repr(err))
     else:
-        response.write("Done")
+        response.write("Done %d/%d" % (len(s), len(f)))
     finally:
         response.close()
 
@@ -620,8 +637,10 @@ def app_start(task, response):
     s = list()
     f = list()
     try:
-        appname = task["appname"]
+        name = task["appname"]
         profilename = task["profile"]
+        version = task["version"]
+        appname = appname_from_name_version(name, version)
         hosts = yield hostdb.hosts()
         cluster = NodeCluster(hosts, response.write)
         (s, f) = yield cluster.start_app(appname, profilename)
@@ -629,7 +648,7 @@ def app_start(task, response):
         log.error("Unknown error %s" % repr(err))
         response.error(-100, "Unknown error %s" % repr(err))
     else:
-        response.write("Done")
+        response.write("Done %d/%d" % (len(s), len(f)))
     finally:
         response.close()
 

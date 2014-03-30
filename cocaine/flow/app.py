@@ -77,7 +77,11 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/v1/gentoken", auth.GenToken),
 
             (r"/flow/v1/apps", apps.AppsList),
-            (r"/flow/v1/apps/([^/]+)/(.*)", apps.Apps),
+            (r"/flow/v1/apps/(?P<app>[^/]+)/(?P<version>.*)", apps.Apps),
+
+            (r"/flow/v1/startapp/(?P<app>.+)/(?P<version>.+)", apps.AppStart),
+            (r"/flow/v1/stopapp/(?P<app>.+)/(?P<version>.+)", apps.AppStop),
+            (r"/flow/v1/deployapp/(?P<app>.+)/(?P<version>.+)", apps.AppDeploy),
 
             (r"/flow/ping", utils.Ping),
         ]
@@ -86,7 +90,7 @@ class FlowRestServer(tornado.web.Application):
         cocaine_host = settings['cocaine_host']
         cocaine_port = settings['cocaine_port']
 
-        self.logger.info("Connectiong to Cocaine Runtime at %s:%d",
+        self.logger.info("Connectiong to Cocaine-runtime at %s:%d",
                          cocaine_host, cocaine_port)
         AppUploadInfo.configure(docker=settings['docker'],
                                 registry=settings['registry'])

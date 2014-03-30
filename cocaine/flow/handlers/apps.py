@@ -32,6 +32,22 @@ from cocaine.exceptions import ChokeEvent
 from cocaine.exceptions import ServiceError
 
 
+def on_chunk(self, r):
+    try:
+        item = r.get()
+        self.write(item)
+        self.flush()
+    except ChokeEvent:
+        self.logger.info("Close stream successfully")
+        self.finish()
+    except ServiceError as err:
+        self.logger.error(err)
+        self.finish("Error occured while uploading")
+    except Exception as err:
+        self.logger.error(err)
+        self.finish("Unknown error")
+
+
 class AppsList(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self):
@@ -41,13 +57,13 @@ class AppsList(AuthRequiredCocaineHandler):
 
 class Apps(AuthRequiredCocaineHandler):
     @gen.coroutine
-    def get(self, appname, version):
-        info = yield self.fw.app_info(appname, version)
+    def get(self, app, version):
+        info = yield self.fw.app_info(app, version)
         self.send_json(info)
 
     @gen.coroutine
     @web.asynchronous
-    def post(self, appname, version):
+    def post(self, app, version):
         # unpack body in thread pool and return
         # instance of TempDir
         # todo: it might be better to unpack in flow-tools
@@ -58,25 +74,39 @@ class Apps(AuthRequiredCocaineHandler):
         if self.tempdir is None:
             raise Exception("Unable to unpack body")
 
-        upl_info = AppUploadInfo(appname, version, self.tempdir.path)
+        upl_info = AppUploadInfo(app, version, self.tempdir.path)
         # clean tempdir after the finish of request
         self.on_finish = self.tempdir.clean
 
         # flow-tools cocaine future object
         fut = self.fw.app_upload(upl_info)
-        fut.then(self.on_chunk)
+        fut.then(partial(on_chunk, self))
+ 
 
-    def on_chunk(self, r):
-        try:
-            item = r.get()
-            self.write(item)
-            self.flush()
-        except ChokeEvent:
-            self.logger.info("Close stream successfully")
-            self.finish()
-        except ServiceError as err:
-            self.logger.error(err)
-            self.finish("Error occured while uploading")
-        except Exception as err:
-            self.logger.error(err)
-            self.finish("Unknown error")
+class AppStart(AuthRequiredCocaineHandler):
+    @gen.coroutine
+    @web.asynchronous
+    def post(self, app, version):
+        profile = self.get_argument("profile")
+        fut = self.fw.app_start(app, version, profile)
+        fut.then(partial(on_chunk, self))
+
+
+class AppStop(AuthRequiredCocaineHandler):
+    @gen.coroutine
+    @web.asynchronous
+    def post(self, app, version):
+        fut = self.fw.app_stop(app, version)
+        fut.then(partial(on_chunk, self))
+
+
+class AppDeploy(AuthRequiredCocaineHandler):
+    @gen.coroutine
+    @web.asynchronous
+    def post(self, app, version):
+        profile = self.get_argument("profile")
+        runlist = self.get_argument("runlist")
+        weight = int(self.get_argument("weight", 0))
+        fut = self.fw.app_deploy(app, version,
+                                 profile, runlist, weight)
+        fut.then(partial(on_chunk, self))

@@ -96,23 +96,42 @@ class FlowTest(FlowTestCase):
 
     @create_fake_user
     def test_apps(self):
+        # add test host
         r = self.fetch('/flow/v1/hosts/localhost',
                        method="PUT",
                        body="",
                        headers={"Authorization": self.token})
         self.assertEqual(200, r.code)
 
+        # upload application
+        version = int(time.time())
         with open("testapp/testapp.tar.gz", 'rb') as f:
-            r = self.fetch('/flow/v1/apps/bullet/%d' % int(time.time()),
+            r = self.fetch('/flow/v1/apps/bullet/%d' % version,
                            headers={"Authorization": self.token},
                            body=f.read(),
                            method="POST")
             self.assertEqual(200, r.code)
 
+        # application list
         r = self.fetch('/flow/v1/apps',
                        headers={"Authorization": self.token})
         self.assertEqual(200, r.code)
         apps = json.loads(r.body)
+
+        # deploy application
+        args = "profile=TEST&runlist=TEST&weight=100"
+        r = self.fetch('/flow/v1/deployapp/bullet/%d?%s' % (version, args),
+                       method="POST",
+                       body="",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+
+        # start application
+        r = self.fetch('/flow/v1/startapp/bullet/%d?profile=TEST' % version,
+                       method="POST",
+                       body="",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
 
         for app in apps:
             # get application info
@@ -121,6 +140,14 @@ class FlowTest(FlowTestCase):
             self.assertEqual(200, r.code)
             # Add body assertion
 
+        # stop application
+        r = self.fetch('/flow/v1/stopapp/bullet/%d?profile=TEST' % version,
+                       method="POST",
+                       body="",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+
+        # delete test host
         r = self.fetch('/flow/v1/hosts/localhost',
                        method="DELETE",
                        headers={"Authorization": self.token})

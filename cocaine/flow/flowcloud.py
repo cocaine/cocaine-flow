@@ -240,3 +240,28 @@ class FlowCloud(object):
         task = upload_info.to_task()
         task['user'] = self.user
         return self.stream_enqueue("user-upload", task)
+
+    def app_start(self, appname, version, profile):
+        task = {
+            "appname": appname,
+            "version": version,
+            "profile": profile,
+        }
+        return self.stream_enqueue("app-start", task)
+
+    def app_stop(self, appname, version):
+        task = {
+            "appname": appname,
+            "version": version,
+        }
+        return self.stream_enqueue("app-stop", task)
+
+    def app_deploy(self, appname, version, profile, runlist, weight=0):
+        task = {
+            "appname": appname,
+            "version": version,
+            "profile": profile,
+            "runlist": runlist,
+            "weight": weight,
+        }
+        return self.stream_enqueue("app-deploy", task)
