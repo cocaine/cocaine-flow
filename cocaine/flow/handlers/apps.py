@@ -19,11 +19,14 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 
+from functools import partial
+
 from tornado import gen
 from tornado import web
 
 from cocaine.flow.handlers import AuthRequiredCocaineHandler
 from cocaine.flow.flowcloud import AppUploadInfo
+from cocaine.flow.temprepo import unpack_archive
 
 from cocaine.exceptions import ChokeEvent
 from cocaine.exceptions import ServiceError
@@ -45,9 +48,19 @@ class Apps(AuthRequiredCocaineHandler):
     @gen.coroutine
     @web.asynchronous
     def post(self, appname, version):
-        # todo: unpack body in thread pool
-        upl_info = AppUploadInfo(appname, version,
-                                 "/Users/noxiouz/Documents/github/cocaine-flow/testapp")
+        # unpack body in thread pool and return
+        # instance of TempDir
+        # todo: it might be better to unpack in flow-tools
+        # for using remote cocaine-runtime
+        self.tempdir = yield gen.Task(self.run_background,
+                                      partial(unpack_archive,
+                                              self.request.body))
+
+        upl_info = AppUploadInfo(appname, version, self.tempdir.path)
+        # clean tempdir after the finish of request
+        self.on_finish = self.tempdir.clean
+
+        # flow-tools cocaine future object
         fut = self.fw.app_upload(upl_info)
         fut.then(self.on_chunk)
 
@@ -64,4 +77,4 @@ class Apps(AuthRequiredCocaineHandler):
             self.finish("Error occured while uploading")
         except Exception as err:
             self.logger.error(err)
-
+            self.finish("Unknown error")

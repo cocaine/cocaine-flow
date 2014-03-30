@@ -51,6 +51,10 @@ class CocaineHanler(web.RequestHandler):
     def logger(self):
         return self.application.logger
 
+    @property
+    def run_background(self):
+        return self.application.run_background
+
 
 class AuthRequiredCocaineHandler(CocaineHanler):
     def prepare(self):

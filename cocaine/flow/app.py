@@ -20,8 +20,10 @@
 #
 
 import logging
+from multiprocessing.pool import ThreadPool
 
 import tornado.web
+from tornado.ioloop import IOLoop
 
 from cocaine.flow.handlers import apps
 from cocaine.flow.handlers import auth
@@ -47,6 +49,7 @@ class FlowRestServer(tornado.web.Application):
     def __init__(self, **settings):
         self.logger = logging.getLogger("tornado.application")
         self.logger.debug("Creating FlowRestServer")
+
         handlers = [
             (r"/flow/v1/profiles/?", profiles.ProfilesList),
             (r"/flow/v1/profiles/(.+)", profiles.Profiles),
@@ -93,6 +96,9 @@ class FlowRestServer(tornado.web.Application):
             self.logger.error("Unable to connect to flow-tools application")
             raise FlowInitializationError("flow-tools is unavailable %s" % err)
 
+        # thread pool for blocking operations
+        self._pool = ThreadPool(10)
+
         tornado.web.Application.__init__(self, handlers, **settings)
 
     def guest(self):
@@ -100,3 +106,10 @@ class FlowRestServer(tornado.web.Application):
 
     def authorized(self, user_info):
         return FlowCloud.authorized(user_info)
+
+    def run_background(self, func, callback):
+        self.logger.debug("Apply %s", func)
+
+        def _callback(result):
+            IOLoop.instance().add_callback(lambda: callback(result))
+        self._pool.apply_async(func, (), {}, _callback)

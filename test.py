@@ -102,11 +102,12 @@ class FlowTest(FlowTestCase):
                        headers={"Authorization": self.token})
         self.assertEqual(200, r.code)
 
-        r = self.fetch('/flow/v1/apps/bullet/%d' % int(time.time()),
-                       headers={"Authorization": self.token},
-                       body="",
-                       method="POST")
-        self.assertEqual(200, r.code)
+        with open("testapp/testapp.tar.gz", 'rb') as f:
+            r = self.fetch('/flow/v1/apps/bullet/%d' % int(time.time()),
+                           headers={"Authorization": self.token},
+                           body=f.read(),
+                           method="POST")
+            self.assertEqual(200, r.code)
 
         r = self.fetch('/flow/v1/apps',
                        headers={"Authorization": self.token})
@@ -114,11 +115,11 @@ class FlowTest(FlowTestCase):
         apps = json.loads(r.body)
 
         for app in apps:
+            # get application info
             r = self.fetch('/flow/v1/apps/%(name)s/%(version)s' % app,
                            headers={"Authorization": self.token})
             self.assertEqual(200, r.code)
             # Add body assertion
-            print r.body
 
         r = self.fetch('/flow/v1/hosts/localhost',
                        method="DELETE",
