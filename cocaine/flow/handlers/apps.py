@@ -20,8 +20,13 @@
 #
 
 from tornado import gen
+from tornado import web
 
 from cocaine.flow.handlers import AuthRequiredCocaineHandler
+from cocaine.flow.flowcloud import AppUploadInfo
+
+from cocaine.exceptions import ChokeEvent
+from cocaine.exceptions import ServiceError
 
 
 class AppsList(AuthRequiredCocaineHandler):
@@ -34,11 +39,29 @@ class AppsList(AuthRequiredCocaineHandler):
 class Apps(AuthRequiredCocaineHandler):
     @gen.coroutine
     def get(self, appname, version):
-        info = yield self.fw.app_info(appname)
+        info = yield self.fw.app_info(appname, version)
         self.send_json(info)
 
     @gen.coroutine
+    @web.asynchronous
     def post(self, appname, version):
-        print appname, version
-        print self.request.body
-        self.write("OK")
+        # todo: unpack body in thread pool
+        upl_info = AppUploadInfo(appname, version,
+                                 "/Users/noxiouz/Documents/github/cocaine-flow/testapp")
+        fut = self.fw.app_upload(upl_info)
+        fut.then(self.on_chunk)
+
+    def on_chunk(self, r):
+        try:
+            item = r.get()
+            self.write(item)
+            self.flush()
+        except ChokeEvent:
+            self.logger.info("Close stream successfully")
+            self.finish()
+        except ServiceError as err:
+            self.logger.error(err)
+            self.finish("Error occured while uploading")
+        except Exception as err:
+            self.logger.error(err)
+

@@ -33,6 +33,12 @@ class PermissionDenied(Exception):
 
 
 class AppUploadInfo(object):
+
+    @classmethod
+    def configure(cls, docker, registry):
+        cls.docker = docker
+        cls.registry = registry
+
     def __init__(self, appname, version, path):
         self.appname = appname
         self.version = version
@@ -49,6 +55,8 @@ class AppUploadInfo(object):
             "path": self.path,
             "app": self.appname,
             "version": self.version,
+            "docker": self.docker,
+            "registry": self.registry,
         }
 
 
@@ -220,12 +228,15 @@ class FlowCloud(object):
     def app_list(self):
         return self.enqueue("user-app-list", self.user)
 
-    def app_info(self, appname):
+    def app_info(self, appname, version):
         task = {
             "appname": appname,
+            "version": version,
             "username": self.user,
         }
         return self.enqueue("app-info", task)
 
     def app_upload(self, upload_info):
-        return self.stream_enqueue("user-upload", upload_info.to_task())
+        task = upload_info.to_task()
+        task['user'] = self.user
+        return self.stream_enqueue("user-upload", task)

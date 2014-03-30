@@ -35,6 +35,7 @@ from cocaine.flow.handlers import utils
 
 from cocaine.flow.flowcloud import FlowCloud
 from cocaine.flow.flowcloud import FlowTools
+from cocaine.flow.flowcloud import AppUploadInfo
 from cocaine.flow.token import Token
 
 
@@ -84,6 +85,8 @@ class FlowRestServer(tornado.web.Application):
 
         self.logger.info("Connectiong to Cocaine Runtime at %s:%d",
                          cocaine_host, cocaine_port)
+        AppUploadInfo.configure(docker=settings['docker'],
+                                registry=settings['registry'])
         try:
             FlowTools.instance(host=cocaine_host, port=cocaine_port)
         except Exception as err:  # todo: check other exc types

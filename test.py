@@ -1,5 +1,6 @@
 import json
 import urllib
+import time
 
 from tornado.testing import AsyncHTTPTestCase
 from tornado.ioloop import IOLoop
@@ -28,6 +29,8 @@ class FlowTestCase(AsyncHTTPTestCase):
             "token_key": b"aaaaaaaaaaaaaaaa",
             "cocaine_port": 10053,
             "cocaine_host": "localhost",
+            "docker": "http://192.168.57.100:3138",
+            "registry": "192.168.57.100:5000",
         }
         return FlowRestServer(**settings)
 
@@ -93,21 +96,33 @@ class FlowTest(FlowTestCase):
 
     @create_fake_user
     def test_apps(self):
+        r = self.fetch('/flow/v1/hosts/localhost',
+                       method="PUT",
+                       body="",
+                       headers={"Authorization": self.token})
+        self.assertEqual(200, r.code)
+
+        r = self.fetch('/flow/v1/apps/bullet/%d' % int(time.time()),
+                       headers={"Authorization": self.token},
+                       body="",
+                       method="POST")
+        self.assertEqual(200, r.code)
+
         r = self.fetch('/flow/v1/apps',
                        headers={"Authorization": self.token})
         self.assertEqual(200, r.code)
         apps = json.loads(r.body)
 
-        r = self.fetch('/flow/v1/apps/bullet/fdfd',
-                       headers={"Authorization": self.token},
-                       body="AAA",
-                       method="POST")
-        self.assertEqual(200, r.code)
-
         for app in apps:
-            r = self.fetch('/flow/v1/appinfo/' + app,
+            r = self.fetch('/flow/v1/apps/%(name)s/%(version)s' % app,
                            headers={"Authorization": self.token})
             self.assertEqual(200, r.code)
+            # Add body assertion
+            print r.body
+
+        r = self.fetch('/flow/v1/hosts/localhost',
+                       method="DELETE",
+                       headers={"Authorization": self.token})
 
     @create_fake_user
     def test_profile(self):

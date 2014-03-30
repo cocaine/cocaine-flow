@@ -42,6 +42,7 @@ from hostdb import HostDB
 from nodecluster import NodeCluster
 
 ITEM_IS_ABSENT = -100
+VERSION_DELEMITER = "_"
 
 log = Logger()
 storage = Service("storage")
@@ -86,6 +87,20 @@ def unpacker(decoder):
             yield func(decoded_req, response)
         return wrapper
     return dec
+
+
+def appname_to_name_version(appname):
+    """Convert appname to name and version"""
+    try:
+        name, version = appname.rsplit(VERSION_DELEMITER, 1)
+    except ValueError:
+        log.error("%s is incorrect" % appname)
+    return name, version
+
+
+def appname_from_name_version(name, version):
+    """Generate appname from name and version"""
+    return "%s_%s" % (name, version)
 
 
 # profiles
@@ -405,7 +420,7 @@ def user_upload(info, response):
     response.write("%s\n" % upload_ID)
     try:
         user = info["user"]
-        appname = "%s_%s" % (info["app"], info["version"])
+        appname = appname_from_name_version(info["app"], info["version"])
         path = info["path"]
         docker = info["docker"]
         registry = info["registry"]
@@ -453,20 +468,31 @@ def user_upload(info, response):
 @unpacker(msgpack.unpackb)
 @asynchronous
 def user_apps_list(username, response):
+    def output(appname):
+        try:
+            n, v = appname_to_name_version(appname)
+            return {"name": n, "version": v}
+        except ValueError:
+            return None
+
     all_apps = yield app.List(storage).execute()
     user_apps = yield db.user_apps(username)
 
     set_all_apps = frozenset(all_apps)
     set_user_apps = frozenset(user_apps)
 
+    res = None
     if set_user_apps.issubset(set_all_apps):
-        response.write(user_apps)
+        res = user_apps
     else:
         diff = set_user_apps.difference(set_all_apps)
         log.error("Application info is inconsistent %s" % ' '.join(diff))
 
         inter = set_user_apps.intersection(set_all_apps)
-        response.write(list(inter))
+        res = inter
+
+    response.write(filter(lambda x: x is not None,
+                          map(output, res)))
     response.close()
 
 
@@ -503,8 +529,11 @@ def user_buildlog_read(key, response):
 def app_info(task, response):
     info = dict()
     try:
-        appname = task["appname"]
+        name = task["appname"]
+        version = task["version"]
         username = task["username"]
+        # todo: without version - search by mask? regex?
+        appname = appname_from_name_version(name, version)
 
         if username:
             # not admin - all apps
