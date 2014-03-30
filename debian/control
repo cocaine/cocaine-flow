@@ -1,0 +1,25 @@
+Source: cocaine-flow
+Section: utils
+Priority: extra
+Maintainer: Anton Tyurin <noxiouz@yandex-team.ru>
+Build-Depends: debhelper (>= 7), cdbs,
+ python (>= 2.6),
+ python-central
+Standards-Version: 3.9.1
+XS-Python-Version: >= 2.6
+Homepage: https://github.com/cocaine/cocaine-flow
+
+Package: cocaine-flow
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
+ python (>= 2.6),
+ python-central,
+ cocaine-tools (>= 0.11),
+ cocaine-framework-python (>= 0.11),
+ adduser,
+ python-crypto,
+ python-tornado (>= 3.1),
+ python-msgpack,
+XB-Python-Version: ${python:Versions}
+Description: REST-API server for Cocaine cloud
+ REST server is useful for managing apps in the Cloud.
