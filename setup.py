@@ -47,7 +47,7 @@ setup(
         "cocaine >= 0.11.1.0",
         "tornado >= 3.1",
         "pycrypto",
-        "cocaine-tools >= 0.11.1.0",
+        "cocaine-tools >= 0.11.4.0",
         "msgpack_python",
     ],
     scripts=[
