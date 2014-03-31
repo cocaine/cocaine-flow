@@ -34,7 +34,9 @@ class Token(object):
         self.key = key
         self.lifetime = lifetime
         # check key
-        if len(key) not in AES.key_size:
+        # AES.key_size is equal to (16, 24, 32)
+        # but it's corrupted in precise.
+        if len(key) not in (16, 24, 32):
             raise ValueError("AES key must be either 16, 24, or 32 bytes long")
 
     def dumps(self, data):
