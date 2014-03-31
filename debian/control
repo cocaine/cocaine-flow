@@ -14,7 +14,7 @@ Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends},
  python (>= 2.6),
  python-central,
- cocaine-tools (>= 0.11),
+ cocaine-tools (>= 0.11.4.0),
  cocaine-framework-python (>= 0.11),
  adduser,
  python-crypto,

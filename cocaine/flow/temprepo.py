@@ -46,10 +46,10 @@ class TempDir(object):
 def unpack_archive(data):
     fileobj = BytesIO(data)
     try:
-        with tarfile.open(fileobj=fileobj) as archive:
-            # NOTE: this dir could be read only by the same UID
-            tempdir = TempDir()
-            archive.extractall(tempdir.path)
+        archive = tarfile.open(fileobj=fileobj)
+        # NOTE: this dir could be read only by the same UID
+        tempdir = TempDir()
+        archive.extractall(tempdir.path)
     except Exception as err:
         logger.error(err)
     else:

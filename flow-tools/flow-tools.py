@@ -122,7 +122,7 @@ def profile_read(name, response):
 def profile_list(_, response):
     try:
         pf = yield profile.List(storage).execute()
-        log.info("Profiles %s" % pf)
+        log.info("Profiles %s" % str(pf))
         response.write(pf)
     except Exception as err:
         log.error(str(err))
