@@ -20,6 +20,7 @@
 #
 
 import logging
+import os
 import shutil
 import tarfile
 import tempfile
@@ -49,6 +50,7 @@ def unpack_archive(data):
         archive = tarfile.open(fileobj=fileobj)
         # NOTE: this dir could be read only by the same UID
         tempdir = TempDir()
+        os.chmod(tempdir.path, 0o777)
         archive.extractall(tempdir.path)
     except Exception as err:
         logger.error(err)
