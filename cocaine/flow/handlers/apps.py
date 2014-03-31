@@ -81,7 +81,7 @@ class Apps(AuthRequiredCocaineHandler):
         # flow-tools cocaine future object
         fut = self.fw.app_upload(upl_info)
         fut.then(partial(on_chunk, self))
- 
+
 
 class AppStart(AuthRequiredCocaineHandler):
     @gen.coroutine

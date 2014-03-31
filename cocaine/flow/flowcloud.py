@@ -134,7 +134,7 @@ class FlowCloud(object):
     def profile_remove(self, name):
         return self.enqueue("profile-remove", name)
 
-    #hosts
+    # hosts
     def host_list(self):
         return self.enqueue("host-list")
 

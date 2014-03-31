@@ -56,5 +56,3 @@ def unpack_archive(data):
         logger.error(err)
     else:
         return tempdir
-
-
