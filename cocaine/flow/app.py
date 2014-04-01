@@ -86,7 +86,7 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/ping", utils.Ping),
         ]
 
-        self.cipher = Token(settings['token_key'])
+        self.cipher = Token(settings['cookie_secret'])
         cocaine_host = settings['cocaine_host']
         cocaine_port = settings['cocaine_port']
 

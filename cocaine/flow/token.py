@@ -20,79 +20,41 @@
 #
 
 import json
-import time
 
-from Crypto.Cipher import AES
-from Crypto import Random
+from tornado import web
 
 
-TOKEN_LIFETIME = 3600
+TOKEN_LIFETIME = 1  # days
 
 
 class Token(object):
+    value_name = "TOKEN"
+
     def __init__(self, key, lifetime=TOKEN_LIFETIME):
         self.key = key
         self.lifetime = lifetime
-        # check key
-        # AES.key_size is equal to (16, 24, 32)
-        # but it's corrupted in precise.
-        if len(key) not in (16, 24, 32):
-            raise ValueError("AES key must be either 16, 24, or 32 bytes long")
-
-    def dumps(self, data):
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CFB, iv)
-        msg = iv + cipher.encrypt(data)
-        return msg.encode("hex")
-
-    def loads(self, raw):
-        data = raw.decode("hex")
-        if len(data) < AES.block_size:
-            raise ValueError("Too short to be decrypted, %d" % len(data))
-
-        iv = data[:AES.block_size]
-        value = data[AES.block_size:]
-        cipher = AES.new(self.key, AES.MODE_CFB, iv)
-        return cipher.decrypt(value)
 
     def pack_user(self, user_info):
-        # set timestamp
-        user_info['time'] = int(time.time())
-        user_info['salt'] = Random.get_random_bytes(128).encode('hex')
-        return self.dumps(json.dumps(user_info))
-
-    def unpack_user(self, token):
-        return json.loads(self.loads(token))
+        assert "password" not in user_info
+        value = json.dumps(user_info)
+        return web.create_signed_value(self.key, self.value_name, value)
 
     def valid(self, token):
-        try:
-            user_info = self.unpack_user(token)
-            creation_time = user_info.pop('time')
-        except (TypeError, ValueError):
+        raw = web.decode_signed_value(self.key, self.value_name, token, self.lifetime)
+        if raw is None:
             raise ValueError("Invalid token")
-
-        if int(time.time()) - creation_time < self.lifetime:
-            return user_info
         else:
-            raise ValueError("Token expired")
+            return json.loads(raw)
 
 
 if __name__ == "__main__":
-    import sys
-    incoming = sys.argv[1]
-    key = b'sdsdsdsdsdsdsdds'
-    t = Token(key)
-    assert incoming == t.loads(t.dumps(incoming)), "Something wrong"
+    t = Token("12312dfdfsf")
+    ui = {
+        "name": "AAA"
+    }
 
-    d = {"name": "user",
-         "password": "pass"}
+    tok = t.pack_user(t)
+    print(tok)
 
-    token = t.pack_user(d)
-    print token
-
-    d['time'] = 100000
-    token2 = t.dumps(json.dumps(d))
-    print token2
-
-    print t.valid(token)
-    print t.valid(token2)
+    rui = t.valid(tok)
+    assert rui == ui, "%s %s" % (rui, ui)

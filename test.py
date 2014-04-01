@@ -26,7 +26,7 @@ class FlowTestCase(AsyncHTTPTestCase):
     def get_app(self):
         settings = {
             "debug": True,
-            "token_key": b"aaaaaaaaaaaaaaaa",
+            "cookie_secret": b"aaaaaaaaaaaaaaaa",
             "cocaine_port": 10053,
             "cocaine_host": "localhost",
             "docker": "http://192.168.57.100:3138",
