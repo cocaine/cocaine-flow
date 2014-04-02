@@ -83,8 +83,11 @@ class FlowRestServer(tornado.web.Application):
             (r"/flow/v1/stopapp/(?P<app>.+)/(?P<version>.+)", apps.AppStop),
             (r"/flow/v1/deployapp/(?P<app>.+)/(?P<version>.+)", apps.AppDeploy),
 
-            (r"/flow/ping", utils.Ping),
+            (r"/flow/v1/status", utils.Status),
+            (r"/flow/v1/ping", utils.Ping),
         ]
+        self.docker = settings['docker']
+        self.registry = settings['registry']
 
         self.cipher = Token(settings['cookie_secret'])
         cocaine_host = settings['cocaine_host']
@@ -92,8 +95,8 @@ class FlowRestServer(tornado.web.Application):
 
         self.logger.info("Connectiong to Cocaine-runtime at %s:%d",
                          cocaine_host, cocaine_port)
-        AppUploadInfo.configure(docker=settings['docker'],
-                                registry=settings['registry'])
+        AppUploadInfo.configure(docker=self.docker,
+                                registry=self.registry)
         try:
             FlowTools.instance(host=cocaine_host, port=cocaine_port)
         except Exception as err:  # todo: check other exc types
