@@ -51,7 +51,7 @@ locator = Locator()
 
 LOGS_NAMESPACE = "flow_upload_logs"
 HOSTS_NAMESPACE = "flow_hosts"
-db = UserDB(storage, "KEY", "TEST")
+db = UserDB(storage, "KEY", "flow_users")
 hostdb = HostDB(storage, HOSTS_NAMESPACE)
 
 
