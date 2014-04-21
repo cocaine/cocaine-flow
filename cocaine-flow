@@ -32,11 +32,13 @@ from tornado.options import parse_config_file, parse_command_line
 
 from cocaine.flow.app import FlowRestServer
 from cocaine.flow.app import FlowInitializationError
+from cocaine.flow.ssh import start_ssh
 
 log = logging.getLogger()
 
 RESTGroup = 'RestServer'
 ServerGroup = 'HTTPServer'
+SSHServerGroup = 'SSHServer'
 
 # Webserver options
 define('port', default=8888, group=ServerGroup,
@@ -47,6 +49,13 @@ define('host', default="", group=ServerGroup,
 
 define('procs', default=-1, group=ServerGroup,
        help='Procs number', type=int)
+
+# SSHServer options
+define('sshport', default=0, group=SSHServerGroup,
+       help='run ssh server on the given port', type=int)
+
+define('privatekeyfile', group=SSHServerGroup,
+       help='path to ssh private server key', type=str)
 
 # REST server options
 define('registry', group=RESTGroup,
@@ -99,6 +108,15 @@ def main():
                   options.port, err)
         exit(1)
 
+    try:
+        sshsockets = tornado.netutil.bind_sockets(options.sshport,
+                                                  options.host)
+    except socket.error as err:
+        log.error("Unable to use endpoint %s:%d %s",
+                  options.host,
+                  options.sshport, err)
+        exit(1)
+
     # Should I fork?
     if options.procs > -1:
         # 0 value means: "create as many procs as CPUs"
@@ -114,12 +132,18 @@ def main():
     except Exception as err:
         log.error("Unknown error %s", err)
         exit(1)
+
     # create server
     server = tornado.httpserver.HTTPServer(app)
-    # attach handlers
+    # bind sockets
     server.add_sockets(sockets)
+    # create ssh server
+    start_ssh(sshsockets, options.privatekeyfile)
+
     log.info("Listening to %s",
              ' '.join(('%s:%d' % s.getsockname()[:2] for s in sockets)))
+    log.info("Listening to %s",
+             ' '.join(('%s:%d' % s.getsockname()[:2] for s in sshsockets)))
     IOLoop.instance().start()
 
 if __name__ == "__main__":
