@@ -23,6 +23,7 @@ from tornado import gen
 
 from cocaine.flow.handlers import CocaineHanler
 from cocaine.flow.handlers import AuthRequiredCocaineHandler
+from cocaine.flow.handlers import AuthCookieName
 
 
 class SignUp(CocaineHanler):
@@ -39,7 +40,9 @@ class SignIn(CocaineHanler):
     def post(self):
         name = self.get_argument("name")
         password = self.get_argument("password")
-        yield self.fw.signin(name, password)
+        res = yield self.fw.signin(name, password)
+        cookie_value = res["name"]
+        self.set_secure_cookie(AuthCookieName, cookie_value)
         self.ok()
 
 

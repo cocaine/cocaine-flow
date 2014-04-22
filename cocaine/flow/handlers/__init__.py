@@ -25,6 +25,7 @@ from tornado import web
 
 
 AuthHeaderName = "Authorization"
+AuthCookieName = "FlowUser"
 
 
 class CocaineHanler(web.RequestHandler):
@@ -69,9 +70,14 @@ class AuthRequiredCocaineHandler(CocaineHanler):
                 self.logger.warning(err)
             else:
                 return
-        #
-        # TBD: cookies
-        #
+
+        auth_cookie = self.get_secure_cookie(AuthCookieName)
+        if auth_cookie is not None:
+            # make it convertable
+            user_info = {'name': auth_cookie}
+            self.fw = self.application.authorized(user_info)
+            return
+
         raise web.HTTPError(403)
 
     def get_current_user(self):
