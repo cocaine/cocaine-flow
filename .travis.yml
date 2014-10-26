@@ -1,0 +1,10 @@
+language: python
+python:
+- '2.7'
+
+install:
+- pip install -rtests/requirements.txt
+- pip install .
+
+script: tox -eflake8 && python setup.py nosetests
+after_success: coveralls
